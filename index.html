@@ -2,29 +2,46 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>SmartWallet | Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuzdanım | Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; color: white; padding: 20px; }
         .container { background: rgba(255, 255, 255, 0.15); padding: 2rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); width: 400px; text-align: center; }
-        input, select { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 10px; box-sizing: border-box; color: #333; }
-        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 10px; background: #ff7e5f; color: white; font-weight: bold; cursor: pointer; }
-        #profile-circle { position: absolute; top: 20px; right: 20px; width: 50px; height: 50px; background: #ff7e5f; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid white; }
-        .hidden { display: none; }
-        table { width: 100%; margin-top: 20px; border-collapse: collapse; color: white; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 10px; box-sizing: border-box; }
+        button { padding: 10px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; margin-top: 5px; }
+        
+        #profile-circle { position: absolute; top: 20px; right: 20px; width: 50px; height: 50px; background: #ff7e5f; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid white; cursor: pointer; z-index: 100; }
+        #menu { position: absolute; top: 80px; right: 20px; background: white; color: #333; padding: 15px; border-radius: 15px; display: none; width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: left; z-index: 99; }
+        .hidden { display: none !important; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; }
         td, th { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+
+        /* Mobil Uyumlu Tasarım */
+        @media screen and (max-width: 500px) {
+            .container { width: 95% !important; padding: 1.5rem !important; }
+            #profile-circle { top: 10px; right: 10px; }
+            #menu { top: 70px; right: 10px; }
+        }
     </style>
 </head>
 <body>
 
-<div id="profile-circle" class="hidden"></div>
+<div id="profile-circle" class="hidden" onclick="toggleMenu()"></div>
+<div id="menu">
+    <div style="font-weight:bold; margin-bottom:5px;">Profil Bilgileri</div>
+    <div id="profil-isim" style="font-size:0.9rem; font-weight: bold;"></div>
+    <div id="profil-email" style="font-size:0.8rem; color:#666; margin-bottom:10px;"></div>
+    <hr>
+    <button onclick="logout()" style="background:red; width:100%;">Çıkış Yap</button>
+</div>
 
 <div class="container" id="auth-screen">
     <h2 id="form-title">Giriş Yap</h2>
     <input type="text" id="isim" placeholder="Ad Soyad" class="hidden">
     <input type="email" id="email" placeholder="Gmail">
     <input type="password" id="sifre" placeholder="Şifre">
-    <button id="auth-btn" onclick="authIslemi()">Giriş Yap</button>
+    <button id="auth-btn" onclick="authIslemi()" style="background:#ff7e5f; width:100%;">Giriş Yap</button>
     <p style="font-size:0.8rem; cursor:pointer;" onclick="toggleForm()" id="toggle-text">Henüz üye değil misin? Üye Ol</p>
 </div>
 
@@ -32,11 +49,11 @@
     <h3>Bakiye: <span id="bakiye">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="number" id="tutar" placeholder="Tutar">
-    <select id="tur"><option value="gelir">Gelir (+)</option><option value="gider">Gider (-)</option></select>
-    <button onclick="ekle()" style="background:#10b981;">Kaydet</button>
-    
+    <div style="display:flex; gap:10px;">
+        <button onclick="ekle('gelir')" style="background:#10b981; flex:1;">Gelir (+)</button>
+        <button onclick="ekle('gider')" style="background:#ef4444; flex:1;">Gider (-)</button>
+    </div>
     <table id="islem-tablosu">
-        <thead><tr><th>Açıklama</th><th>Tutar</th><th>İşlem</th></tr></thead>
         <tbody id="tablo-govde"></tbody>
     </table>
     <canvas id="myChart" style="margin-top: 20px;"></canvas>
@@ -44,11 +61,30 @@
 
 <script>
     let isLoginMode = true;
-    let islemler = [];
-    let toplamBakiye = 0, gelirler = 0, giderler = 0;
-    
-    const ctx = document.getElementById('myChart').getContext('2d');
-    let grafik = new Chart(ctx, { type: 'pie', data: { labels: ['Gelir', 'Gider'], datasets: [{ data: [0, 0], backgroundColor: ['#10b981', '#ef4444'] }] } });
+    let islemler = JSON.parse(localStorage.getItem('islemler')) || [];
+    let grafik;
+
+    if(localStorage.getItem('isLoggedIn')) girisBasarili();
+
+    function girisBasarili() {
+        const isim = localStorage.getItem('userName');
+        const email = localStorage.getItem('userEmail');
+        
+        document.getElementById('profile-circle').innerText = (isim || 'U').charAt(0).toUpperCase();
+        document.getElementById('profil-isim').innerText = isim;
+        document.getElementById('profil-email').innerText = email;
+        
+        document.getElementById('profile-circle').classList.remove('hidden');
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('app-screen').classList.remove('hidden');
+        initChart();
+        guncelle();
+    }
+
+    function toggleMenu() { 
+        const menu = document.getElementById('menu');
+        menu.style.display = (menu.style.display === 'block') ? 'none' : 'block'; 
+    }
 
     function toggleForm() {
         isLoginMode = !isLoginMode;
@@ -62,49 +98,50 @@
         const email = document.getElementById('email').value;
         const sifre = document.getElementById('sifre').value;
         const isim = document.getElementById('isim').value;
-
         if (!isLoginMode) {
-            localStorage.setItem('userEmail', email);
-            localStorage.setItem('userPass', sifre);
-            localStorage.setItem('userName', isim);
-            alert("Kayıt Başarılı!");
-            toggleForm();
+            if(!email || !sifre || !isim) return alert("Lütfen tüm alanları doldur!");
+            localStorage.setItem('userEmail', email); localStorage.setItem('userPass', sifre); localStorage.setItem('userName', isim);
+            alert("Kayıt Başarılı!"); toggleForm();
         } else {
             if (email === localStorage.getItem('userEmail') && sifre === localStorage.getItem('userPass')) {
-                document.getElementById('profile-circle').innerText = localStorage.getItem('userName').charAt(0).toUpperCase();
-                document.getElementById('profile-circle').classList.remove('hidden');
-                document.getElementById('auth-screen').classList.add('hidden');
-                document.getElementById('app-screen').classList.remove('hidden');
+                localStorage.setItem('isLoggedIn', 'true'); girisBasarili();
             } else { alert("Hatalı giriş!"); }
         }
     }
 
-    function ekle() {
+    function logout() { localStorage.removeItem('isLoggedIn'); location.reload(); }
+
+    function ekle(tur) {
         const aciklama = document.getElementById('aciklama').value;
         const tutar = parseFloat(document.getElementById('tutar').value);
-        const tur = document.getElementById('tur').value;
-        if (!aciklama || !tutar) return;
+        if (!aciklama || !tutar) return alert("Bilgileri girin");
         islemler.push({ id: Date.now(), aciklama, tutar, tur });
+        localStorage.setItem('islemler', JSON.stringify(islemler));
         guncelle();
     }
 
     function sil(id) {
         islemler = islemler.filter(i => i.id !== id);
+        localStorage.setItem('islemler', JSON.stringify(islemler));
         guncelle();
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        grafik = new Chart(ctx, { type: 'pie', data: { labels: ['Gelir', 'Gider'], datasets: [{ data: [0, 0], backgroundColor: ['#10b981', '#ef4444'] }] } });
     }
 
     function guncelle() {
         const tbody = document.getElementById('tablo-govde');
         tbody.innerHTML = '';
-        toplamBakiye = 0; gelirler = 0; giderler = 0;
+        let bakiye = 0, g = 0, gd = 0;
         islemler.forEach(i => {
-            if (i.tur === 'gelir') { toplamBakiye += i.tutar; gelirler += i.tutar; }
-            else { toplamBakiye -= i.tutar; giderler += i.tutar; }
-            tbody.innerHTML += `<tr><td>${i.aciklama}</td><td>${i.tutar} TL</td><td><button onclick="sil(${i.id})" style="background:#ef4444; padding:5px; border-radius:5px;">Sil</button></td></tr>`;
+            if (i.tur === 'gelir') { bakiye += i.tutar; g += i.tutar; }
+            else { bakiye -= i.tutar; gd += i.tutar; }
+            tbody.innerHTML += `<tr><td>${i.aciklama}</td><td>${i.tutar} TL</td><td><button onclick="sil(${i.id})" style="background:#ef4444;">Sil</button></td></tr>`;
         });
-        document.getElementById('bakiye').innerText = toplamBakiye;
-        grafik.data.datasets[0].data = [gelirler, giderler];
-        grafik.update();
+        document.getElementById('bakiye').innerText = bakiye;
+        if(grafik) { grafik.data.datasets[0].data = [g, gd]; grafik.update(); }
     }
 </script>
 </body>
