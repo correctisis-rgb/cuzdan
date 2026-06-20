@@ -6,7 +6,7 @@
     <title>SmartWallet | Cloud</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+        html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; font-weight: 400; }
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; color: white; }
         
         .container { 
@@ -16,17 +16,17 @@
             max-height: 95vh; display: flex; flex-direction: column;
         }
 
-        h2, h3 { font-weight: 900; margin: 10px 0; }
-        input { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 10px; font-size: 16px; box-sizing: border-box; font-weight: bold; }
-        button { padding: 10px; border: none; border-radius: 10px; font-weight: 900; cursor: pointer; color: white; width: 100%; margin-top: 5px; text-transform: uppercase; }
+        h2, h3 { font-weight: 700; margin: 10px 0; }
+        input { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 10px; font-size: 16px; box-sizing: border-box; font-weight: 400; }
+        button { padding: 10px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 5px; text-transform: uppercase; }
         
         .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); }
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 10px 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
+        td { padding: 10px 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-weight: 400; }
         
         .hidden { display: none !important; }
-        .link-text { margin-top: 10px; font-size: 12px; cursor: pointer; text-decoration: underline; color: #e0e0e0; }
-        .profile-btn { position: absolute; top: 15px; right: 15px; background: #fff; color: #764ba2; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; font-weight: bold; line-height: 35px; }
+        .link-text { margin-top: 10px; font-size: 12px; cursor: pointer; text-decoration: underline; color: #e0e0e0; font-weight: 400; }
+        .profile-btn { position: absolute; top: 15px; right: 15px; background: #fff; color: #764ba2; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; font-weight: 600; line-height: 35px; }
         #profil-menu { position: absolute; top: 55px; right: 15px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 10; text-align: left; }
     </style>
 </head>
@@ -168,11 +168,11 @@
                 const t = new Date(d.tarih);
                 html += `<tr>
                     <td>
-                        <strong style="font-size:14px;">${d.aciklama}</strong><br>
-                        <small style="color:#eee; font-size:10px;">${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')} ${t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</small>
+                        <strong style="display:block;">${d.aciklama}</strong>
+                        <small style="color:#ddd; font-size:11px;">${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')} ${t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</small>
                     </td>
-                    <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:900;">${d.tutar} TL</td>
-                    <td><button onclick="window.sil('${d.id}')" style="background:none; border:none;">❌</button></td>
+                    <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:600;">${d.tutar} TL</td>
+                    <td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td>
                 </tr>`;
             });
             document.getElementById('bakiye').innerText = bakiye;
