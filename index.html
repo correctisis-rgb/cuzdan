@@ -3,92 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartWallet</title>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDExT8MXCnvdCCkai4MPZaHyWlVb5wifVw",
-            authDomain: "cuzdan-99641.firebaseapp.com",
-            projectId: "cuzdan-99641",
-            storageBucket: "cuzdan-99641.firebasestorage.app",
-            messagingSenderId: "412964017852",
-            appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // UI Kontrolü
-        onAuthStateChanged(auth, (user) => {
-            const authScreen = document.getElementById('auth-screen');
-            const appScreen = document.getElementById('app-screen');
-            if (user) {
-                authScreen.style.display = 'none';
-                appScreen.style.display = 'block';
-                verileriGetir(user.uid);
-            } else {
-                authScreen.style.display = 'block';
-                appScreen.style.display = 'none';
-            }
-        });
-
-        // Buton Fonksiyonlarını Global'e Tanımla
-        window.kayitOl = () => {
-            const email = document.getElementById('email').value;
-            const sifre = document.getElementById('sifre').value;
-            createUserWithEmailAndPassword(auth, email, sifre).catch(e => alert(e.message));
-        };
-
-        window.girisYap = () => {
-            const email = document.getElementById('email').value;
-            const sifre = document.getElementById('sifre').value;
-            signInWithEmailAndPassword(auth, email, sifre).catch(e => alert(e.message));
-        };
-
-        window.cikisYap = () => signOut(auth);
-
-        window.ekle = (tur) => {
-            const aciklama = document.getElementById('aciklama').value;
-            const tutar = parseFloat(document.getElementById('tutar').value);
-            addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, tarih: Date.now() });
-        };
-
-        window.sil = (id) => deleteDoc(doc(db, "islemler", id));
-
-        function verileriGetir(uid) {
-            const q = query(collection(db, "islemler"), where("uid", "==", uid));
-            onSnapshot(q, (snapshot) => {
-                let bakiye = 0, html = "";
-                snapshot.forEach(doc => {
-                    const d = doc.data();
-                    bakiye += (d.tur === 'gelir' ? d.tutar : -d.tutar);
-                    html += `<tr><td>${d.aciklama}</td><td>${d.tutar} TL</td><td><button onclick="sil('${doc.id}')">X</button></td></tr>`;
-                });
-                document.getElementById('bakiye').innerText = bakiye;
-                document.getElementById('tablo-govde').innerHTML = html;
-            });
-        }
-    </script>
+    <title>SmartWallet | Cloud</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; color: white; padding: 20px; }
+        .container { background: rgba(255, 255, 255, 0.15); padding: 2rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 350px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 10px; box-sizing: border-box; }
+        button { padding: 10px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; width: 100%; margin-top: 5px; }
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body>
-    <div id="auth-screen">
-        <input type="email" id="email" placeholder="E-posta">
-        <input type="password" id="sifre" placeholder="Şifre">
-        <button onclick="kayitOl()">Kayıt Ol</button>
-        <button onclick="girisYap()">Giriş Yap</button>
-    </div>
-    <div id="app-screen" style="display:none;">
-        <h3>Bakiye: <span id="bakiye">0</span> TL</h3>
-        <input type="text" id="aciklama" placeholder="Açıklama">
-        <input type="number" id="tutar" placeholder="Tutar">
-        <button onclick="ekle('gelir')">Gelir</button>
-        <button onclick="ekle('gider')">Gider</button>
-        <table><tbody id="tablo-govde"></tbody></table>
-        <button onclick="cikisYap()">Çıkış Yap</button>
-    </div>
+
+<div class="container" id="auth-screen">
+    <h2>SmartWallet Giriş</h2>
+    <input type="email" id="email" placeholder="E-posta">
+    <input type="password" id="sifre" placeholder="Şifre">
+    <button id="btn-kayit" style="background:#ff7e5f;">Kayıt Ol</button>
+    <button id="btn-giris" style="background:#10b981; margin-top:10px;">Giriş Yap</button>
+</div>
+
+<div class="container hidden" id="app-screen">
+    <h3>Bakiye: <span id="bakiye">0</span> TL</h3>
+    <input type="text" id="aciklama" placeholder="Açıklama">
+    <input type="number" id="tutar" placeholder="Tutar">
+    <button id="btn-gelir" style="background:#10b981;">Gelir (+)</button>
+    <button id="btn-gider" style="background:#ef4444;">Gider (-)</button>
+    <table id="tablo" style="width:100%; margin-top:20px;"></table>
+    <button id="btn-cikis" style="background:#666; margin-top:20px;">Çıkış Yap</button>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDExT8MXCnvdCCkai4MPZaHyWlVb5wifVw",
+        authDomain: "cuzdan-99641.firebaseapp.com",
+        projectId: "cuzdan-99641",
+        storageBucket: "cuzdan-99641.firebasestorage.app",
+        messagingSenderId: "412964017852",
+        appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // Dinleyiciler
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+            verileriGetir(user.uid);
+        } else {
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('app-screen').classList.add('hidden');
+        }
+    });
+
+    document.getElementById('btn-kayit').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert(e.message));
+    document.getElementById('btn-giris').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert(e.message));
+    document.getElementById('btn-cikis').onclick = () => signOut(auth);
+    
+    document.getElementById('btn-gelir').onclick = () => ekle('gelir');
+    document.getElementById('btn-gider').onclick = () => ekle('gider');
+
+    async function ekle(tur) {
+        const aciklama = document.getElementById('aciklama').value;
+        const tutar = parseFloat(document.getElementById('tutar').value);
+        if(!aciklama || !tutar) return;
+        await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, tarih: Date.now() });
+    }
+
+    function verileriGetir(uid) {
+        const q = query(collection(db, "islemler"), where("uid", "==", uid));
+        onSnapshot(q, (snapshot) => {
+            let bakiye = 0, html = "";
+            snapshot.forEach(d => {
+                const data = d.data();
+                bakiye += (data.tur === 'gelir' ? data.tutar : -data.tutar);
+                html += `<tr><td>${data.aciklama}</td><td>${data.tutar} TL</td><td><button onclick="window.sil('${d.id}')">X</button></td></tr>`;
+            });
+            document.getElementById('bakiye').innerText = bakiye;
+            document.getElementById('tablo').innerHTML = html;
+        });
+    }
+
+    window.sil = (id) => deleteDoc(doc(db, "islemler", id));
+</script>
 </body>
 </html>
