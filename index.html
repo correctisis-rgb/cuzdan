@@ -1,164 +1,351 @@
 <!DOCTYPE html>
-<html lang="tr" style="height: 100%; overflow: hidden;">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SmartWallet | Cloud</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; color: white; }
-        
-        .container { 
-            background: rgba(255, 255, 255, 0.15); padding: 1.5rem; border-radius: 20px; 
-            backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
-            width: 90%; max-width: 350px; text-align: center; position: relative;
-            max-height: 95vh; display: flex; flex-direction: column;
-        }
 
-        h2, h3 { font-weight: 900; margin: 10px 0; }
-        input { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 10px; font-size: 16px; box-sizing: border-box; font-weight: bold; }
-        button { padding: 10px; border: none; border-radius: 10px; font-weight: 900; cursor: pointer; color: white; width: 100%; margin-top: 5px; text-transform: uppercase; }
-        
-        /* Liste alanı kendi içinde kayar */
-        .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); }
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 10px 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
-        
+<html lang="tr">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>SmartWallet | Cloud</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; color: white; padding: 20px; }
+
+        .container { background: rgba(255, 255, 255, 0.15); padding: 2rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 350px; text-align: center; position: relative; }
+
+        input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
+
+        button { padding: 10px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; width: 100%; margin-top: 5px; }
+
         .hidden { display: none !important; }
-        .link-text { margin-top: 10px; font-size: 12px; cursor: pointer; text-decoration: underline; color: #e0e0e0; }
+
+        .link-text { margin-top: 15px; font-size: 13px; cursor: pointer; text-decoration: underline; color: #e0e0e0; }
+
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+
+        td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left; }
+
         .profile-btn { position: absolute; top: 15px; right: 15px; background: #fff; color: #764ba2; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; font-weight: bold; line-height: 35px; }
+
         #profil-menu { position: absolute; top: 55px; right: 15px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 10; text-align: left; }
+
     </style>
+
 </head>
+
 <body>
 
+
+
 <div class="container" id="auth-screen">
-    <h2>GİRİŞ YAP</h2>
+
+    <h2>SmartWallet Giriş</h2>
+
     <input type="email" id="email" placeholder="E-posta">
+
     <input type="password" id="sifre" placeholder="Şifre">
+
     <button id="btn-giris-yap" style="background:#10b981;">Giriş Yap</button>
+
     <div class="link-text" id="btn-sifremi-unuttum">Şifremi Unuttum</div>
-    <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin? Kayıt ol.</div>
+
+    <div class="link-text" id="btn-gecis-kayit">Üye değilseniz, hemen kayıt olun.</div>
+
 </div>
+
+
 
 <div class="container hidden" id="signup-screen">
-    <h2>KAYIT OL</h2>
+
+    <h2>Yeni Hesap Oluştur</h2>
+
     <input type="email" id="signup-email" placeholder="E-posta">
+
     <input type="password" id="signup-sifre" placeholder="Şifre">
-    <button id="btn-kayit-ol" style="background:#ff7e5f;">Hesap Oluştur</button>
+
+    <button id="btn-kayit-ol" style="background:#ff7e5f;">Kayıt Ol</button>
+
     <div class="link-text" id="btn-gecis-giris">Giriş ekranına dön</div>
+
 </div>
+
+
 
 <div class="container hidden" id="app-screen">
+
     <div class="profile-btn" id="profil-baslik"></div>
+
     <div id="profil-menu" class="hidden">
+
         <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
-        <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer;">Şifre Değiştir</button>
-        <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; margin-top:5px;">Çıkış Yap</button>
+
+        <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:8px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; margin-bottom:5px;">Şifre Değiştir</button>
+
+        <button id="btn-cikis" style="background:#666; width:100%; padding:8px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer;">Çıkış Yap</button>
+
     </div>
 
-    <h3>BAKİYE: <span id="bakiye">0</span> TL</h3>
+
+
+    <div id="sifre-panel" class="hidden" style="margin-top:20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top:10px;">
+
+        <input type="password" id="mevcut-sifre" placeholder="Mevcut Şifre">
+
+        <input type="password" id="yeni-sifre" placeholder="Yeni Şifre">
+
+        <button id="btn-sifre-onayla" style="background:#f59e0b;">Şifreyi Güncelle</button>
+
+    </div>
+
+
+
+    <h3>Bakiye: <span id="bakiye">0</span> TL</h3>
+
     <input type="text" id="aciklama" placeholder="Açıklama">
+
     <input type="number" id="tutar" placeholder="Tutar">
-    <div style="display:flex; gap:5px;">
-        <button id="btn-gelir" style="background:#10b981;">GELİR (+)</button>
-        <button id="btn-gider" style="background:#ef4444;">GİDER (-)</button>
+
+    <div style="display:flex; gap:10px;">
+
+        <button id="btn-gelir" style="background:#10b981;">Gelir (+)</button>
+
+        <button id="btn-gider" style="background:#ef4444;">Gider (-)</button>
+
     </div>
-    
-    <div class="liste-alani">
-        <table id="tablo"></table>
-    </div>
-    
-    <canvas id="grafik" style="max-height: 120px; margin-top: 10px;"></canvas>
+
+    <table id="tablo"></table>
+
+    <canvas id="grafik" style="margin-top: 20px;"></canvas>
+
 </div>
 
+
+
 <script type="module">
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
     import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+
+
     const firebaseConfig = {
+
         apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw",
+
         authDomain: "cuzdan-99641.firebaseapp.com",
+
         projectId: "cuzdan-99641",
+
         storageBucket: "cuzdan-99641.firebasestorage.app",
+
         messagingSenderId: "412964017852",
+
         appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9",
+
         measurementId: "G-4KRR9PSYXP"
+
     };
+
+
 
     const app = initializeApp(firebaseConfig);
+
     const db = getFirestore(app);
+
     const auth = getAuth(app);
+
     let myChart;
 
-    // Fonksiyonlar (Aynı kalıyor)
-    const ekranGoster = (id) => {
-        ['auth-screen', 'signup-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden'));
-        document.getElementById(id).classList.remove('hidden');
+
+
+    function hataCevir(code) {
+
+        switch (code) {
+
+            case 'auth/email-already-in-use': return "Bu e-posta adresi zaten kayıtlı.";
+
+            case 'auth/invalid-credential': return "E-posta veya şifre hatalı.";
+
+            case 'auth/wrong-password': return "Mevcut şifreniz yanlış.";
+
+            case 'auth/weak-password': return "Şifre en az 6 karakter olmalı.";
+
+            default: return "Hata: " + code;
+
+        }
+
+    }
+
+
+
+    const ekranGoster = (ekranId) => {
+
+        ['auth-screen', 'signup-screen', 'app-screen'].forEach(id => document.getElementById(id).classList.add('hidden'));
+
+        document.getElementById(ekranId).classList.remove('hidden');
+
     };
 
+
+
     onAuthStateChanged(auth, (user) => {
+
         if (user) {
+
             ekranGoster('app-screen');
+
             document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
+
             document.getElementById('user-email').innerText = user.email;
+
             verileriGetir(user.uid);
+
         } else {
+
             ekranGoster('auth-screen');
+
         }
+
     });
 
-    // Eventler
-    document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert(e.message));
+
+
+    document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert(hataCevir(e.code)));
+
     document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
+
     document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
-    document.getElementById('btn-kayit-ol').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).then(() => alert("Kayıt başarılı!")).catch(e => alert(e.message));
+
+    document.getElementById('btn-kayit-ol').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).then(() => alert("Kayıt başarılı!")).catch(e => alert(hataCevir(e.code)));
+
+    document.getElementById('btn-sifremi-unuttum').onclick = () => sendPasswordResetEmail(auth, document.getElementById('email').value).then(() => alert("Sıfırlama linki gönderildi.")).catch(e => alert(hataCevir(e.code)));
+
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
+
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
 
+    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+
+
+
+    document.getElementById('btn-sifre-onayla').onclick = async () => {
+
+        try {
+
+            const credential = EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value);
+
+            await reauthenticateWithCredential(auth.currentUser, credential);
+
+            await updatePassword(auth.currentUser, document.getElementById('yeni-sifre').value);
+
+            alert("Şifreniz değiştirildi!");
+
+            document.getElementById('sifre-panel').classList.add('hidden');
+
+        } catch(e) { alert(hataCevir(e.code)); }
+
+    };
+
+
+
     document.getElementById('btn-gelir').onclick = () => ekle('gelir');
+
     document.getElementById('btn-gider').onclick = () => ekle('gider');
 
+
+
     async function ekle(tur) {
+
         const aciklama = document.getElementById('aciklama').value;
+
         const tutar = parseFloat(document.getElementById('tutar').value);
+
         if(!aciklama || !tutar) return;
+
         await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, tarih: Date.now() });
+
         document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
+
     }
 
-    function verileriGetir(uid) {
-        const q = query(collection(db, "islemler"), where("uid", "==", uid));
-        onSnapshot(q, (snapshot) => {
-            let bakiye = 0, g = 0, gi = 0, veriler = [];
-            snapshot.forEach(d => veriler.push({ id: d.id, ...d.data() }));
-            veriler.sort((a, b) => b.tarih - a.tarih);
-            
-            let html = "";
-            veriler.forEach(d => {
-                if(d.tur === 'gelir') { bakiye += d.tutar; g += d.tutar; } else { bakiye -= d.tutar; gi += d.tutar; }
-                const t = new Date(d.tarih);
-                html += `<tr>
-                    <td>
-                        <strong style="font-size:15px;">${d.aciklama}</strong><br>
-                        <small style="color:#eee; font-size:11px;">${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')} ${t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</small>
-                    </td>
-                    <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:900; font-size:16px;">${d.tutar} TL</td>
-                    <td><button onclick="window.sil('${d.id}')" style="background:none; border:none; font-size:16px;">❌</button></td>
-                </tr>`;
-            });
-            document.getElementById('bakiye').innerText = bakiye;
-            document.getElementById('tablo').innerHTML = html;
-            
-            // Grafik
-            const ctx = document.getElementById('grafik').getContext('2d');
-            if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Gelir', 'Gider'], datasets: [{ data: [g, gi], backgroundColor: ['#10b981', '#ef4444'] }] }, options: { plugins: { legend: { display: false } } } });
-        });
+
+
+    function guncelleGrafik(gelir, gider) {
+
+        const ctx = document.getElementById('grafik').getContext('2d');
+
+        if (myChart) myChart.destroy();
+
+        myChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Gelir', 'Gider'], datasets: [{ data: [gelir, gider], backgroundColor: ['#10b981', '#ef4444'] }] } });
+
     }
+
+
+
+    function verileriGetir(uid) {
+
+        const q = query(collection(db, "islemler"), where("uid", "==", uid));
+
+        onSnapshot(q, (snapshot) => {
+
+            let bakiye = 0, g = 0, gi = 0, veriler = [];
+
+            snapshot.forEach(d => veriler.push({ id: d.id, ...d.data() }));
+
+            veriler.sort((a, b) => b.tarih - a.tarih);
+
+            
+
+            let html = "";
+
+            veriler.forEach(d => {
+
+                if(d.tur === 'gelir') { bakiye += d.tutar; g += d.tutar; } else { bakiye -= d.tutar; gi += d.tutar; }
+
+                const t = new Date(d.tarih);
+
+                // Burada açıklama, tür, tarih ve saat bilgisini güncelledik
+
+                html += `<tr>
+
+                    <td>
+
+                        <strong>${d.aciklama}</strong><br>
+
+                        <small style="color:#bbb;">${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')} ${t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</small>
+
+                    </td>
+
+                    <td style="color:${d.tur==='gelir'?'#10b981':'#ef4444'}; font-weight:bold;">${d.tutar} TL</td>
+
+                    <td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td>
+
+                </tr>`;
+
+            });
+
+            document.getElementById('bakiye').innerText = bakiye;
+
+            document.getElementById('tablo').innerHTML = html;
+
+            guncelleGrafik(g, gi);
+
+        });
+
+    }
+
     window.sil = (id) => deleteDoc(doc(db, "islemler", id));
+
 </script>
+
 </body>
+
 </html>
