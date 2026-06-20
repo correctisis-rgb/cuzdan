@@ -20,7 +20,6 @@
         input { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 10px; font-size: 16px; box-sizing: border-box; font-weight: bold; }
         button { padding: 10px; border: none; border-radius: 10px; font-weight: 900; cursor: pointer; color: white; width: 100%; margin-top: 5px; text-transform: uppercase; }
         
-        /* Liste alanı kendi içinde kayar */
         .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); }
         table { width: 100%; border-collapse: collapse; }
         td { padding: 10px 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
@@ -105,6 +104,7 @@
             case 'auth/invalid-credential': return "E-posta veya şifre hatalı.";
             case 'auth/wrong-password': return "Mevcut şifreniz yanlış.";
             case 'auth/weak-password': return "Şifre en az 6 karakter olmalı.";
+            case 'auth/invalid-email': return "Geçersiz e-posta adresi.";
             default: return "Hata: " + code;
         }
     }
