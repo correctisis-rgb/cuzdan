@@ -21,7 +21,7 @@
 <body>
 
 <div class="container" id="auth-screen">
-    <h2>Smart Wallet Giriş</h2>
+    <h2>SmartWallet Giriş</h2>
     <input type="email" id="email" placeholder="E-posta">
     <input type="password" id="sifre" placeholder="Şifre">
     <button id="btn-giris-yap" style="background:#10b981;">Giriş Yap</button>
@@ -82,11 +82,21 @@
     const auth = getAuth(app);
     let myChart;
 
-    // Ekran geçişlerini yöneten yardımcı fonksiyon
+    // Hata Mesajlarını Türkçeleştirme
+    function hataCevir(code) {
+        switch (code) {
+            case 'auth/email-already-in-use': return "Bu e-posta adresi zaten kayıtlı.";
+            case 'auth/invalid-credential': return "E-posta veya şifre hatalı.";
+            case 'auth/wrong-password': return "Mevcut şifreniz yanlış.";
+            case 'auth/weak-password': return "Şifre en az 6 karakter olmalı.";
+            case 'auth/invalid-email': return "Geçersiz e-posta adresi.";
+            case 'auth/api-key-not-valid': return "API anahtarı yapılandırma hatası.";
+            default: return "Hata: " + code;
+        }
+    }
+
     const ekranGoster = (ekranId) => {
-        ['auth-screen', 'signup-screen', 'app-screen'].forEach(id => {
-            document.getElementById(id).classList.add('hidden');
-        });
+        ['auth-screen', 'signup-screen', 'app-screen'].forEach(id => document.getElementById(id).classList.add('hidden'));
         document.getElementById(ekranId).classList.remove('hidden');
     };
 
@@ -101,24 +111,24 @@
         }
     });
 
-    // Buton İşlemleri
-    document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert(e.message));
+    document.getElementById('btn-giris-yap').onclick = () => {
+        signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value)
+        .catch(e => alert(hataCevir(e.code)));
+    };
     
-    // Geçişler
     document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
     document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
 
     document.getElementById('btn-kayit-ol').onclick = () => {
         createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value)
         .then(() => alert("Kayıt başarılı!"))
-        .catch(e => alert(e.message));
+        .catch(e => alert(hataCevir(e.code)));
     };
 
-    // (Geri kalan kod bloğu aynı şekilde devam eder...)
     document.getElementById('btn-sifremi-unuttum').onclick = () => {
         const email = document.getElementById('email').value;
-        if(!email) return alert("E-posta giriniz.");
-        sendPasswordResetEmail(auth, email).then(() => alert("Sıfırlama linki gönderildi.")).catch(e => alert(e.message));
+        if(!email) return alert("Lütfen e-posta giriniz.");
+        sendPasswordResetEmail(auth, email).then(() => alert("Sıfırlama linki gönderildi.")).catch(e => alert(hataCevir(e.code)));
     };
 
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
@@ -139,7 +149,7 @@
             await updatePassword(user, yeni);
             alert("Şifreniz başarıyla değiştirildi!");
             document.getElementById('sifre-panel').classList.add('hidden');
-        } catch(e) { alert("Hata: " + e.message); }
+        } catch(e) { alert(hataCevir(e.code)); }
     };
 
     document.getElementById('btn-gelir').onclick = () => ekle('gelir');
