@@ -7,9 +7,11 @@
     <style>
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; color: white; padding: 20px; }
         .container { background: rgba(255, 255, 255, 0.15); padding: 2rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 350px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 10px; box-sizing: border-box; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
         button { padding: 10px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; width: 100%; margin-top: 5px; }
         .hidden { display: none !important; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+        td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left; }
     </style>
 </head>
 <body>
@@ -18,18 +20,20 @@
     <h2>SmartWallet Giriş</h2>
     <input type="email" id="email" placeholder="E-posta">
     <input type="password" id="sifre" placeholder="Şifre">
-    <button id="btn-kayit" style="background:#ff7e5f;">Kayıt Ol</button>
-    <button id="btn-giris" style="background:#10b981; margin-top:10px;">Giriş Yap</button>
+    <button onclick="window.kayitOl()">Kayıt Ol</button>
+    <button onclick="window.girisYap()" style="background:#10b981; margin-top:10px;">Giriş Yap</button>
 </div>
 
 <div class="container hidden" id="app-screen">
     <h3>Bakiye: <span id="bakiye">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="number" id="tutar" placeholder="Tutar">
-    <button id="btn-gelir" style="background:#10b981;">Gelir (+)</button>
-    <button id="btn-gider" style="background:#ef4444;">Gider (-)</button>
-    <table id="tablo" style="width:100%; margin-top:20px;"></table>
-    <button id="btn-cikis" style="background:#666; margin-top:20px;">Çıkış Yap</button>
+    <div style="display:flex; gap:10px;">
+        <button onclick="window.ekle('gelir')" style="background:#10b981;">Gelir (+)</button>
+        <button onclick="window.ekle('gider')" style="background:#ef4444;">Gider (-)</button>
+    </div>
+    <table><tbody id="tablo-govde"></tbody></table>
+    <button onclick="window.cikisYap()" style="background:#666; margin-top:20px;">Çıkış Yap</button>
 </div>
 
 <script type="module">
@@ -50,7 +54,6 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // Dinleyiciler
     onAuthStateChanged(auth, (user) => {
         if (user) {
             document.getElementById('auth-screen').classList.add('hidden');
@@ -62,19 +65,18 @@
         }
     });
 
-    document.getElementById('btn-kayit').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert(e.message));
-    document.getElementById('btn-giris').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert(e.message));
-    document.getElementById('btn-cikis').onclick = () => signOut(auth);
-    
-    document.getElementById('btn-gelir').onclick = () => ekle('gelir');
-    document.getElementById('btn-gider').onclick = () => ekle('gider');
+    window.kayitOl = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert(e.message));
+    window.girisYap = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert(e.message));
+    window.cikisYap = () => signOut(auth);
 
-    async function ekle(tur) {
+    window.ekle = async (tur) => {
         const aciklama = document.getElementById('aciklama').value;
         const tutar = parseFloat(document.getElementById('tutar').value);
         if(!aciklama || !tutar) return;
         await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, tarih: Date.now() });
-    }
+    };
+
+    window.sil = (id) => deleteDoc(doc(db, "islemler", id));
 
     function verileriGetir(uid) {
         const q = query(collection(db, "islemler"), where("uid", "==", uid));
@@ -83,14 +85,12 @@
             snapshot.forEach(d => {
                 const data = d.data();
                 bakiye += (data.tur === 'gelir' ? data.tutar : -data.tutar);
-                html += `<tr><td>${data.aciklama}</td><td>${data.tutar} TL</td><td><button onclick="window.sil('${d.id}')">X</button></td></tr>`;
+                html += `<tr><td>${data.aciklama}</td><td>${data.tutar} TL</td><td><button onclick="window.sil('${d.id}')" style="background:red; width:30px;">X</button></td></tr>`;
             });
             document.getElementById('bakiye').innerText = bakiye;
-            document.getElementById('tablo').innerHTML = html;
+            document.getElementById('tablo-govde').innerHTML = html;
         });
     }
-
-    window.sil = (id) => deleteDoc(doc(db, "islemler", id));
 </script>
 </body>
 </html>
