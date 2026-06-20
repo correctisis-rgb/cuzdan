@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SmartWallet | Cloud</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -20,22 +19,30 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        
+        // Firebase nesnelerini global window'a taşıyoruz ki butonlar hata vermesin
         window.db = getFirestore(app);
         window.auth = getAuth(app);
-        window.collection = collection; window.addDoc = addDoc; window.query = query;
-        window.where = where; window.onSnapshot = onSnapshot; window.deleteDoc = deleteDoc; window.doc = doc;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.query = query;
+        window.where = where;
+        window.onSnapshot = onSnapshot;
+        window.deleteDoc = deleteDoc;
+        window.doc = doc;
         window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
-        window.signInWithEmailAndPassword = signInWithEmailAndPassword; window.signOut = signOut;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.signOut = signOut;
         window.onAuthStateChanged = onAuthStateChanged;
     </script>
     <style>
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; color: white; padding: 20px; }
-        .container { background: rgba(255, 255, 255, 0.15); padding: 2rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); width: 400px; text-align: center; }
+        .container { background: rgba(255, 255, 255, 0.15); padding: 2rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); width: 350px; text-align: center; }
         input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
         button { padding: 10px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; margin-top: 5px; width: 100%; background: #ff7e5f; }
         .hidden { display: none !important; }
         table { width: 100%; margin-top: 20px; border-collapse: collapse; }
-        td, th { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left; }
+        td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left; }
     </style>
 </head>
 <body>
@@ -57,11 +64,12 @@
         <button onclick="ekle('gider')" style="background:#ef4444;">Gider (-)</button>
     </div>
     <table><tbody id="tablo-govde"></tbody></table>
-    <button onclick="signOut(auth)" style="background:#666; margin-top:20px;">Çıkış Yap</button>
+    <button onclick="signOut(window.auth)" style="background:#666; margin-top:20px;">Çıkış Yap</button>
 </div>
 
-<script type="module">
-    onAuthStateChanged(auth, (user) => {
+<script>
+    // Auth durumunu dinle
+    window.onAuthStateChanged(window.auth, (user) => {
         if (user) {
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
@@ -72,33 +80,33 @@
         }
     });
 
-    window.kayitOl = async () => {
-        try { await createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value); }
+    async function kayitOl() {
+        try { await window.createUserWithEmailAndPassword(window.auth, document.getElementById('email').value, document.getElementById('sifre').value); }
         catch(e) { alert(e.message); }
     }
 
-    window.girisYap = async () => {
-        try { await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value); }
+    async function girisYap() {
+        try { await window.signInWithEmailAndPassword(window.auth, document.getElementById('email').value, document.getElementById('sifre').value); }
         catch(e) { alert(e.message); }
     }
 
-    window.ekle = async (tur) => {
+    async function ekle(tur) {
         const aciklama = document.getElementById('aciklama').value;
         const tutar = parseFloat(document.getElementById('tutar').value);
         if(!aciklama || !tutar) return;
-        await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, tarih: Date.now() });
+        await window.addDoc(window.collection(window.db, "islemler"), { uid: window.auth.currentUser.uid, aciklama, tutar, tur, tarih: Date.now() });
     }
 
-    window.sil = async (id) => { await deleteDoc(doc(db, "islemler", id)); }
+    async function sil(id) { await window.deleteDoc(window.doc(window.db, "islemler", id)); }
 
     function verileriGetir(uid) {
-        const q = query(collection(db, "islemler"), where("uid", "==", uid));
-        onSnapshot(q, (snapshot) => {
+        const q = window.query(window.collection(window.db, "islemler"), window.where("uid", "==", uid));
+        window.onSnapshot(q, (snapshot) => {
             let bakiye = 0, html = "";
             snapshot.forEach(doc => {
                 const d = doc.data();
                 bakiye += (d.tur === 'gelir' ? d.tutar : -d.tutar);
-                html += `<tr><td>${d.aciklama}</td><td>${d.tutar} TL</td><td><button onclick="sil('${doc.id}')" style="background:red;">X</button></td></tr>`;
+                html += `<tr><td>${d.aciklama}</td><td>${d.tutar} TL</td><td><button onclick="sil('${doc.id}')" style="background:red; width:30px;">X</button></td></tr>`;
             });
             document.getElementById('bakiye').innerText = bakiye;
             document.getElementById('tablo-govde').innerHTML = html;
