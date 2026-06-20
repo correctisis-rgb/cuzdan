@@ -32,10 +32,17 @@
 <div class="container hidden" id="app-screen">
     <div class="profile-btn" id="profil-baslik"></div>
     <div id="profil-menu" class="hidden">
-        <small id="user-email" style="display:block; margin-bottom:5px;"></small>
-        <button id="btn-sifre-guncelle" style="background:#f59e0b; width:100%; padding:8px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; margin-bottom:5px;">Şifre Güncelle</button>
+        <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
+        <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:8px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; margin-bottom:5px;">Şifre Değiştir</button>
         <button id="btn-cikis" style="background:#666; width:100%; padding:8px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer;">Çıkış Yap</button>
     </div>
+
+    <div id="sifre-panel" class="hidden" style="margin-top:20px; border-top: 1px solid rgba(255,255,255,0.2); pt: 10px;">
+        <input type="password" id="mevcut-sifre" placeholder="Mevcut Şifre">
+        <input type="password" id="yeni-sifre" placeholder="Yeni Şifre">
+        <button id="btn-sifre-onayla" style="background:#f59e0b;">Şifreyi Güncelle</button>
+    </div>
+
     <h3>Bakiye: <span id="bakiye">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="number" id="tutar" placeholder="Tutar">
@@ -50,7 +57,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw",
@@ -88,17 +95,28 @@
         sendPasswordResetEmail(auth, email).then(() => alert("Sıfırlama linki gönderildi.")).catch(e => alert(e.message));
     };
     
-    // Profil işlemleri
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
-    
-    // Şifre Güncelleme (Profil içi)
-    document.getElementById('btn-sifre-guncelle').onclick = () => {
-        if (auth.currentUser) {
-            sendPasswordResetEmail(auth, auth.currentUser.email)
-                .then(() => alert("Şifre güncelleme bağlantısı e-posta adresinize gönderildi."))
-                .catch(e => alert(e.message));
-        }
+
+    // Şifre Değiştirme Paneli Açma
+    document.getElementById('btn-sifre-guncelle-menu').onclick = () => {
+        document.getElementById('sifre-panel').classList.remove('hidden');
+        document.getElementById('profil-menu').classList.add('hidden');
+    };
+
+    // Şifre Güncelleme İşlemi
+    document.getElementById('btn-sifre-onayla').onclick = async () => {
+        const user = auth.currentUser;
+        const eski = document.getElementById('mevcut-sifre').value;
+        const yeni = document.getElementById('yeni-sifre').value;
+        
+        try {
+            const credential = EmailAuthProvider.credential(user.email, eski);
+            await reauthenticateWithCredential(user, credential);
+            await updatePassword(user, yeni);
+            alert("Şifreniz başarıyla değiştirildi!");
+            document.getElementById('sifre-panel').classList.add('hidden');
+        } catch(e) { alert("Hata: " + e.message); }
     };
 
     document.getElementById('btn-gelir').onclick = () => ekle('gelir');
