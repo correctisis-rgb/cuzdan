@@ -8,10 +8,7 @@
     <style>
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; color: white; padding: 20px; }
         .container { background: rgba(255, 255, 255, 0.15); padding: 2rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 350px; text-align: center; position: relative; }
-        
-        /* Font-size 16px yapılarak mobil cihazlarda otomatik zoom engellendi */
         input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
-        
         button { padding: 10px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; width: 100%; margin-top: 5px; }
         .hidden { display: none !important; }
         .link-text { margin-top: 15px; font-size: 13px; cursor: pointer; text-decoration: underline; color: #e0e0e0; }
@@ -36,7 +33,8 @@
     <div class="profile-btn" id="profil-baslik"></div>
     <div id="profil-menu" class="hidden">
         <small id="user-email" style="display:block; margin-bottom:5px;"></small>
-        <button id="btn-cikis" style="background:#666;">Çıkış Yap</button>
+        <button id="btn-sifre-guncelle" style="background:#f59e0b; width:100%; padding:8px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; margin-bottom:5px;">Şifre Güncelle</button>
+        <button id="btn-cikis" style="background:#666; width:100%; padding:8px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer;">Çıkış Yap</button>
     </div>
     <h3>Bakiye: <span id="bakiye">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
@@ -90,8 +88,19 @@
         sendPasswordResetEmail(auth, email).then(() => alert("Sıfırlama linki gönderildi.")).catch(e => alert(e.message));
     };
     
+    // Profil işlemleri
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
+    
+    // Şifre Güncelleme (Profil içi)
+    document.getElementById('btn-sifre-guncelle').onclick = () => {
+        if (auth.currentUser) {
+            sendPasswordResetEmail(auth, auth.currentUser.email)
+                .then(() => alert("Şifre güncelleme bağlantısı e-posta adresinize gönderildi."))
+                .catch(e => alert(e.message));
+        }
+    };
+
     document.getElementById('btn-gelir').onclick = () => ekle('gelir');
     document.getElementById('btn-gider').onclick = () => ekle('gider');
 
