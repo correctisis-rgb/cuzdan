@@ -64,7 +64,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -82,15 +82,12 @@
     const auth = getAuth(app);
     let myChart;
 
-    // Hata Mesajlarını Türkçeleştirme
     function hataCevir(code) {
         switch (code) {
             case 'auth/email-already-in-use': return "Bu e-posta adresi zaten kayıtlı.";
             case 'auth/invalid-credential': return "E-posta veya şifre hatalı.";
             case 'auth/wrong-password': return "Mevcut şifreniz yanlış.";
             case 'auth/weak-password': return "Şifre en az 6 karakter olmalı.";
-            case 'auth/invalid-email': return "Geçersiz e-posta adresi.";
-            case 'auth/api-key-not-valid': return "API anahtarı yapılandırma hatası.";
             default: return "Hata: " + code;
         }
     }
@@ -111,43 +108,21 @@
         }
     });
 
-    document.getElementById('btn-giris-yap').onclick = () => {
-        signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value)
-        .catch(e => alert(hataCevir(e.code)));
-    };
-    
+    document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert(hataCevir(e.code)));
     document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
     document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
-
-    document.getElementById('btn-kayit-ol').onclick = () => {
-        createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value)
-        .then(() => alert("Kayıt başarılı!"))
-        .catch(e => alert(hataCevir(e.code)));
-    };
-
-    document.getElementById('btn-sifremi-unuttum').onclick = () => {
-        const email = document.getElementById('email').value;
-        if(!email) return alert("Lütfen e-posta giriniz.");
-        sendPasswordResetEmail(auth, email).then(() => alert("Sıfırlama linki gönderildi.")).catch(e => alert(hataCevir(e.code)));
-    };
-
+    document.getElementById('btn-kayit-ol').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).then(() => alert("Kayıt başarılı!")).catch(e => alert(hataCevir(e.code)));
+    document.getElementById('btn-sifremi-unuttum').onclick = () => sendPasswordResetEmail(auth, document.getElementById('email').value).then(() => alert("Sıfırlama linki gönderildi.")).catch(e => alert(hataCevir(e.code)));
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
-
-    document.getElementById('btn-sifre-guncelle-menu').onclick = () => {
-        document.getElementById('sifre-panel').classList.remove('hidden');
-        document.getElementById('profil-menu').classList.add('hidden');
-    };
+    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
 
     document.getElementById('btn-sifre-onayla').onclick = async () => {
-        const user = auth.currentUser;
-        const eski = document.getElementById('mevcut-sifre').value;
-        const yeni = document.getElementById('yeni-sifre').value;
         try {
-            const credential = EmailAuthProvider.credential(user.email, eski);
-            await reauthenticateWithCredential(user, credential);
-            await updatePassword(user, yeni);
-            alert("Şifreniz başarıyla değiştirildi!");
+            const credential = EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value);
+            await reauthenticateWithCredential(auth.currentUser, credential);
+            await updatePassword(auth.currentUser, document.getElementById('yeni-sifre').value);
+            alert("Şifreniz değiştirildi!");
             document.getElementById('sifre-panel').classList.add('hidden');
         } catch(e) { alert(hataCevir(e.code)); }
     };
@@ -160,6 +135,7 @@
         const tutar = parseFloat(document.getElementById('tutar').value);
         if(!aciklama || !tutar) return;
         await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, tarih: Date.now() });
+        document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
     }
 
     function guncelleGrafik(gelir, gider) {
@@ -171,11 +147,15 @@
     function verileriGetir(uid) {
         const q = query(collection(db, "islemler"), where("uid", "==", uid));
         onSnapshot(q, (snapshot) => {
-            let bakiye = 0, g = 0, gi = 0, html = "";
-            snapshot.forEach(d => {
-                const data = d.data();
-                if(data.tur === 'gelir') { bakiye += data.tutar; g += data.tutar; } else { bakiye -= data.tutar; gi += data.tutar; }
-                html += `<tr><td>${data.aciklama}</td><td>${data.tutar} TL</td><td><button onclick="window.sil('${d.id}')" style="background:#ef4444; color:white; border:none; padding:5px; cursor:pointer;">X</button></td></tr>`;
+            let bakiye = 0, g = 0, gi = 0, veriler = [];
+            snapshot.forEach(d => veriler.push({ id: d.id, ...d.data() }));
+            veriler.sort((a, b) => b.tarih - a.tarih);
+            
+            let html = "";
+            veriler.forEach(d => {
+                if(d.tur === 'gelir') { bakiye += d.tutar; g += d.tutar; } else { bakiye -= d.tutar; gi += d.tutar; }
+                const t = new Date(d.tarih);
+                html += `<tr><td><strong>${d.aciklama}</strong><br><small style="color:#ddd">${d.tur} • ${t.toLocaleDateString('tr-TR')} ${t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</small></td><td style="color:${d.tur==='gelir'?'#10b981':'#ef4444'}">${d.tutar} TL</td><td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td></tr>`;
             });
             document.getElementById('bakiye').innerText = bakiye;
             document.getElementById('tablo').innerHTML = html;
