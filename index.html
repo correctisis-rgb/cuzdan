@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartWallet | Cloud</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; color: white; padding: 20px; }
         .container { background: rgba(255, 255, 255, 0.15); padding: 2rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 350px; text-align: center; position: relative; }
@@ -12,11 +13,10 @@
         .hidden { display: none !important; }
         table { width: 100%; margin-top: 20px; border-collapse: collapse; }
         td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: left; }
-        /* Profil Simgesi */
-        .profile-icon { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.3); border-radius: 50%; width: 35px; height: 35px; line-height: 35px; font-size: 20px; }
-        /* Grafik Çubuğu */
-        .graph-container { height: 10px; background: rgba(255,255,255,0.2); border-radius: 5px; margin: 15px 0; overflow: hidden; }
-        #graph-bar { height: 100%; background: #10b981; width: 50%; }
+        
+        /* Profil Simgesi ve Menü */
+        .profile-btn { position: absolute; top: 15px; right: 15px; background: #fff; color: #764ba2; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; font-weight: bold; line-height: 35px; font-size: 18px; }
+        #profil-menu { position: absolute; top: 55px; right: 15px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -30,9 +30,14 @@
 </div>
 
 <div class="container hidden" id="app-screen">
-    <div class="profile-icon">👤</div>
+    <div class="profile-btn" id="profil-baslik" onclick="document.getElementById('profil-menu').classList.toggle('hidden')"></div>
+    <div id="profil-menu" class="hidden">
+        <small id="user-email" style="font-size: 12px;"></small><br>
+        <button id="btn-cikis" style="background:#666; margin-top:10px;">Çıkış Yap</button>
+    </div>
+
     <h3>Bakiye: <span id="bakiye">0</span> TL</h3>
-    <div class="graph-container"><div id="graph-bar"></div></div>
+    <canvas id="grafik" width="200" height="200" style="margin-bottom: 20px;"></canvas>
     
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="number" id="tutar" placeholder="Tutar">
@@ -41,7 +46,6 @@
         <button id="btn-gider" style="background:#ef4444;">Gider (-)</button>
     </div>
     <table id="tablo"></table>
-    <button id="btn-cikis" style="background:#666; margin-top:20px;">Çıkış Yap</button>
 </div>
 
 <script type="module">
@@ -49,25 +53,27 @@
     import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw",
-  authDomain: "cuzdan-99641.firebaseapp.com",
-  projectId: "cuzdan-99641",
-  storageBucket: "cuzdan-99641.firebasestorage.app",
-  messagingSenderId: "412964017852",
-  appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9",
-  measurementId: "G-4KRR9PSYXP"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyDExT8MXCnvdCCkai4MPZaHyWlVb5wifVw",
+        authDomain: "cuzdan-99641.firebaseapp.com",
+        projectId: "cuzdan-99641",
+        storageBucket: "cuzdan-99641.firebasestorage.app",
+        messagingSenderId: "412964017852",
+        appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9",
+        measurementId: "G-4KRR9PSYXP"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+    let myChart;
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
+            document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
+            document.getElementById('user-email').innerText = user.email;
             verileriGetir(user.uid);
         } else {
             document.getElementById('auth-screen').classList.remove('hidden');
@@ -81,6 +87,15 @@ const firebaseConfig = {
     document.getElementById('btn-gelir').onclick = () => ekle('gelir');
     document.getElementById('btn-gider').onclick = () => ekle('gider');
 
+    function guncelleGrafik(gelir, gider) {
+        const ctx = document.getElementById('grafik').getContext('2d');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: ['Gelir', 'Gider'], datasets: [{ data: [gelir, gider], backgroundColor: ['#10b981', '#ef4444'] }] }
+        });
+    }
+
     async function ekle(tur) {
         const aciklama = document.getElementById('aciklama').value;
         const tutar = parseFloat(document.getElementById('tutar').value);
@@ -91,18 +106,18 @@ const firebaseConfig = {
     function verileriGetir(uid) {
         const q = query(collection(db, "islemler"), where("uid", "==", uid));
         onSnapshot(q, (snapshot) => {
-            let bakiye = 0, html = "";
+            let bakiye = 0, g = 0, gi = 0, html = "";
             snapshot.forEach(d => {
                 const data = d.data();
-                bakiye += (data.tur === 'gelir' ? data.tutar : -data.tutar);
-                // Silme butonu kırmızı yapıldı
-                html += `<tr><td>${data.aciklama}</td><td>${data.tutar} TL</td><td><button onclick="window.sil('${d.id}')" style="background:#ef4444; width:30px; padding:5px;">X</button></td></tr>`;
+                if(data.tur === 'gelir') { bakiye += data.tutar; g += data.tutar; } 
+                else { bakiye -= data.tutar; gi += data.tutar; }
+                html += `<tr><td>${data.aciklama}</td><td>${data.tutar} TL</td><td><button onclick="window.sil('${d.id}')" style="background:#ef4444; width:30px; border-radius:5px; color:white; border:none; cursor:pointer;">X</button></td></tr>`;
             });
             document.getElementById('bakiye').innerText = bakiye;
             document.getElementById('tablo').innerHTML = html;
+            guncelleGrafik(g, gi);
         });
     }
-
     window.sil = (id) => deleteDoc(doc(db, "islemler", id));
 </script>
 </body>
