@@ -18,7 +18,7 @@
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
         h3 { margin: 2px 0; }
         
-        input, textarea, select { width: 100%; padding: 8px; margin: 2px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; font-family: inherit; }
+        input, textarea { width: 100%; padding: 8px; margin: 2px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; font-family: inherit; }
         button { padding: 6px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 2px; text-transform: uppercase; }
         
         .link-text { font-size: 11px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 2px; }
@@ -83,15 +83,6 @@
     <h3>BAKİYE: <span id="bakiye" style="color: white;">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="text" id="tutar" placeholder="Tutar" inputmode="decimal">
-    
-    <select id="kategori">
-        <option value="Genel">Genel</option>
-        <option value="Market">Market</option>
-        <option value="Fatura">Fatura</option>
-        <option value="Ulaşım">Ulaşım</option>
-        <option value="Eğlence">Eğlence</option>
-    </select>
-
     <div style="display:flex; gap:5px;">
         <button id="btn-gelir" style="background:#10b981;">GELİR (+)</button>
         <button id="btn-gider" style="background:#ef4444;">GİDER (-)</button>
@@ -183,6 +174,7 @@
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
     
+    // Panelleri aç/kapat
     document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('bildirim-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
     document.getElementById('btn-bildir-menu').onclick = () => { document.getElementById('bildirim-panel').classList.remove('hidden'); document.getElementById('sifre-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
 
@@ -231,10 +223,9 @@
             veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
                 const t = new Date(d.tarih);
                 const tarihStr = t.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-                // d.kategori || 'Genel' ile eski kayıtların kaybolması engellendi
-                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori || 'Genel'} • ${d.tur.toUpperCase()} • ${tarihStr}</small></td>
-                           <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
-                           <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
+                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.tur.toUpperCase()} • ${tarihStr}</small></td>
+                         <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
+                         <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
             const ctx = document.getElementById('grafik').getContext('2d');
@@ -245,13 +236,11 @@
 
     async function ekle(tur) {
         const aciklama = document.getElementById('aciklama').value;
-        const kategori = document.getElementById('kategori').value;
         const tutarVal = document.getElementById('tutar').value.replace(/\./g, '');
         const tutar = parseFloat(tutarVal);
         if (!aciklama) return alert("Lütfen bir açıklama girin.");
         if (isNaN(tutar) || tutar <= 0) return alert("Lütfen geçerli bir tutar girin.");
-        // Kategori ve otomatik tarih eklendi
-        await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, tarih: Date.now() });
+        await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, tarih: Date.now() });
         document.getElementById('aciklama').value = ''; 
         document.getElementById('tutar').value = '';
     }
