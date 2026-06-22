@@ -76,7 +76,7 @@
 
     <h3>BAKİYE: <span id="bakiye" style="color: white;">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
-    <input type="text" id="tutar" placeholder="Tutar (örn: 1.000)" inputmode="decimal">
+    <input type="text" id="tutar" placeholder="Tutar" inputmode="decimal">
     <div style="display:flex; gap:5px;">
         <button id="btn-gelir" style="background:#10b981;">GELİR (+)</button>
         <button id="btn-gider" style="background:#ef4444;">GİDER (-)</button>
@@ -103,15 +103,16 @@
 
     const formatla = (sayi) => sayi.toLocaleString('tr-TR');
 
-    // Tutar girişi anlık formatlama
-    document.getElementById('tutar').oninput = (e) => {
+    // Tutar anlık formatlama
+    const tutarInput = document.getElementById('tutar');
+    tutarInput.oninput = (e) => {
         let val = e.target.value.replace(/\./g, '');
         if (!isNaN(val) && val !== "") e.target.value = new Intl.NumberFormat('tr-TR').format(val);
         else e.target.value = val;
     };
 
     const hataGoster = (err) => {
-        const mesajlar = { 'auth/invalid-email': 'Geçersiz e-posta.', 'auth/user-not-found': 'Kullanıcı bulunamadı.', 'auth/wrong-password': 'Şifre yanlış.', 'auth/email-already-in-use': 'Zaten kayıtlı.', 'auth/weak-password': 'Şifre çok kısa.', 'auth/invalid-credential': 'Bilgiler hatalı.' };
+        const mesajlar = { 'auth/invalid-email': 'Geçersiz e-posta.', 'auth/user-not-found': 'Kullanıcı bulunamadı.', 'auth/wrong-password': 'Şifre yanlış.', 'auth/email-already-in-use': 'Bu e-posta zaten kayıtlı.', 'auth/weak-password': 'Şifre çok kısa.', 'auth/invalid-credential': 'E-posta veya şifre hatalı.' };
         alert(mesajlar[err.code] || "Hata: " + err.message);
     };
 
@@ -129,17 +130,17 @@
         } else { ekranGoster('auth-screen'); }
     });
 
-    document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster);
-    document.getElementById('btn-kayit-ol').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).catch(hataGoster);
-    document.getElementById('btn-sifre-onay-mail').onclick = async () => { try { await sendPasswordResetEmail(auth, document.getElementById('reset-email').value); alert("Bağlantı gönderildi."); ekranGoster('auth-screen'); } catch (e) { hataGoster(e); } };
+    document.getElementById('btn-giris-yap').onclick = () => { signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster); };
+    document.getElementById('btn-kayit-ol').onclick = () => { createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).catch(hataGoster); };
+    document.getElementById('btn-sifre-onay-mail').onclick = async () => { try { await sendPasswordResetEmail(auth, document.getElementById('reset-email').value); alert("Sıfırlama bağlantısı gönderildi."); ekranGoster('auth-screen'); } catch (e) { hataGoster(e); } };
     
     document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
     document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
     document.getElementById('btn-gecis-giris-2').onclick = () => ekranGoster('auth-screen');
     document.getElementById('btn-gecis-sifre-sifirla').onclick = () => ekranGoster('reset-screen');
-
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
+    
     document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
 
     document.getElementById('btn-sifre-onayla').onclick = async () => {
@@ -171,13 +172,15 @@
             
             let html = "";
             veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
-                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.tur.toUpperCase()}</small></td>
+                const tarihStr = new Date(d.tarih).toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.tur.toUpperCase()} • ${tarihStr}</small></td>
                          <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
                          <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
+            const ctx = document.getElementById('grafik').getContext('2d');
             if (myChart) myChart.destroy();
-            myChart = new Chart(document.getElementById('grafik').getContext('2d'), { type: 'doughnut', data: { labels: ['Kalan', 'Gider'], datasets: [{ data: (bakiye < 0 ? [0, gi] : [bakiye, gi]), backgroundColor: (bakiye < 0 ? ['#fbbf24', '#ef4444'] : ['#10b981', '#ef4444']) }] }, options: { plugins: { legend: { display: false } } } });
+            myChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Kalan', 'Gider'], datasets: [{ data: (bakiye < 0 ? [0, gi] : [bakiye, gi]), backgroundColor: (bakiye < 0 ? ['#fbbf24', '#ef4444'] : ['#10b981', '#ef4444']) }] }, options: { plugins: { legend: { display: false } } } });
         });
     }
 
