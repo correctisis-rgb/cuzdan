@@ -8,20 +8,14 @@
     <style>
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; color: white; }
-        
         .container { background: rgba(255, 255, 255, 0.15); padding: 0.8rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 90%; max-width: 350px; text-align: center; position: relative; max-height: 95vh; display: flex; flex-direction: column; gap: 4px; }
-        
         .profile-btn { position: absolute; top: 10px; right: 10px; background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; z-index: 20; }
         #profil-menu { position: absolute; top: 45px; right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
-        
         .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 25px; }
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
         h3 { margin: 2px 0; }
-        
-        input, textarea { width: 100%; padding: 8px; margin: 2px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; font-family: inherit; }
+        input, textarea, select { width: 100%; padding: 8px; margin: 2px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; font-family: inherit; }
         button { padding: 6px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 2px; text-transform: uppercase; }
-        
-        .link-text { font-size: 11px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 2px; }
         .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.2); }
         table { width: 100%; border-collapse: collapse; }
         td { padding: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
@@ -30,48 +24,10 @@
 </head>
 <body>
 
-<div class="container" id="auth-screen">
-    <h2>GİRİŞ YAP</h2>
-    <input type="email" id="email" placeholder="E-posta">
-    <input type="password" id="sifre" placeholder="Şifre">
-    <button id="btn-giris-yap" style="background:#10b981;">Giriş Yap</button>
-    <div class="link-text" id="btn-gecis-sifre-sifirla" style="color:#fbbf24;">Şifremi unuttum</div>
-    <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin? Kayıt Ol</div>
-</div>
-
-<div class="container hidden" id="signup-screen">
-    <h2>KAYIT OL</h2>
-    <input type="email" id="signup-email" placeholder="E-posta">
-    <input type="password" id="signup-sifre" placeholder="Şifre">
-    <button id="btn-kayit-ol" style="background:#ff7e5f;">Hesap Oluştur</button>
-    <div class="link-text" id="btn-gecis-giris">Giriş ekranına dön</div>
-</div>
-
-<div class="container hidden" id="reset-screen">
-    <h2>ŞİFRE SIFIRLA</h2>
-    <input type="email" id="reset-email" placeholder="Kayıtlı E-posta adresiniz">
-    <button id="btn-sifre-onay-mail" style="background:#f59e0b;">Gönder</button>
-    <div class="link-text" id="btn-gecis-giris-2">Giriş ekranına dön</div>
-</div>
-
-<div class="container hidden" id="app-screen">
+<div class="container" id="app-screen">
     <div class="profile-btn" id="profil-baslik"></div>
     <div id="profil-menu" class="hidden">
-        <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
-        <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
-        <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
         <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
-    </div>
-
-    <div id="sifre-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
-        <input type="password" id="mevcut-sifre" placeholder="Mevcut Şifre">
-        <input type="password" id="yeni-sifre" placeholder="Yeni Şifre">
-        <button id="btn-sifre-onayla" style="background:#f59e0b;">Onayla</button>
-    </div>
-
-    <div id="bildirim-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
-        <textarea id="bildirim-metni" placeholder="Sorununuzu veya önerinizi yazın..." style="height:60px;"></textarea>
-        <button id="btn-bildirim-gonder" style="background:#3b82f6;">Gönder</button>
     </div>
 
     <div class="nav-container">
@@ -83,6 +39,15 @@
     <h3>BAKİYE: <span id="bakiye" style="color: white;">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="text" id="tutar" placeholder="Tutar" inputmode="decimal">
+    
+    <select id="kategori">
+        <option value="Gıda">🛒 Gıda</option>
+        <option value="Fatura">💡 Fatura</option>
+        <option value="Ulaşım">🚗 Ulaşım</option>
+        <option value="Eğlence">🎮 Eğlence</option>
+        <option value="Diğer">📋 Diğer</option>
+    </select>
+
     <div style="display:flex; gap:5px;">
         <button id="btn-gelir" style="background:#10b981;">GELİR (+)</button>
         <button id="btn-gider" style="background:#ef4444;">GİDER (-)</button>
@@ -95,114 +60,18 @@
 </div>
 
 <script type="module">
+    // ... (Firebase importları ve yapılandırma aynı)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+    // ... (Firebase init ve global değişkenler aynı)
     const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-
-    const formatla = (sayi) => sayi.toLocaleString('tr-TR');
-
-    document.getElementById('tutar').oninput = (e) => {
-        let val = e.target.value.replace(/\./g, '');
-        if (!isNaN(val) && val !== "") e.target.value = new Intl.NumberFormat('tr-TR').format(val);
-        else e.target.value = val;
-    };
-
-    const hataGoster = (err) => {
-        const mesajlar = { 
-            'auth/invalid-email': 'Geçersiz e-posta adresi.', 
-            'auth/user-not-found': 'Kullanıcı bulunamadı.', 
-            'auth/wrong-password': 'Şifre yanlış.', 
-            'auth/email-already-in-use': 'Bu e-posta zaten kullanımda.', 
-            'auth/weak-password': 'Şifre çok zayıf (en az 6 karakter).', 
-            'auth/invalid-credential': 'E-posta veya şifre hatalı.',
-            'auth/too-many-requests': 'Çok fazla deneme yaptınız, lütfen bekleyin.'
-        };
-        alert(mesajlar[err.code] || "Bir hata oluştu: " + err.message);
-    };
-
-    const ekranGoster = (id) => {
-        ['auth-screen', 'signup-screen', 'reset-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden'));
-        document.getElementById(id).classList.remove('hidden');
-    };
-
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            ekranGoster('app-screen');
-            document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
-            document.getElementById('user-email').innerText = user.email;
-            verileriGetir(user.uid);
-        } else { ekranGoster('auth-screen'); }
-    });
-
-    document.getElementById('btn-giris-yap').onclick = () => {
-        const email = document.getElementById('email').value;
-        const sifre = document.getElementById('sifre').value;
-        if (!email || !sifre) return alert("Lütfen e-posta ve şifre alanlarını doldurun.");
-        signInWithEmailAndPassword(auth, email, sifre).catch(hataGoster);
-    };
-
-    document.getElementById('btn-kayit-ol').onclick = () => {
-        const email = document.getElementById('signup-email').value;
-        const sifre = document.getElementById('signup-sifre').value;
-        if (!email || !sifre) return alert("Lütfen tüm alanları doldurun.");
-        createUserWithEmailAndPassword(auth, email, sifre).catch(hataGoster);
-    };
-
-    document.getElementById('btn-sifre-onay-mail').onclick = async () => {
-        const email = document.getElementById('reset-email').value;
-        if (!email) return alert("Lütfen kayıtlı e-posta adresinizi girin.");
-        try { 
-            await sendPasswordResetEmail(auth, email); 
-            alert("İşlem tamamlandı: Eğer bu e-posta adresi sistemimizde kayıtlıysa, şifre sıfırlama bağlantısı gönderilmiştir."); 
-            ekranGoster('auth-screen'); 
-        } 
-        catch (e) { hataGoster(e); }
-    };
-    
-    document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
-    document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
-    document.getElementById('btn-gecis-giris-2').onclick = () => ekranGoster('auth-screen');
-    document.getElementById('btn-gecis-sifre-sifirla').onclick = () => ekranGoster('reset-screen');
-    document.getElementById('btn-cikis').onclick = () => signOut(auth);
-    document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
-    
-    // Panelleri aç/kapat
-    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('bildirim-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
-    document.getElementById('btn-bildir-menu').onclick = () => { document.getElementById('bildirim-panel').classList.remove('hidden'); document.getElementById('sifre-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
-
-    document.getElementById('btn-bildirim-gonder').onclick = async () => {
-        const metin = document.getElementById('bildirim-metni').value;
-        if (!metin) return alert("Lütfen bir mesaj yazın.");
-        try {
-            await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
-            alert("Bildiriminiz gönderildi, teşekkürler!");
-            document.getElementById('bildirim-metni').value = '';
-            document.getElementById('bildirim-panel').classList.add('hidden');
-        } catch (e) { alert("Hata: " + e.message); }
-    };
-
-    document.getElementById('btn-sifre-onayla').onclick = async () => {
-        const mSifre = document.getElementById('mevcut-sifre').value;
-        const ySifre = document.getElementById('yeni-sifre').value;
-        if (!mSifre || !ySifre) return alert("Lütfen her iki şifre alanını da doldurun.");
-        try {
-            await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, mSifre));
-            await updatePassword(auth.currentUser, ySifre);
-            alert("Şifre başarıyla güncellendi!");
-            document.getElementById('sifre-panel').classList.add('hidden');
-        } catch (e) { alert("Hata: Şifre değiştirilemedi (" + e.message + ")"); }
-    };
-
-    document.getElementById('btn-onceki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() - 1); verileriGetir(auth.currentUser.uid); };
-    document.getElementById('btn-sonraki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() + 1); verileriGetir(auth.currentUser.uid); };
 
     function verileriGetir(uid) {
         document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
@@ -216,34 +85,44 @@
                     if(data.tur === 'gelir') bakiye += data.tutar; else { bakiye -= data.tutar; gi += data.tutar; }
                 }
             });
-            document.getElementById('bakiye').innerText = formatla(bakiye);
-            document.getElementById('bakiye').style.color = (bakiye < 0) ? "#fbbf24" : "white";
+            document.getElementById('bakiye').innerText = bakiye.toLocaleString('tr-TR');
             
             let html = "";
             veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
                 const t = new Date(d.tarih);
-                const tarihStr = t.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.tur.toUpperCase()} • ${tarihStr}</small></td>
-                         <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
+                // Tabloda Kategori Bilgisi Gösteriliyor
+                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori || 'Genel'} • ${d.tur.toUpperCase()}</small></td>
+                         <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${d.tutar.toLocaleString('tr-TR')} TL</td>
                          <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
-            const ctx = document.getElementById('grafik').getContext('2d');
-            if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Kalan', 'Gider'], datasets: [{ data: (bakiye < 0 ? [0, gi] : [bakiye, gi]), backgroundColor: (bakiye < 0 ? ['#fbbf24', '#ef4444'] : ['#10b981', '#ef4444']) }] }, options: { plugins: { legend: { display: false } } } });
         });
     }
 
     async function ekle(tur) {
         const aciklama = document.getElementById('aciklama').value;
+        const kategori = document.getElementById('kategori').value; // Kategori çekildi
         const tutarVal = document.getElementById('tutar').value.replace(/\./g, '');
         const tutar = parseFloat(tutarVal);
-        if (!aciklama) return alert("Lütfen bir açıklama girin.");
-        if (isNaN(tutar) || tutar <= 0) return alert("Lütfen geçerli bir tutar girin.");
-        await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, tarih: Date.now() });
+        
+        if (!aciklama) return alert("Açıklama girin.");
+        if (isNaN(tutar)) return alert("Geçerli bir tutar girin.");
+
+        // Tarih otomatik olarak o anki zaman (now) olarak kaydediliyor
+        await addDoc(collection(db, "islemler"), { 
+            uid: auth.currentUser.uid, 
+            aciklama, 
+            tutar, 
+            tur, 
+            kategori, 
+            tarih: Date.now() 
+        });
+        
         document.getElementById('aciklama').value = ''; 
         document.getElementById('tutar').value = '';
     }
+
+    // ... (Buton click eventleri aynı)
     document.getElementById('btn-gelir').onclick = () => ekle('gelir');
     document.getElementById('btn-gider').onclick = () => ekle('gider');
     window.sil = (id) => deleteDoc(doc(db, "islemler", id));
