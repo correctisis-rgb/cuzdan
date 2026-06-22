@@ -86,7 +86,7 @@
     
     <select id="kategori">
         <option value="Genel">Genel</option>
-        <option value="Gıda">Gıda</option>
+        <option value="Market">Market</option>
         <option value="Fatura">Fatura</option>
         <option value="Ulaşım">Ulaşım</option>
         <option value="Eğlence">Eğlence</option>
@@ -231,7 +231,7 @@
             veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
                 const t = new Date(d.tarih);
                 const tarihStr = t.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-                // Kategori gösterimi eklendi
+                // d.kategori || 'Genel' ile eski kayıtların kaybolması engellendi
                 html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori || 'Genel'} • ${d.tur.toUpperCase()} • ${tarihStr}</small></td>
                            <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
                            <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
@@ -245,12 +245,12 @@
 
     async function ekle(tur) {
         const aciklama = document.getElementById('aciklama').value;
-        const kategori = document.getElementById('kategori').value; // Kategori değeri alındı
+        const kategori = document.getElementById('kategori').value;
         const tutarVal = document.getElementById('tutar').value.replace(/\./g, '');
         const tutar = parseFloat(tutarVal);
         if (!aciklama) return alert("Lütfen bir açıklama girin.");
         if (isNaN(tutar) || tutar <= 0) return alert("Lütfen geçerli bir tutar girin.");
-        // Kategori de veritabanına eklendi
+        // Kategori ve otomatik tarih eklendi
         await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, tarih: Date.now() });
         document.getElementById('aciklama').value = ''; 
         document.getElementById('tutar').value = '';
