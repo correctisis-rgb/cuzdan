@@ -153,7 +153,11 @@
     document.getElementById('btn-sifre-onay-mail').onclick = async () => {
         const email = document.getElementById('reset-email').value;
         if (!email) return alert("Lütfen kayıtlı e-posta adresinizi girin.");
-        try { await sendPasswordResetEmail(auth, email); alert("Şifre sıfırlama bağlantısı e-posta adresinize gönderildi."); ekranGoster('auth-screen'); } 
+        try { 
+            await sendPasswordResetEmail(auth, email); 
+            alert("İşlem tamamlandı: Eğer bu e-posta adresi sistemimizde kayıtlıysa, şifre sıfırlama bağlantısı gönderilmiştir."); 
+            ekranGoster('auth-screen'); 
+        } 
         catch (e) { hataGoster(e); }
     };
     
