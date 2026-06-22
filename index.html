@@ -18,7 +18,7 @@
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
         h3 { margin: 2px 0; }
         
-        input { width: 100%; padding: 8px; margin: 2px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; }
+        input, textarea { width: 100%; padding: 8px; margin: 2px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; font-family: inherit; }
         button { padding: 6px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 2px; text-transform: uppercase; }
         
         .link-text { font-size: 11px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 2px; }
@@ -58,7 +58,8 @@
     <div class="profile-btn" id="profil-baslik"></div>
     <div id="profil-menu" class="hidden">
         <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
-        <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px;">Şifre Değiştir</button>
+        <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
+        <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
         <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
     </div>
 
@@ -66,6 +67,11 @@
         <input type="password" id="mevcut-sifre" placeholder="Mevcut Şifre">
         <input type="password" id="yeni-sifre" placeholder="Yeni Şifre">
         <button id="btn-sifre-onayla" style="background:#f59e0b;">Onayla</button>
+    </div>
+
+    <div id="bildirim-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
+        <textarea id="bildirim-metni" placeholder="Sorununuzu veya önerinizi yazın..." style="height:60px;"></textarea>
+        <button id="btn-bildirim-gonder" style="background:#3b82f6;">Gönder</button>
     </div>
 
     <div class="nav-container">
@@ -168,7 +174,20 @@
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
     
-    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+    // Panelleri aç/kapat
+    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('bildirim-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+    document.getElementById('btn-bildir-menu').onclick = () => { document.getElementById('bildirim-panel').classList.remove('hidden'); document.getElementById('sifre-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+
+    document.getElementById('btn-bildirim-gonder').onclick = async () => {
+        const metin = document.getElementById('bildirim-metni').value;
+        if (!metin) return alert("Lütfen bir mesaj yazın.");
+        try {
+            await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
+            alert("Bildiriminiz gönderildi, teşekkürler!");
+            document.getElementById('bildirim-metni').value = '';
+            document.getElementById('bildirim-panel').classList.add('hidden');
+        } catch (e) { alert("Hata: " + e.message); }
+    };
 
     document.getElementById('btn-sifre-onayla').onclick = async () => {
         const mSifre = document.getElementById('mevcut-sifre').value;
