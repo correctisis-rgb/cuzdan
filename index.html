@@ -29,15 +29,6 @@
     <h2>GİRİŞ YAP</h2>
     <input type="email" id="email" placeholder="E-posta"><input type="password" id="sifre" placeholder="Şifre">
     <button id="btn-giris-yap" style="background:#10b981;">Giriş Yap</button>
-    <div class="link-text" id="btn-sifremi-unuttum">Şifremi Unuttum</div>
-    <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin?</div>
-</div>
-
-<div class="container hidden" id="signup-screen">
-    <h2>KAYIT OL</h2>
-    <input type="email" id="signup-email" placeholder="E-posta"><input type="password" id="signup-sifre" placeholder="Şifre">
-    <button id="btn-kayit-ol" style="background:#ff7e5f;">Hesap Oluştur</button>
-    <div class="link-text" id="btn-gecis-giris">Giriş ekranına dön</div>
 </div>
 
 <div class="container hidden" id="app-screen">
@@ -70,7 +61,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
     const app = initializeApp(firebaseConfig);
@@ -81,18 +72,22 @@
     let seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
-    const ekranGoster = (id) => {
-        ['auth-screen', 'signup-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden'));
-        document.getElementById(id).classList.remove('hidden');
-    };
-
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            ekranGoster('app-screen');
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
             document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
+            document.getElementById('user-email').innerText = user.email;
             verileriGetir(user.uid);
-        } else { ekranGoster('auth-screen'); }
+        } else {
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('app-screen').classList.add('hidden');
+        }
     });
+
+    document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value);
+    document.getElementById('btn-cikis').onclick = () => signOut(auth);
+    document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
 
     document.getElementById('btn-onceki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() - 1); verileriGetir(auth.currentUser.uid); };
     document.getElementById('btn-sonraki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() + 1); verileriGetir(auth.currentUser.uid); };
@@ -120,9 +115,16 @@
             let html = "";
             veriler.forEach(d => {
                 const t = new Date(d.tarih);
-                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${t.toLocaleDateString('tr-TR')}</small></td>
-                         <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${d.tutar} TL</td>
-                         <td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td></tr>`;
+                html += `<tr>
+                    <td>
+                        <strong style="display:block;">${d.aciklama}</strong>
+                        <small style="color:#ddd; font-size:11px;">
+                            ${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')} ${t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}
+                        </small>
+                    </td>
+                    <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${d.tutar} TL</td>
+                    <td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td>
+                </tr>`;
             });
             document.getElementById('bakiye').innerText = bakiye;
             document.getElementById('tablo').innerHTML = html;
