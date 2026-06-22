@@ -30,6 +30,7 @@
     <input type="email" id="email" placeholder="E-posta">
     <input type="password" id="sifre" placeholder="Şifre">
     <button id="btn-giris-yap" style="background:#10b981;">Giriş Yap</button>
+    <button id="btn-tekrar-dogrula" class="hidden" style="background:#3b82f6; margin-top: 5px;">Doğrulama Mailini Tekrar Gönder</button>
     <div class="link-text" id="btn-gecis-sifre-sifirla" style="color:#fbbf24;">Şifremi unuttum</div>
     <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin? Kayıt Ol</div>
 </div>
@@ -127,7 +128,6 @@
         document.getElementById(id).classList.remove('hidden');
     };
 
-    // Oturum Kontrolü
     onAuthStateChanged(auth, (user) => {
         if (user) {
             if (user.emailVerified) {
@@ -137,9 +137,11 @@
                 verileriGetir(user.uid);
             } else {
                 alert("Lütfen önce e-postanızı doğrulayın!");
+                document.getElementById('btn-tekrar-dogrula').classList.remove('hidden');
                 signOut(auth);
             }
         } else { 
+            document.getElementById('btn-tekrar-dogrula').classList.add('hidden');
             ekranGoster('auth-screen'); 
         }
     });
@@ -151,7 +153,19 @@
         signInWithEmailAndPassword(auth, email, sifre).catch(hataGoster);
     };
 
-    // Kayıt Ol + E-posta Doğrulama
+    document.getElementById('btn-tekrar-dogrula').onclick = async () => {
+        const email = document.getElementById('email').value;
+        const sifre = document.getElementById('sifre').value;
+        if (!email || !sifre) return alert("Lütfen önce e-posta ve şifrenizi girin.");
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, sifre);
+            await sendEmailVerification(userCredential.user);
+            alert("Doğrulama e-postası tekrar gönderildi. Lütfen spam klasörünü de kontrol edin.");
+            await signOut(auth);
+            document.getElementById('btn-tekrar-dogrula').classList.add('hidden');
+        } catch (e) { hataGoster(e); }
+    };
+
     document.getElementById('btn-kayit-ol').onclick = async () => {
         const email = document.getElementById('signup-email').value;
         const sifre = document.getElementById('signup-sifre').value;
@@ -159,8 +173,8 @@
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, sifre);
             await sendEmailVerification(userCredential.user);
-            alert("Kayıt başarılı! E-posta adresinize doğrulama linki gönderildi. Lütfen onaylayın.");
-            await signOut(auth); // Doğrulamadan girmemesi için çıkış yapıyoruz
+            alert("Kayıt başarılı! E-posta adresinize doğrulama linki gönderildi.");
+            await signOut(auth);
             ekranGoster('auth-screen');
         } catch (e) { hataGoster(e); }
     };
@@ -170,7 +184,7 @@
         if (!email) return alert("Lütfen kayıtlı e-posta adresinizi girin.");
         try { 
             await sendPasswordResetEmail(auth, email); 
-            alert("E-posta adresinize şifre sıfırlama bağlantısı gönderilmiştir."); 
+            alert("Şifre sıfırlama bağlantısı gönderilmiştir."); 
             ekranGoster('auth-screen'); 
         } catch (e) { hataGoster(e); }
     };
