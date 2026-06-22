@@ -101,7 +101,7 @@
     <div class="liste-alani">
         <table id="tablo"></table>
     </div>
-    <canvas id="grafik" style="max-height: 60px; margin-top: 2px;"></canvas>
+    <canvas id="grafik" style="max-height: 120px; margin-top: 5px;"></canvas>
 </div>
 
 <script type="module">
@@ -171,7 +171,7 @@
         if (!email) return alert("Lütfen kayıtlı e-posta adresinizi girin.");
         try { 
             await sendPasswordResetEmail(auth, email); 
-            alert("İşlem tamamlandı: Eğer bu e-posta adresi sistemimizde kayıtlıysa, şifre sıfırlama bağlantısı gönderilmiştir."); 
+            alert("İşlem tamamlandı: Şifre sıfırlama bağlantısı gönderilmiştir."); 
             ekranGoster('auth-screen'); 
         } 
         catch (e) { hataGoster(e); }
@@ -192,7 +192,7 @@
         if (!metin) return alert("Lütfen bir mesaj yazın.");
         try {
             await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
-            alert("Bildiriminiz gönderildi, teşekkürler!");
+            alert("Bildiriminiz gönderildi!");
             document.getElementById('bildirim-metni').value = '';
             document.getElementById('bildirim-panel').classList.add('hidden');
         } catch (e) { alert("Hata: " + e.message); }
@@ -207,7 +207,7 @@
             await updatePassword(auth.currentUser, ySifre);
             alert("Şifre başarıyla güncellendi!");
             document.getElementById('sifre-panel').classList.add('hidden');
-        } catch (e) { alert("Hata: Şifre değiştirilemedi (" + e.message + ")"); }
+        } catch (e) { alert("Hata: " + e.message); }
     };
 
     document.getElementById('btn-onceki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() - 1); verileriGetir(auth.currentUser.uid); };
@@ -216,13 +216,20 @@
     function verileriGetir(uid) {
         document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
         onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), (snapshot) => {
-            let bakiye = 0, gi = 0, veriler = [];
+            let bakiye = 0, veriler = [];
+            const kategoriToplamlar = { 'Genel': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
+
             snapshot.forEach(d => {
                 const data = d.data();
                 const t = new Date(data.tarih);
                 if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
                     veriler.push({ id: d.id, ...data });
-                    if(data.tur === 'gelir') bakiye += data.tutar; else { bakiye -= data.tutar; gi += data.tutar; }
+                    if(data.tur === 'gelir') bakiye += data.tutar; 
+                    else { 
+                        bakiye -= data.tutar; 
+                        const kat = data.kategori || 'Genel';
+                        kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar;
+                    }
                 }
             });
             document.getElementById('bakiye').innerText = formatla(bakiye);
@@ -232,15 +239,24 @@
             veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
                 const t = new Date(d.tarih);
                 const tarihStr = t.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-                // d.kategori || 'Genel' ile eski kayıtların kaybolması engellendi
                 html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori || 'Genel'} • ${d.tur.toUpperCase()} • ${tarihStr}</small></td>
                            <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
                            <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
+
+            // Kategori Grafik
+            const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
+            const degerler = etiketler.map(k => kategoriToplamlar[k]);
             const ctx = document.getElementById('grafik').getContext('2d');
             if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Kalan', 'Gider'], datasets: [{ data: (bakiye < 0 ? [0, gi] : [bakiye, gi]), backgroundColor: (bakiye < 0 ? ['#fbbf24', '#ef4444'] : ['#10b981', '#ef4444']) }] }, options: { plugins: { legend: { display: false } } } });
+            if (etiketler.length > 0) {
+                myChart = new Chart(ctx, { 
+                    type: 'doughnut', 
+                    data: { labels: etiketler, datasets: [{ data: degerler, backgroundColor: ['#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'] }] }, 
+                    options: { plugins: { legend: { position: 'right', labels: { color: 'white', font: { size: 9 } } } } } 
+                });
+            }
         });
     }
 
@@ -251,7 +267,6 @@
         const tutar = parseFloat(tutarVal);
         if (!aciklama) return alert("Lütfen bir açıklama girin.");
         if (isNaN(tutar) || tutar <= 0) return alert("Lütfen geçerli bir tutar girin.");
-        // Kategori ve otomatik tarih eklendi
         await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, tarih: Date.now() });
         document.getElementById('aciklama').value = ''; 
         document.getElementById('tutar').value = '';
