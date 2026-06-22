@@ -8,17 +8,25 @@
     <style>
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; color: white; }
-        .container { background: rgba(255, 255, 255, 0.15); padding: 1.5rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 90%; max-width: 350px; text-align: center; position: relative; max-height: 95vh; display: flex; flex-direction: column; }
+        
+        /* Container içindeki boşlukları daralttım */
+        .container { background: rgba(255, 255, 255, 0.15); padding: 1rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 90%; max-width: 350px; text-align: center; position: relative; max-height: 95vh; display: flex; flex-direction: column; gap: 5px; }
+        
         .profile-btn { position: absolute; top: 10px; right: 10px; background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; z-index: 20; }
         #profil-menu { position: absolute; top: 45px; right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
-        .nav-container { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 35px; margin-bottom: 10px; }
-        .nav-btn { cursor: pointer; padding: 5px 15px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
-        input { width: 100%; padding: 10px; margin: 5px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; }
-        button { padding: 8px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 5px; text-transform: uppercase; }
-        .link-text { margin-top: 10px; font-size: 12px; cursor: pointer; text-decoration: underline; color: #e0e0e0; }
-        .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
+        
+        /* Navigasyon ve Bakiye arasındaki boşlukları azalttım */
+        .nav-container { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 25px; }
+        .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
+        h3 { margin: 5px 0; }
+        
+        input { width: 100%; padding: 8px; margin: 2px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; }
+        button { padding: 6px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 2px; text-transform: uppercase; }
+        
+        .link-text { font-size: 11px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 2px; }
+        .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.2); }
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 8px 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
+        td { padding: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -47,7 +55,7 @@
         <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer;">Çıkış Yap</button>
     </div>
 
-    <div id="sifre-panel" class="hidden" style="margin-top:10px; padding:10px; background:rgba(255,255,255,0.1); border-radius:10px;">
+    <div id="sifre-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
         <input type="password" id="mevcut-sifre" placeholder="Mevcut Şifre">
         <input type="password" id="yeni-sifre" placeholder="Yeni Şifre">
         <button id="btn-sifre-onayla" style="background:#f59e0b;">Onayla</button>
@@ -59,7 +67,7 @@
         <span class="nav-btn" id="btn-sonraki">&gt;</span>
     </div>
 
-    <h3>BAKİYE: <span id="bakiye" style="color: white;">0</span> TL</h3>
+    <h3 style="margin-top:2px;">BAKİYE: <span id="bakiye" style="color: white;">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="number" id="tutar" placeholder="Tutar">
     <div style="display:flex; gap:5px;">
@@ -70,7 +78,7 @@
     <div class="liste-alani">
         <table id="tablo"></table>
     </div>
-    <canvas id="grafik" style="max-height: 80px; margin-top: 5px;"></canvas>
+    <canvas id="grafik" style="max-height: 70px; margin-top: 2px;"></canvas>
 </div>
 
 <script type="module">
@@ -104,8 +112,8 @@
     document.getElementById('btn-kayit-ol').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).catch(e => alert("Kayıt başarısız!"));
     document.getElementById('btn-sifre-sifirla').onclick = async () => {
         const email = document.getElementById('email').value;
-        if (!email) return alert("Lütfen önce e-posta adresini girin.");
-        try { await sendPasswordResetEmail(auth, email); alert("Sıfırlama linki e-postanıza gönderildi."); } 
+        if (!email) return alert("Lütfen e-posta adresini girin.");
+        try { await sendPasswordResetEmail(auth, email); alert("Sıfırlama bağlantısı e-postanıza gönderildi."); } 
         catch (e) { alert("Hata: " + e.message); }
     };
     
@@ -136,13 +144,13 @@
         document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
         const q = query(collection(db, "islemler"), where("uid", "==", uid));
         onSnapshot(q, (snapshot) => {
-            let bakiye = 0, g = 0, gi = 0, veriler = [];
+            let bakiye = 0, gi = 0, veriler = [];
             snapshot.forEach(d => {
                 const data = d.data();
                 const t = new Date(data.tarih);
                 if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
                     veriler.push({ id: d.id, ...data });
-                    if(data.tur === 'gelir') { bakiye += data.tutar; g += data.tutar; } 
+                    if(data.tur === 'gelir') bakiye += data.tutar;
                     else { bakiye -= data.tutar; gi += data.tutar; }
                 }
             });
@@ -155,7 +163,7 @@
             let html = "";
             veriler.forEach(d => {
                 const t = new Date(d.tarih);
-                html += `<tr><td><strong style="display:block;">${d.aciklama}</strong><small style="color:#ddd; font-size:10px;">${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')} ${t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</small></td>
+                html += `<tr><td><strong style="display:block;">${d.aciklama}</strong><small style="color:#ddd; font-size:10px;">${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')}</small></td>
                          <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${d.tutar} TL</td>
                          <td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td></tr>`;
             });
