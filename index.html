@@ -16,7 +16,6 @@
         table { width: 100%; border-collapse: collapse; }
         td { padding: 10px 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
         .hidden { display: none !important; }
-        .link-text { margin-top: 10px; font-size: 12px; cursor: pointer; text-decoration: underline; color: #e0e0e0; }
         .profile-btn { position: absolute; top: 15px; right: 15px; background: #fff; color: #764ba2; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; font-weight: 600; line-height: 35px; }
         #profil-menu { position: absolute; top: 55px; right: 15px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 10; text-align: left; }
         .nav-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -44,7 +43,7 @@
         <span class="nav-btn" id="btn-sonraki">&gt;</span>
     </div>
 
-    <h3>BAKİYE: <span id="bakiye">0</span> TL</h3>
+    <h3>BAKİYE: <span id="bakiye" style="color: white;">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="number" id="tutar" placeholder="Tutar">
     <div style="display:flex; gap:5px;">
@@ -111,6 +110,17 @@
                 }
             });
 
+            // Bakiye Renk Yönetimi
+            const bakiyeEl = document.getElementById('bakiye');
+            bakiyeEl.innerText = bakiye;
+            bakiyeEl.style.color = (bakiye < 0) ? "#fbbf24" : "white";
+
+            // Grafik Mantığı: Gider arttıkça geliri eritiyor
+            // Eğer bakiye 0'dan büyükse: [Gelir, Gider]
+            // Eğer bakiye 0'dan küçükse: [0, Toplam Gider]
+            const grafikVerisi = (bakiye < 0) ? [0, gi] : [bakiye, gi];
+            const grafikRenkleri = (bakiye < 0) ? ['#fbbf24', '#ef4444'] : ['#10b981', '#ef4444'];
+
             veriler.sort((a, b) => b.tarih - a.tarih);
             let html = "";
             veriler.forEach(d => {
@@ -126,12 +136,15 @@
                     <td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td>
                 </tr>`;
             });
-            document.getElementById('bakiye').innerText = bakiye;
             document.getElementById('tablo').innerHTML = html;
             
             const ctx = document.getElementById('grafik').getContext('2d');
             if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Gelir', 'Gider'], datasets: [{ data: [g, gi], backgroundColor: ['#10b981', '#ef4444'] }] }, options: { plugins: { legend: { display: false } } } });
+            myChart = new Chart(ctx, { 
+                type: 'doughnut', 
+                data: { labels: ['Kalan', 'Gider'], datasets: [{ data: grafikVerisi, backgroundColor: grafikRenkleri }] }, 
+                options: { plugins: { legend: { display: false } } } 
+            });
         });
     }
 
