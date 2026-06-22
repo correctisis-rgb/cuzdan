@@ -119,7 +119,6 @@
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
-    // Varsayılan tarihi bugün yap
     document.getElementById('tarih').valueAsDate = new Date();
 
     const formatla = (sayi) => sayi.toLocaleString('tr-TR');
@@ -156,7 +155,6 @@
         } else { ekranGoster('auth-screen'); }
     });
 
-    // Event Dinleyiciler
     document.getElementById('btn-giris-yap').onclick = () => {
         const email = document.getElementById('email').value;
         const sifre = document.getElementById('sifre').value;
@@ -182,14 +180,15 @@
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
     
-    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
-    document.getElementById('btn-bildir-menu').onclick = () => { document.getElementById('bildirim-panel').classList.remove('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('bildirim-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+    document.getElementById('btn-bildir-menu').onclick = () => { document.getElementById('bildirim-panel').classList.remove('hidden'); document.getElementById('sifre-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
 
     document.getElementById('btn-bildirim-gonder').onclick = async () => {
         const metin = document.getElementById('bildirim-metni').value;
         if (!metin) return;
         await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
         alert("Gönderildi!");
+        document.getElementById('bildirim-metni').value = '';
         document.getElementById('bildirim-panel').classList.add('hidden');
     };
 
@@ -211,15 +210,17 @@
         document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
         onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), (snapshot) => {
             let bakiye = 0, veriler = [];
-            const kategoriToplamlar = { 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
+            const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
 
             snapshot.forEach(d => {
                 const data = d.data();
                 const t = new Date(data.tarih);
                 if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
                     veriler.push({ id: d.id, ...data });
-                    if(data.tur === 'gelir') bakiye += data.tutar; 
-                    else { 
+                    if(data.tur === 'gelir') {
+                        bakiye += data.tutar; 
+                        kategoriToplamlar['Gelir'] += data.tutar;
+                    } else { 
                         bakiye -= data.tutar; 
                         const kat = data.kategori || 'Genel';
                         kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar;
@@ -246,7 +247,7 @@
             if (etiketler.length > 0) {
                 myChart = new Chart(ctx, { 
                     type: 'doughnut', 
-                    data: { labels: etiketler, datasets: [{ data: degerler, backgroundColor: ['#94a3b8', '#10b981', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'] }] }, 
+                    data: { labels: etiketler, datasets: [{ data: degerler, backgroundColor: ['#10b981', '#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'] }] }, 
                     options: { plugins: { legend: { position: 'right', labels: { color: 'white', font: { size: 9 } } } } } 
                 });
             }
@@ -264,7 +265,6 @@
         if (isNaN(tutar) || tutar <= 0) return alert("Geçerli tutar girin.");
         if (!tarihVal) return alert("Tarih seçin.");
         
-        // Seçilen tarihi milisaniyeye çevir (seçilen günün başlangıcı)
         const tarihObj = new Date(tarihVal);
         tarihObj.setHours(12, 0, 0, 0); 
         
