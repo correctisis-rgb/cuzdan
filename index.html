@@ -28,6 +28,7 @@
     <h2>GİRİŞ YAP</h2>
     <input type="email" id="email" placeholder="E-posta"><input type="password" id="sifre" placeholder="Şifre">
     <button id="btn-giris-yap" style="background:#10b981;">Giriş Yap</button>
+    <div class="link-text" id="btn-sifre-sifirla" style="color:#fbbf24;">Şifremi unuttum</div>
     <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin? Kayıt Ol</div>
 </div>
 
@@ -75,7 +76,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
     const app = initializeApp(firebaseConfig);
@@ -85,7 +86,6 @@
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
-    // Ekran değiştirme yardımcısı
     const ekranGoster = (id) => {
         ['auth-screen', 'signup-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
@@ -102,10 +102,15 @@
 
     document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(e => alert("Giriş başarısız!"));
     document.getElementById('btn-kayit-ol').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).catch(e => alert("Kayıt başarısız!"));
+    document.getElementById('btn-sifre-sifirla').onclick = async () => {
+        const email = document.getElementById('email').value;
+        if (!email) return alert("Lütfen önce e-posta adresini girin.");
+        try { await sendPasswordResetEmail(auth, email); alert("Sıfırlama linki e-postanıza gönderildi."); } 
+        catch (e) { alert("Hata: " + e.message); }
+    };
     
     document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
     document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
-    
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
     
