@@ -6,20 +6,19 @@
     <title>SmartWallet | Cloud</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; font-weight: 400; }
+        html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; color: white; }
         .container { background: rgba(255, 255, 255, 0.15); padding: 1.5rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 90%; max-width: 350px; text-align: center; position: relative; max-height: 95vh; display: flex; flex-direction: column; }
-        h2, h3 { font-weight: 700; margin: 10px 0; }
-        input { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
-        button { padding: 10px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 5px; text-transform: uppercase; }
-        .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); }
+        .profile-btn { position: absolute; top: 10px; right: 10px; background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; z-index: 20; }
+        #profil-menu { position: absolute; top: 45px; right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
+        .nav-container { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 35px; margin-bottom: 10px; }
+        .nav-btn { cursor: pointer; padding: 5px 15px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; }
+        button { padding: 8px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 5px; text-transform: uppercase; }
+        .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 10px 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
+        td { padding: 8px 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
         .hidden { display: none !important; }
-        .profile-btn { position: absolute; top: 15px; right: 15px; background: #fff; color: #764ba2; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; font-weight: 600; line-height: 35px; }
-        #profil-menu { position: absolute; top: 55px; right: 15px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 10; text-align: left; }
-        .nav-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .nav-btn { cursor: pointer; padding: 5px 15px; background: rgba(255,255,255,0.1); border-radius: 8px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -34,7 +33,14 @@
     <div class="profile-btn" id="profil-baslik"></div>
     <div id="profil-menu" class="hidden">
         <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
+        <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; margin-bottom:5px;">Şifre Değiştir</button>
         <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer;">Çıkış Yap</button>
+    </div>
+
+    <div id="sifre-panel" class="hidden" style="margin-top:10px; padding:10px; background:rgba(255,255,255,0.1); border-radius:10px;">
+        <input type="password" id="mevcut-sifre" placeholder="Mevcut Şifre">
+        <input type="password" id="yeni-sifre" placeholder="Yeni Şifre">
+        <button id="btn-sifre-onayla" style="background:#f59e0b;">Onayla</button>
     </div>
 
     <div class="nav-container">
@@ -54,21 +60,20 @@
     <div class="liste-alani">
         <table id="tablo"></table>
     </div>
-    <canvas id="grafik" style="max-height: 100px; margin-top: 10px;"></canvas>
+    <canvas id="grafik" style="max-height: 80px; margin-top: 5px;"></canvas>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
     
-    let myChart;
-    let seciliTarih = new Date();
+    let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
     onAuthStateChanged(auth, (user) => {
@@ -87,6 +92,23 @@
     document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value);
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
+    
+    document.getElementById('btn-sifre-guncelle-menu').onclick = () => {
+        document.getElementById('sifre-panel').classList.remove('hidden');
+        document.getElementById('profil-menu').classList.add('hidden');
+    };
+
+    document.getElementById('btn-sifre-onayla').onclick = async () => {
+        const mevSifre = document.getElementById('mevcut-sifre').value;
+        const yeniSifre = document.getElementById('yeni-sifre').value;
+        try {
+            const credential = EmailAuthProvider.credential(auth.currentUser.email, mevSifre);
+            await reauthenticateWithCredential(auth.currentUser, credential);
+            await updatePassword(auth.currentUser, yeniSifre);
+            alert("Şifre güncellendi!");
+            document.getElementById('sifre-panel').classList.add('hidden');
+        } catch (e) { alert("Hata: Mevcut şifre yanlış."); }
+    };
 
     document.getElementById('btn-onceki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() - 1); verileriGetir(auth.currentUser.uid); };
     document.getElementById('btn-sonraki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() + 1); verileriGetir(auth.currentUser.uid); };
@@ -94,57 +116,34 @@
     function verileriGetir(uid) {
         document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
         const q = query(collection(db, "islemler"), where("uid", "==", uid));
-        
         onSnapshot(q, (snapshot) => {
             let bakiye = 0, g = 0, gi = 0, veriler = [];
-            const hedefAy = seciliTarih.getMonth();
-            const hedefYil = seciliTarih.getFullYear();
-
             snapshot.forEach(d => {
                 const data = d.data();
                 const t = new Date(data.tarih);
-                if (t.getMonth() === hedefAy && t.getFullYear() === hedefYil) {
+                if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
                     veriler.push({ id: d.id, ...data });
                     if(data.tur === 'gelir') { bakiye += data.tutar; g += data.tutar; } 
                     else { bakiye -= data.tutar; gi += data.tutar; }
                 }
             });
-
-            // Bakiye Renk Yönetimi
             const bakiyeEl = document.getElementById('bakiye');
             bakiyeEl.innerText = bakiye;
             bakiyeEl.style.color = (bakiye < 0) ? "#fbbf24" : "white";
-
-            // Grafik Mantığı: Gider arttıkça geliri eritiyor
-            // Eğer bakiye 0'dan büyükse: [Gelir, Gider]
-            // Eğer bakiye 0'dan küçükse: [0, Toplam Gider]
             const grafikVerisi = (bakiye < 0) ? [0, gi] : [bakiye, gi];
             const grafikRenkleri = (bakiye < 0) ? ['#fbbf24', '#ef4444'] : ['#10b981', '#ef4444'];
-
             veriler.sort((a, b) => b.tarih - a.tarih);
             let html = "";
             veriler.forEach(d => {
                 const t = new Date(d.tarih);
-                html += `<tr>
-                    <td>
-                        <strong style="display:block;">${d.aciklama}</strong>
-                        <small style="color:#ddd; font-size:11px;">
-                            ${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')} ${t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}
-                        </small>
-                    </td>
-                    <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${d.tutar} TL</td>
-                    <td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td>
-                </tr>`;
+                html += `<tr><td><strong style="display:block;">${d.aciklama}</strong><small style="color:#ddd; font-size:10px;">${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')} ${t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</small></td>
+                         <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${d.tutar} TL</td>
+                         <td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
-            
             const ctx = document.getElementById('grafik').getContext('2d');
             if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, { 
-                type: 'doughnut', 
-                data: { labels: ['Kalan', 'Gider'], datasets: [{ data: grafikVerisi, backgroundColor: grafikRenkleri }] }, 
-                options: { plugins: { legend: { display: false } } } 
-            });
+            myChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Kalan', 'Gider'], datasets: [{ data: grafikVerisi, backgroundColor: grafikRenkleri }] }, options: { plugins: { legend: { display: false } } } });
         });
     }
 
