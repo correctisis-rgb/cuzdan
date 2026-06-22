@@ -63,7 +63,7 @@
         <button id="btn-sifre-onayla" style="background:#f59e0b;">Şifreyi Güncelle</button>
     </div>
 
-    <h3>BAKİYE: <span id="bakiye">0</span> TL</h3>
+    <h3>BU AY: <span id="bakiye">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="number" id="tutar" placeholder="Tutar">
     <div style="display:flex; gap:5px;">
@@ -159,7 +159,18 @@
         const q = query(collection(db, "islemler"), where("uid", "==", uid));
         onSnapshot(q, (snapshot) => {
             let bakiye = 0, g = 0, gi = 0, veriler = [];
-            snapshot.forEach(d => veriler.push({ id: d.id, ...d.data() }));
+            const simdi = new Date();
+            const buAy = simdi.getMonth();
+            const buYil = simdi.getFullYear();
+
+            snapshot.forEach(d => {
+                const data = d.data();
+                const t = new Date(data.tarih);
+                if (t.getMonth() === buAy && t.getFullYear() === buYil) {
+                    veriler.push({ id: d.id, ...data });
+                }
+            });
+
             veriler.sort((a, b) => b.tarih - a.tarih);
             
             let html = "";
