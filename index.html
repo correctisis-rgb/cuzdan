@@ -9,13 +9,11 @@
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; color: white; }
         
-        /* Arayüzü sıkılaştıran kompakt yapı */
         .container { background: rgba(255, 255, 255, 0.15); padding: 0.8rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 90%; max-width: 350px; text-align: center; position: relative; max-height: 95vh; display: flex; flex-direction: column; gap: 4px; }
         
         .profile-btn { position: absolute; top: 10px; right: 10px; background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; z-index: 20; }
         #profil-menu { position: absolute; top: 45px; right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
         
-        /* Alanları birbirine yakınlaştıran margin değerleri */
         .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 25px; }
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
         h3 { margin: 2px 0; }
@@ -78,7 +76,7 @@
 
     <h3>BAKİYE: <span id="bakiye" style="color: white;">0</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
-    <input type="number" id="tutar" placeholder="Tutar">
+    <input type="text" id="tutar" placeholder="Tutar (örn: 1.000)" inputmode="decimal">
     <div style="display:flex; gap:5px;">
         <button id="btn-gelir" style="background:#10b981;">GELİR (+)</button>
         <button id="btn-gider" style="background:#ef4444;">GİDER (-)</button>
@@ -103,18 +101,17 @@
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
-    // Sayıları 1.000 formatına getiren fonksiyon
     const formatla = (sayi) => sayi.toLocaleString('tr-TR');
 
+    // Tutar girişi anlık formatlama
+    document.getElementById('tutar').oninput = (e) => {
+        let val = e.target.value.replace(/\./g, '');
+        if (!isNaN(val) && val !== "") e.target.value = new Intl.NumberFormat('tr-TR').format(val);
+        else e.target.value = val;
+    };
+
     const hataGoster = (err) => {
-        const mesajlar = {
-            'auth/invalid-email': 'Geçersiz e-posta adresi.',
-            'auth/user-not-found': 'Kullanıcı bulunamadı.',
-            'auth/wrong-password': 'Şifre yanlış.',
-            'auth/email-already-in-use': 'Bu e-posta zaten kayıtlı.',
-            'auth/weak-password': 'Şifre çok kısa (en az 6 karakter).',
-            'auth/invalid-credential': 'E-posta veya şifre hatalı.'
-        };
+        const mesajlar = { 'auth/invalid-email': 'Geçersiz e-posta.', 'auth/user-not-found': 'Kullanıcı bulunamadı.', 'auth/wrong-password': 'Şifre yanlış.', 'auth/email-already-in-use': 'Zaten kayıtlı.', 'auth/weak-password': 'Şifre çok kısa.', 'auth/invalid-credential': 'Bilgiler hatalı.' };
         alert(mesajlar[err.code] || "Hata: " + err.message);
     };
 
@@ -132,26 +129,9 @@
         } else { ekranGoster('auth-screen'); }
     });
 
-    document.getElementById('btn-giris-yap').onclick = () => {
-        const email = document.getElementById('email').value;
-        const sifre = document.getElementById('sifre').value;
-        if(!email || !sifre) return alert("Lütfen tüm alanları doldurun.");
-        signInWithEmailAndPassword(auth, email, sifre).catch(hataGoster);
-    };
-
-    document.getElementById('btn-kayit-ol').onclick = () => {
-        const email = document.getElementById('signup-email').value;
-        const sifre = document.getElementById('signup-sifre').value;
-        if(!email || !sifre) return alert("Lütfen e-posta ve şifre girin.");
-        createUserWithEmailAndPassword(auth, email, sifre).catch(hataGoster);
-    };
-
-    document.getElementById('btn-sifre-onay-mail').onclick = async () => {
-        const email = document.getElementById('reset-email').value;
-        if(!email) return alert("Lütfen e-posta adresinizi girin.");
-        try { await sendPasswordResetEmail(auth, email); alert("Sıfırlama bağlantısı gönderildi."); ekranGoster('auth-screen'); } 
-        catch (e) { hataGoster(e); }
-    };
+    document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster);
+    document.getElementById('btn-kayit-ol').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).catch(hataGoster);
+    document.getElementById('btn-sifre-onay-mail').onclick = async () => { try { await sendPasswordResetEmail(auth, document.getElementById('reset-email').value); alert("Bağlantı gönderildi."); ekranGoster('auth-screen'); } catch (e) { hataGoster(e); } };
     
     document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
     document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
@@ -160,20 +140,15 @@
 
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
-    
-    document.getElementById('btn-sifre-guncelle-menu').onclick = () => {
-        document.getElementById('sifre-panel').classList.remove('hidden');
-        document.getElementById('profil-menu').classList.add('hidden');
-    };
+    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
 
     document.getElementById('btn-sifre-onayla').onclick = async () => {
         try {
-            const cred = EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value);
-            await reauthenticateWithCredential(auth.currentUser, cred);
+            await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value));
             await updatePassword(auth.currentUser, document.getElementById('yeni-sifre').value);
             alert("Şifre güncellendi!");
             document.getElementById('sifre-panel').classList.add('hidden');
-        } catch (e) { alert("Şifre değiştirilemedi: " + e.message); }
+        } catch (e) { alert("Hata: " + e.message); }
     };
 
     document.getElementById('btn-onceki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() - 1); verileriGetir(auth.currentUser.uid); };
@@ -181,48 +156,40 @@
 
     function verileriGetir(uid) {
         document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
-        const q = query(collection(db, "islemler"), where("uid", "==", uid));
-        onSnapshot(q, (snapshot) => {
+        onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), (snapshot) => {
             let bakiye = 0, gi = 0, veriler = [];
             snapshot.forEach(d => {
                 const data = d.data();
                 const t = new Date(data.tarih);
                 if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
                     veriler.push({ id: d.id, ...data });
-                    if(data.tur === 'gelir') bakiye += data.tutar;
-                    else { bakiye -= data.tutar; gi += data.tutar; }
+                    if(data.tur === 'gelir') bakiye += data.tutar; else { bakiye -= data.tutar; gi += data.tutar; }
                 }
             });
             document.getElementById('bakiye').innerText = formatla(bakiye);
             document.getElementById('bakiye').style.color = (bakiye < 0) ? "#fbbf24" : "white";
             
-            const grafikVerisi = (bakiye < 0) ? [0, gi] : [bakiye, gi];
-            const grafikRenkleri = (bakiye < 0) ? ['#fbbf24', '#ef4444'] : ['#10b981', '#ef4444'];
-            veriler.sort((a, b) => b.tarih - a.tarih);
-            
             let html = "";
-            veriler.forEach(d => {
-                const t = new Date(d.tarih);
-                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')}</small></td>
+            veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
+                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.tur.toUpperCase()}</small></td>
                          <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
                          <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
-            const ctx = document.getElementById('grafik').getContext('2d');
             if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Kalan', 'Gider'], datasets: [{ data: grafikVerisi, backgroundColor: grafikRenkleri }] }, options: { plugins: { legend: { display: false } } } });
+            myChart = new Chart(document.getElementById('grafik').getContext('2d'), { type: 'doughnut', data: { labels: ['Kalan', 'Gider'], datasets: [{ data: (bakiye < 0 ? [0, gi] : [bakiye, gi]), backgroundColor: (bakiye < 0 ? ['#fbbf24', '#ef4444'] : ['#10b981', '#ef4444']) }] }, options: { plugins: { legend: { display: false } } } });
         });
     }
 
-    document.getElementById('btn-gelir').onclick = () => ekle('gelir');
-    document.getElementById('btn-gider').onclick = () => ekle('gider');
     async function ekle(tur) {
         const aciklama = document.getElementById('aciklama').value;
-        const tutar = parseFloat(document.getElementById('tutar').value);
-        if(!aciklama || !tutar) return alert("Lütfen açıklama ve tutar girin.");
+        const tutar = parseFloat(document.getElementById('tutar').value.replace(/\./g, ''));
+        if(!aciklama || isNaN(tutar)) return alert("Lütfen açıklama ve tutar girin.");
         await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, tarih: Date.now() });
         document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
     }
+    document.getElementById('btn-gelir').onclick = () => ekle('gelir');
+    document.getElementById('btn-gider').onclick = () => ekle('gider');
     window.sil = (id) => deleteDoc(doc(db, "islemler", id));
 </script>
 </body>
