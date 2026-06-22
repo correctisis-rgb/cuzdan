@@ -193,11 +193,9 @@
     };
 
     document.getElementById('btn-sifre-onayla').onclick = async () => {
-        const mSifre = document.getElementById('mevcut-sifre').value;
-        const ySifre = document.getElementById('yeni-sifre').value;
         try {
-            await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, mSifre));
-            await updatePassword(auth.currentUser, ySifre);
+            await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value));
+            await updatePassword(auth.currentUser, document.getElementById('yeni-sifre').value);
             alert("Şifre güncellendi!");
             document.getElementById('sifre-panel').classList.add('hidden');
         } catch (e) { alert("Hata: " + e.message); }
@@ -210,7 +208,8 @@
         document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
         onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), (snapshot) => {
             let bakiye = 0, veriler = [];
-            const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
+            let toplamGelir = 0;
+            let toplamGider = 0;
 
             snapshot.forEach(d => {
                 const data = d.data();
@@ -218,39 +217,36 @@
                 if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
                     veriler.push({ id: d.id, ...data });
                     if(data.tur === 'gelir') {
-                        bakiye += data.tutar; 
-                        kategoriToplamlar['Gelir'] += data.tutar;
-                    } else { 
-                        bakiye -= data.tutar; 
-                        const kat = data.kategori || 'Genel';
-                        kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar;
+                        bakiye += data.tutar;
+                        toplamGelir += data.tutar;
+                    } else {
+                        bakiye -= data.tutar;
+                        toplamGider += data.tutar;
                     }
                 }
             });
-            document.getElementById('bakiye').innerText = formatla(bakiye);
-            document.getElementById('bakiye').style.color = (bakiye < 0) ? "#fbbf24" : "white";
+
+            const bakiyeSpan = document.getElementById('bakiye');
+            bakiyeSpan.innerText = formatla(bakiye);
+            bakiyeSpan.style.color = (bakiye < 0) ? "#ef4444" : "#00ff9d";
             
             let html = "";
             veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
                 const t = new Date(d.tarih);
                 const tarihStr = t.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit' });
                 html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori} • ${tarihStr}</small></td>
-                           <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
+                           <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${d.tur==='gelir'?'+':'-'}${formatla(d.tutar)}</td>
                            <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
 
-            const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
-            const degerler = etiketler.map(k => kategoriToplamlar[k]);
             const ctx = document.getElementById('grafik').getContext('2d');
             if (myChart) myChart.destroy();
-            if (etiketler.length > 0) {
-                myChart = new Chart(ctx, { 
-                    type: 'doughnut', 
-                    data: { labels: etiketler, datasets: [{ data: degerler, backgroundColor: ['#10b981', '#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'] }] }, 
-                    options: { plugins: { legend: { position: 'right', labels: { color: 'white', font: { size: 9 } } } } } 
-                });
-            }
+            myChart = new Chart(ctx, { 
+                type: 'doughnut', 
+                data: { labels: ['Gelir', 'Gider'], datasets: [{ data: [toplamGelir, toplamGider], backgroundColor: ['#10b981', '#ef4444'] }] }, 
+                options: { plugins: { legend: { labels: { color: 'white', font: { size: 10 } } } } } 
+            });
         });
     }
 
@@ -258,8 +254,8 @@
         const aciklama = document.getElementById('aciklama').value;
         const kategori = document.getElementById('kategori').value;
         const tutarVal = document.getElementById('tutar').value.replace(/\./g, '');
-        const tarihVal = document.getElementById('tarih').value;
         const tutar = parseFloat(tutarVal);
+        const tarihVal = document.getElementById('tarih').value;
         
         if (!aciklama) return alert("Açıklama girin.");
         if (isNaN(tutar) || tutar <= 0) return alert("Geçerli tutar girin.");
