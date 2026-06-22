@@ -103,7 +103,9 @@
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
-    // Türkçe Hata Yönetimi
+    // Sayıları 1.000 formatına getiren fonksiyon
+    const formatla = (sayi) => sayi.toLocaleString('tr-TR');
+
     const hataGoster = (err) => {
         const mesajlar = {
             'auth/invalid-email': 'Geçersiz e-posta adresi.',
@@ -151,7 +153,6 @@
         catch (e) { hataGoster(e); }
     };
     
-    // Geçiş butonları
     document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
     document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
     document.getElementById('btn-gecis-giris-2').onclick = () => ekranGoster('auth-screen');
@@ -192,7 +193,7 @@
                     else { bakiye -= data.tutar; gi += data.tutar; }
                 }
             });
-            document.getElementById('bakiye').innerText = bakiye;
+            document.getElementById('bakiye').innerText = formatla(bakiye);
             document.getElementById('bakiye').style.color = (bakiye < 0) ? "#fbbf24" : "white";
             
             const grafikVerisi = (bakiye < 0) ? [0, gi] : [bakiye, gi];
@@ -203,7 +204,7 @@
             veriler.forEach(d => {
                 const t = new Date(d.tarih);
                 html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.tur.toUpperCase()} • ${t.toLocaleDateString('tr-TR')}</small></td>
-                         <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${d.tutar} TL</td>
+                         <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
                          <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
