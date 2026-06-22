@@ -120,7 +120,6 @@
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
     document.getElementById('tarih').valueAsDate = new Date();
-
     const formatla = (sayi) => sayi.toLocaleString('tr-TR');
 
     document.getElementById('tutar').oninput = (e) => {
@@ -130,15 +129,8 @@
     };
 
     const hataGoster = (err) => {
-        const mesajlar = { 
-            'auth/invalid-email': 'Geçersiz e-posta adresi.', 
-            'auth/user-not-found': 'Kullanıcı bulunamadı.', 
-            'auth/wrong-password': 'Şifre yanlış.', 
-            'auth/email-already-in-use': 'Bu e-posta zaten kullanımda.', 
-            'auth/weak-password': 'Şifre çok zayıf.', 
-            'auth/invalid-credential': 'E-posta veya şifre hatalı.'
-        };
-        alert(mesajlar[err.code] || "Bir hata oluştu: " + err.message);
+        const mesajlar = { 'auth/invalid-email': 'Geçersiz e-posta.', 'auth/user-not-found': 'Kullanıcı bulunamadı.', 'auth/wrong-password': 'Şifre yanlış.', 'auth/email-already-in-use': 'E-posta kullanımda.', 'auth/weak-password': 'Şifre çok zayıf.', 'auth/invalid-credential': 'E-posta veya şifre hatalı.' };
+        alert(mesajlar[err.code] || "Hata: " + err.message);
     };
 
     const ekranGoster = (id) => {
@@ -155,31 +147,15 @@
         } else { ekranGoster('auth-screen'); }
     });
 
-    document.getElementById('btn-giris-yap').onclick = () => {
-        const email = document.getElementById('email').value;
-        const sifre = document.getElementById('sifre').value;
-        if (!email || !sifre) return alert("Alanları doldurun.");
-        signInWithEmailAndPassword(auth, email, sifre).catch(hataGoster);
-    };
-
-    document.getElementById('btn-kayit-ol').onclick = () => {
-        const email = document.getElementById('signup-email').value;
-        const sifre = document.getElementById('signup-sifre').value;
-        createUserWithEmailAndPassword(auth, email, sifre).catch(hataGoster);
-    };
-
-    document.getElementById('btn-sifre-onay-mail').onclick = async () => {
-        const email = document.getElementById('reset-email').value;
-        await sendPasswordResetEmail(auth, email).then(() => alert("E-posta gönderildi.")).catch(hataGoster);
-    };
-    
+    document.getElementById('btn-giris-yap').onclick = () => { signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster); };
+    document.getElementById('btn-kayit-ol').onclick = () => { createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).catch(hataGoster); };
+    document.getElementById('btn-sifre-onay-mail').onclick = async () => { await sendPasswordResetEmail(auth, document.getElementById('reset-email').value).then(() => alert("E-posta gönderildi.")).catch(hataGoster); };
     document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
     document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
     document.getElementById('btn-gecis-giris-2').onclick = () => ekranGoster('auth-screen');
     document.getElementById('btn-gecis-sifre-sifirla').onclick = () => ekranGoster('reset-screen');
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
-    
     document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('bildirim-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
     document.getElementById('btn-bildir-menu').onclick = () => { document.getElementById('bildirim-panel').classList.remove('hidden'); document.getElementById('sifre-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
 
@@ -208,8 +184,7 @@
         document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
         onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), (snapshot) => {
             let bakiye = 0, veriler = [];
-            let toplamGelir = 0;
-            let toplamGider = 0;
+            const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
 
             snapshot.forEach(d => {
                 const data = d.data();
@@ -217,36 +192,43 @@
                 if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
                     veriler.push({ id: d.id, ...data });
                     if(data.tur === 'gelir') {
-                        bakiye += data.tutar;
-                        toplamGelir += data.tutar;
-                    } else {
-                        bakiye -= data.tutar;
-                        toplamGider += data.tutar;
+                        bakiye += data.tutar; 
+                        kategoriToplamlar['Gelir'] += data.tutar;
+                    } else { 
+                        bakiye -= data.tutar; 
+                        const kat = data.kategori || 'Genel';
+                        kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar;
                     }
                 }
             });
 
+            // Bakiye ve Renk (Eksi ise #ef4444 kırmızı, artı ise beyaz)
             const bakiyeSpan = document.getElementById('bakiye');
             bakiyeSpan.innerText = formatla(bakiye);
-            bakiyeSpan.style.color = (bakiye < 0) ? "#ef4444" : "#00ff9d";
+            bakiyeSpan.style.color = (bakiye < 0) ? "#ef4444" : "white";
             
             let html = "";
             veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
                 const t = new Date(d.tarih);
                 const tarihStr = t.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit' });
                 html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori} • ${tarihStr}</small></td>
-                           <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${d.tur==='gelir'?'+':'-'}${formatla(d.tutar)}</td>
+                           <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
                            <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
 
+            // Kategori bazlı pasta grafiği
+            const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
+            const degerler = etiketler.map(k => kategoriToplamlar[k]);
             const ctx = document.getElementById('grafik').getContext('2d');
             if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, { 
-                type: 'doughnut', 
-                data: { labels: ['Gelir', 'Gider'], datasets: [{ data: [toplamGelir, toplamGider], backgroundColor: ['#10b981', '#ef4444'] }] }, 
-                options: { plugins: { legend: { labels: { color: 'white', font: { size: 10 } } } } } 
-            });
+            if (etiketler.length > 0) {
+                myChart = new Chart(ctx, { 
+                    type: 'doughnut', 
+                    data: { labels: etiketler, datasets: [{ data: degerler, backgroundColor: ['#10b981', '#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'] }] }, 
+                    options: { plugins: { legend: { position: 'right', labels: { color: 'white', font: { size: 9 } } } } } 
+                });
+            }
         });
     }
 
