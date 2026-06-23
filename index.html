@@ -174,7 +174,7 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // --- HIZLANDIRILMIŞ OCR MANTIĞI ---
+    // --- GÜNCELLENMİŞ OKUMA MANTIĞI ---
     let worker;
     async function getWorker() {
         if (!worker) {
@@ -204,12 +204,23 @@
         btn.innerText = "OKUNUYOR...";
         try {
             const text = await kucultVeOku(file);
-            const regex = /(\d{1,3}(\.\d{3})*,\d{2})|(\d+\.\d{2})/;
+            
+            // 1. "TOPLAM" anahtar kelimesi ile ara
+            const regex = /(?:TOPLAM|ÖDENECEK|TUTAR)\D*(\d{1,3}(?:\.\d{3})*,\d{2})/i;
             const eslesme = text.match(regex);
-            if (eslesme) {
-                document.getElementById('tutar').value = eslesme[0];
+
+            if (eslesme && eslesme[1]) {
+                document.getElementById('tutar').value = eslesme[1];
             } else {
-                alert("Tutar otomatik okunamadı.");
+                // 2. Bulamazsa en büyük sayıyı tahmin et
+                const tumSayilar = text.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+                if (tumSayilar) {
+                    const enBuyuk = tumSayilar.map(s => parseFloat(s.replace(/\./g, '').replace(',', '.')))
+                                              .reduce((a, b) => Math.max(a, b));
+                    document.getElementById('tutar').value = enBuyuk.toFixed(2).replace('.', ',');
+                } else {
+                    alert("Fiş tutarı otomatik okunamadı, lütfen manuel girin.");
+                }
             }
         } catch (err) { alert("Hata oluştu."); }
         btn.innerText = "📷 FİŞİ OTOMATİK OKUT";
