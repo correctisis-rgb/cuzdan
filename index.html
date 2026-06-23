@@ -21,6 +21,7 @@
         input, textarea, select { width: 100%; padding: 8px; margin: 2px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; font-family: inherit; }
         button { padding: 6px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 2px; text-transform: uppercase; }
         
+        .close-btn { background: #666 !important; font-size: 10px; padding: 3px; margin-bottom: 5px; }
         .link-text { font-size: 11px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 2px; }
         .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.2); }
         table { width: 100%; border-collapse: collapse; }
@@ -80,17 +81,20 @@
     </div>
 
     <div id="sifre-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
+        <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
         <input type="password" id="mevcut-sifre" placeholder="Mevcut Şifre">
         <input type="password" id="yeni-sifre" placeholder="Yeni Şifre">
         <button id="btn-sifre-onayla" style="background:#f59e0b;">Onayla</button>
     </div>
 
     <div id="bildirim-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
+        <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
         <textarea id="bildirim-metni" placeholder="Sorununuzu veya önerinizi yazın..." style="height:60px;"></textarea>
         <button id="btn-bildirim-gonder" style="background:#3b82f6;">Gönder</button>
     </div>
 
     <div id="kahve-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
+        <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
         <p style="margin:0 0 5px 0; font-size:12px;">Desteğin için teşekkürler!</p>
         <div class="coffee-grid">
             <a href="https://www.shopier.com/bikahveismarlaa/48102373" target="_blank" style="text-decoration:none;"><button style="background:#a1887f; font-size:10px;">☕<br>Küçük</button></a>
@@ -149,6 +153,13 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
     
+    // Panelleri kapatma fonksiyonu
+    window.kapatPaneller = () => {
+        document.getElementById('sifre-panel').classList.add('hidden');
+        document.getElementById('bildirim-panel').classList.add('hidden');
+        document.getElementById('kahve-panel').classList.add('hidden');
+    };
+
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
@@ -190,9 +201,9 @@
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
     
-    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('bildirim-panel').classList.add('hidden'); document.getElementById('kahve-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
-    document.getElementById('btn-bildir-menu').onclick = () => { document.getElementById('bildirim-panel').classList.remove('hidden'); document.getElementById('sifre-panel').classList.add('hidden'); document.getElementById('kahve-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
-    document.getElementById('btn-kahve-menu').onclick = () => { document.getElementById('kahve-panel').classList.remove('hidden'); document.getElementById('sifre-panel').classList.add('hidden'); document.getElementById('bildirim-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+    document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+    document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
 
     document.getElementById('btn-bildirim-gonder').onclick = async () => {
         const metin = document.getElementById('bildirim-metni').value;
@@ -200,7 +211,7 @@
         await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
         alert("Gönderildi!");
         document.getElementById('bildirim-metni').value = '';
-        document.getElementById('bildirim-panel').classList.add('hidden');
+        kapatPaneller();
     };
 
     document.getElementById('btn-sifre-onayla').onclick = async () => {
@@ -208,7 +219,7 @@
             await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value));
             await updatePassword(auth.currentUser, document.getElementById('yeni-sifre').value);
             alert("Şifre güncellendi!");
-            document.getElementById('sifre-panel').classList.add('hidden');
+            kapatPaneller();
         } catch (e) { alert("Hata: " + e.message); }
     };
 
