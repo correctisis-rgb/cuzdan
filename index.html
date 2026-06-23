@@ -27,13 +27,10 @@
         td { padding: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
         .hidden { display: none !important; }
         .coffee-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 10px; }
-
-		/* Yeni düzenleme */
         .footer-apps { margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
         .app-box { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 5px; text-decoration: none; color: white; }
         .app-icon { font-size: 30px; margin-bottom: 2px; }
         .app-label { font-size: 10px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 5px; }
-
     </style>
 </head>
 <body>
@@ -51,7 +48,6 @@
     <button id="btn-giris-yap" style="background:#10b981;">Giriş Yap</button>
     <div class="link-text" id="btn-gecis-sifre-sifirla" style="color:#fbbf24;">Şifremi unuttum</div>
     <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin? Kayıt Ol</div>
-
     <div class="footer-apps">
         <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
             <span>Diğer Uygulamalarımız</span>
@@ -59,7 +55,6 @@
             <span class="app-label">Yakıt Hesaplama</span>
         </a>
     </div>
-
 </div>
 
 <div class="container hidden" id="signup-screen">
@@ -133,9 +128,9 @@
         <span class="nav-btn" id="btn-sonraki">&gt;</span>
     </div>
 
-    <h3>BAKİYE: <span id="bakiye" style="color: white;">0</span> TL</h3>
+    <h3>BAKİYE: <span id="bakiye" style="color: white;">0,00</span> TL</h3>
     <input type="text" id="aciklama" placeholder="Açıklama">
-    <input type="text" id="tutar" placeholder="Tutar" inputmode="decimal">
+    <input type="text" id="tutar" placeholder="Tutar (Örn: 10,50)" inputmode="decimal">
     <input type="date" id="tarih" style="padding: 5px; color: #555;">
     <select id="kategori">
         <option value="Genel">Genel</option>
@@ -157,12 +152,11 @@
 
     <div class="footer-apps">
         <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
-	    <span>Diğer Uygulamalarımız</span>
+            <span>Diğer Uygulamalarımız</span>
             <span class="app-icon">⛽</span>
             <span class="app-label">Yakıt Hesaplama</span>
         </a>
     </div>
-    
 </div>
 
 <script type="module">
@@ -177,6 +171,16 @@
 
     let uygulamaBaslatildi = false;
 
+    // Gelişmiş Formatlama (Ondalıklı)
+    const formatla = (sayi) => {
+        return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(sayi);
+    };
+
+    // Tutar girişi için virgül düzenlemesi
+    document.getElementById('tutar').oninput = (e) => {
+        e.target.value = e.target.value.replace(/[^0-9,]/g, '');
+    };
+
     function duyurulariDinle() {
         onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
             const isAdmin = auth.currentUser && auth.currentUser.email === "emre121856031@gmail.com";
@@ -189,7 +193,6 @@
                          </div>`;
             });
             document.getElementById('duyuru-listesi').innerHTML = html;
-            
             if (!snapshot.empty && snapshot.docs[0].id !== localStorage.getItem('sonOkunanDuyuruID')) {
                 document.getElementById('bildirim-badge').style.display = 'block';
                 if (uygulamaBaslatildi) {
@@ -213,12 +216,6 @@
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
     document.getElementById('tarih').valueAsDate = new Date();
-    const formatla = (sayi) => sayi.toLocaleString('tr-TR');
-
-    document.getElementById('tutar').oninput = (e) => {
-        let val = e.target.value.replace(/\./g, '');
-        if (!isNaN(val) && val !== "") e.target.value = new Intl.NumberFormat('tr-TR').format(val);
-    };
 
     const hataGoster = (err) => { alert(err.message); };
     const ekranGoster = (id) => { ['auth-screen', 'signup-screen', 'reset-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); };
@@ -232,14 +229,8 @@
             duyurulariDinle();
             if (user.email === "emre121856031@gmail.com") {
                 const adminAlan = document.getElementById('admin-alan');
-                adminAlan.innerHTML = `
-                    <button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINLA</button>
-                    <button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>
-                `;
-                adminAlan.querySelector('button').onclick = () => {
-                    const mesaj = prompt("Duyuru metnini girin:");
-                    if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() });
-                };
+                adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINLA</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
+                adminAlan.querySelector('button').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
                 document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
             } else { document.getElementById('admin-alan').innerHTML = ''; }
         } else { ekranGoster('auth-screen'); }
@@ -252,20 +243,12 @@
         let html = "";
         snapshot.forEach((d) => {
             const data = d.data();
-            html += `<div style="border-bottom:1px solid #eee; padding:5px 0; font-size:11px;">
-                        <b>${data.email}</b>: ${data.mesaj}
-                        <button onclick="window.silMesaj('${d.id}')" style="background:red; color:white; border:none; padding:2px 5px; border-radius:3px; float:right;">SİL</button>
-                     </div>`;
+            html += `<div style="border-bottom:1px solid #eee; padding:5px 0; font-size:11px;"><b>${data.email}</b>: ${data.mesaj}<button onclick="window.silMesaj('${d.id}')" style="background:red; color:white; border:none; padding:2px 5px; border-radius:3px; float:right;">SİL</button></div>`;
         });
         document.getElementById('mesaj-listesi').innerHTML = html || "Henüz mesaj yok.";
     }
 
-    window.silMesaj = async (id) => {
-        if(confirm("Bu mesajı silmek istediğine emin misin?")) {
-            await deleteDoc(doc(db, "bildirimler", id));
-            mesajlariGetir();
-        }
-    };
+    window.silMesaj = async (id) => { if(confirm("Bu mesajı silmek istediğine emin misin?")) { await deleteDoc(doc(db, "bildirimler", id)); mesajlariGetir(); } };
 
     document.getElementById('btn-giris-yap').onclick = () => { signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster); };
     document.getElementById('btn-kayit-ol').onclick = () => { createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).catch(hataGoster); };
@@ -317,9 +300,7 @@
             let html = "";
             veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
                 const t = new Date(d.tarih);
-                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori} • ${t.toLocaleDateString('tr-TR')}</small></td>
-                           <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
-                           <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
+                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
             const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
@@ -335,10 +316,11 @@
     async function ekle(tur) {
         const aciklama = document.getElementById('aciklama').value;
         const kategori = document.getElementById('kategori').value;
-        const tutarVal = document.getElementById('tutar').value.replace(/\./g, '');
+        // Virgülü noktaya çevirerek float değer alıyoruz
+        const tutarVal = document.getElementById('tutar').value.replace(',', '.');
         const tutar = parseFloat(tutarVal);
         const tarihVal = document.getElementById('tarih').value;
-        if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return alert("Eksik bilgi!");
+        if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return alert("Eksik veya hatalı bilgi!");
         const tarihObj = new Date(tarihVal);
         tarihObj.setHours(12, 0, 0, 0); 
         await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, tarih: tarihObj.getTime() });
