@@ -13,7 +13,7 @@
         .icon-btn { background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; font-size: 14px; position: relative; }
         .badge { position: absolute; top: -2px; right: -2px; background: red; color: white; border-radius: 50%; width: 12px; height: 12px; font-size: 8px; line-height: 12px; display: none; }
         #profil-menu, #duyuru-menu { position: absolute; top: 45px; right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
-        #duyuru-menu { right: 45px; width: 200px; max-height: 250px; overflow-y: auto; }
+        #duyuru-menu { right: 45px; width: 220px; max-height: 250px; overflow-y: auto; }
         #popup-duyuru { position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 80%; max-width: 300px; background: white; color: black; padding: 20px; border-radius: 15px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
         .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 25px; }
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
@@ -148,17 +148,21 @@
 
     function duyurulariDinle() {
         onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
-            if (snapshot.empty) return;
-            const sonDuyuruDoc = snapshot.docs[0];
-            const sonDuyuru = sonDuyuruDoc.data();
-            const sonOkunanID = localStorage.getItem('sonOkunanDuyuruID');
+            const isAdmin = auth.currentUser && auth.currentUser.email === "emre121856031@gmail.com";
             let html = "";
-            snapshot.forEach(d => { html += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee;">${d.data().mesaj}</div>`; });
+            snapshot.forEach(d => {
+                const data = d.data();
+                html += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                            <span>${data.mesaj}</span>
+                            ${isAdmin ? `<button onclick="window.silDuyuru('${d.id}')" style="background:none; border:none; color:red; cursor:pointer; font-size:12px;">❌</button>` : ''}
+                         </div>`;
+            });
             document.getElementById('duyuru-listesi').innerHTML = html;
-            if (sonDuyuruDoc.id !== sonOkunanID) {
+            
+            if (!snapshot.empty && snapshot.docs[0].id !== localStorage.getItem('sonOkunanDuyuruID')) {
                 document.getElementById('bildirim-badge').style.display = 'block';
                 if (uygulamaBaslatildi) {
-                    document.getElementById('popup-metin').innerText = sonDuyuru.mesaj;
+                    document.getElementById('popup-metin').innerText = snapshot.docs[0].data().mesaj;
                     document.getElementById('popup-duyuru').classList.remove('hidden');
                 }
             }
@@ -166,6 +170,7 @@
         });
     }
 
+    window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
     window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu'].forEach(id => document.getElementById(id).classList.add('hidden')); };
 
     document.getElementById('btn-duyuru-ac').onclick = () => { 
@@ -193,19 +198,15 @@
             document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
             document.getElementById('user-email').innerText = user.email;
             verileriGetir(user.uid);
-            duyurulariDinle(); 
-            // Admin Kontrolü
+            duyurulariDinle();
             if (user.email === "emre121856031@gmail.com") {
                 const adminAlan = document.getElementById('admin-alan');
                 adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINLA</button>`;
                 adminAlan.onclick = () => {
                     const mesaj = prompt("Duyuru metnini girin:");
-                    if(mesaj) {
-                        addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() });
-                        alert("Duyuru gönderildi!");
-                    }
+                    if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() });
                 };
-            }
+            } else { document.getElementById('admin-alan').innerHTML = ''; }
         } else { ekranGoster('auth-screen'); }
     });
 
