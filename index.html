@@ -104,6 +104,12 @@
             <a href="https://www.shopier.com/bikahveismarlaa/48102387" target="_blank" style="text-decoration:none;"><button style="background:#5d4037; font-size:10px;">☕☕☕<br>Büyük</button></a>
         </div>
     </div>
+    
+    <div id="mesajlar-panel" class="hidden" style="margin-top:5px; padding:8px; background:white; color:black; border-radius:10px; text-align:left; max-height:250px; overflow-y:auto; z-index:1001;">
+        <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
+        <div style="font-weight:bold; margin-bottom:5px; border-bottom:1px solid #ccc;">📩 KULLANICI MESAJLARI</div>
+        <div id="mesaj-listesi"></div>
+    </div>
 
     <div class="nav-container">
         <span class="nav-btn" id="btn-onceki">&lt;</span>
@@ -136,7 +142,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
@@ -171,7 +177,7 @@
     }
 
     window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-    window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu'].forEach(id => document.getElementById(id).classList.add('hidden')); };
+    window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel'].forEach(id => document.getElementById(id).classList.add('hidden')); };
 
     document.getElementById('btn-duyuru-ac').onclick = () => { 
         document.getElementById('bildirim-badge').style.display = 'none';
@@ -201,14 +207,40 @@
             duyurulariDinle();
             if (user.email === "emre121856031@gmail.com") {
                 const adminAlan = document.getElementById('admin-alan');
-                adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINLA</button>`;
-                adminAlan.onclick = () => {
+                adminAlan.innerHTML = `
+                    <button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINLA</button>
+                    <button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>
+                `;
+                adminAlan.querySelector('button').onclick = () => {
                     const mesaj = prompt("Duyuru metnini girin:");
                     if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() });
                 };
+                document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
             } else { document.getElementById('admin-alan').innerHTML = ''; }
         } else { ekranGoster('auth-screen'); }
     });
+
+    async function mesajlariGetir() {
+        kapatPaneller();
+        document.getElementById('mesajlar-panel').classList.remove('hidden');
+        const snapshot = await getDocs(collection(db, "bildirimler"));
+        let html = "";
+        snapshot.forEach((d) => {
+            const data = d.data();
+            html += `<div style="border-bottom:1px solid #eee; padding:5px 0; font-size:11px;">
+                        <b>${data.email}</b>: ${data.mesaj}
+                        <button onclick="window.silMesaj('${d.id}')" style="background:red; color:white; border:none; padding:2px 5px; border-radius:3px; float:right;">SİL</button>
+                     </div>`;
+        });
+        document.getElementById('mesaj-listesi').innerHTML = html || "Henüz mesaj yok.";
+    }
+
+    window.silMesaj = async (id) => {
+        if(confirm("Bu mesajı silmek istediğine emin misin?")) {
+            await deleteDoc(doc(db, "bildirimler", id));
+            mesajlariGetir();
+        }
+    };
 
     document.getElementById('btn-giris-yap').onclick = () => { signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster); };
     document.getElementById('btn-kayit-ol').onclick = () => { createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).catch(hataGoster); };
