@@ -252,7 +252,7 @@ document.getElementById('aciklama').addEventListener('input', (e) => {
     const kategoriSelect = document.getElementById('kategori');
     
     // Basit anahtar kelime eşleştirme
-    if (metin.includes('market') || metin.includes('bakkal') || metin.includes('alışveriş')) {
+    if (metin.includes('market') || metin.includes('bakkal') || metin.includes('FİLE') || metin.includes('HAKMAR') || metin.includes('A101') || metin.includes('BİM') || metin.includes('MİGROS') || metin.includes('alışveriş')) {
         kategoriSelect.value = 'Market';
     } else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || metin.includes('telefon ') || metin.includes('vodafone ') || metin.includes('internet')) {
         kategoriSelect.value = 'Fatura';
