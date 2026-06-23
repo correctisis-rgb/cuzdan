@@ -8,31 +8,24 @@
     <style>
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         body { background: linear-gradient(135deg, #1c2137 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; color: white; }
-        
         .container { background: rgba(255, 255, 255, 0.15); padding: 0.8rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 90%; max-width: 350px; text-align: center; position: relative; max-height: 95vh; display: flex; flex-direction: column; gap: 4px; }
-        
         .profile-btn { position: absolute; top: 10px; right: 10px; background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; z-index: 20; }
         #profil-menu { position: absolute; top: 45px; right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
-        
         .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 25px; }
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
         h3 { margin: 2px 0; }
-        
         input, textarea, select { width: 100%; padding: 8px; margin: 2px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; font-family: inherit; }
         button { padding: 6px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 2px; text-transform: uppercase; }
-        
         .close-btn { background: #666 !important; font-size: 10px; padding: 3px; margin-bottom: 5px; }
         .link-text { font-size: 11px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 2px; }
         .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.2); }
         table { width: 100%; border-collapse: collapse; }
         td { padding: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
         .hidden { display: none !important; }
-        
         .footer-apps { margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
         .app-box { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 5px; text-decoration: none; color: white; }
         .app-icon { font-size: 30px; margin-bottom: 2px; }
         .app-label { font-size: 10px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 5px; }
-        
         .coffee-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 10px; }
     </style>
 </head>
@@ -45,7 +38,6 @@
     <button id="btn-giris-yap" style="background:#10b981;">Giriş Yap</button>
     <div class="link-text" id="btn-gecis-sifre-sifirla" style="color:#fbbf24;">Şifremi unuttum</div>
     <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin? Kayıt Ol</div>
-    
     <div class="footer-apps">
         <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
             <span>Diğer Uygulamalarımız</span>
@@ -147,22 +139,34 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
     const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    
-    // Panelleri kapatma fonksiyonu
+    const messaging = getMessaging(app);
+
     window.kapatPaneller = () => {
         document.getElementById('sifre-panel').classList.add('hidden');
         document.getElementById('bildirim-panel').classList.add('hidden');
         document.getElementById('kahve-panel').classList.add('hidden');
     };
 
+    async function bildirimIzniAl() {
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                const token = await getToken(messaging, { vapidKey: 'BKxF7reNgqCfWj6oCQVw9mqg6OljlVEJzEp6OEkwaQZbUHjFxIS-EKKc6ynt5xdZuXTN-uQBoaUAvhO2snzzFH4' });
+                if (auth.currentUser) {
+                    await addDoc(collection(db, "bildirim_tokenlari"), { uid: auth.currentUser.uid, token: token, tarih: Date.now() });
+                }
+            }
+        } catch (err) { console.log("Bildirim izni alınamadı."); }
+    }
+
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-
     document.getElementById('tarih').valueAsDate = new Date();
     const formatla = (sayi) => sayi.toLocaleString('tr-TR');
 
@@ -172,11 +176,7 @@
         else e.target.value = val;
     };
 
-    const hataGoster = (err) => {
-        const mesajlar = { 'auth/invalid-email': 'Geçersiz e-posta.', 'auth/user-not-found': 'Kullanıcı bulunamadı.', 'auth/wrong-password': 'Şifre yanlış.', 'auth/email-already-in-use': 'E-posta kullanımda.', 'auth/weak-password': 'Şifre çok zayıf.', 'auth/invalid-credential': 'E-posta veya şifre hatalı.' };
-        alert(mesajlar[err.code] || "Hata: " + err.message);
-    };
-
+    const hataGoster = (err) => { alert(err.message); };
     const ekranGoster = (id) => {
         ['auth-screen', 'signup-screen', 'reset-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
@@ -188,6 +188,7 @@
             document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
             document.getElementById('user-email').innerText = user.email;
             verileriGetir(user.uid);
+            bildirimIzniAl();
         } else { ekranGoster('auth-screen'); }
     });
 
@@ -209,17 +210,14 @@
         const metin = document.getElementById('bildirim-metni').value;
         if (!metin) return;
         await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
-        alert("Gönderildi!");
-        document.getElementById('bildirim-metni').value = '';
-        kapatPaneller();
+        alert("Gönderildi!"); document.getElementById('bildirim-metni').value = ''; kapatPaneller();
     };
 
     document.getElementById('btn-sifre-onayla').onclick = async () => {
         try {
             await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value));
             await updatePassword(auth.currentUser, document.getElementById('yeni-sifre').value);
-            alert("Şifre güncellendi!");
-            kapatPaneller();
+            alert("Şifre güncellendi!"); kapatPaneller();
         } catch (e) { alert("Hata: " + e.message); }
     };
 
