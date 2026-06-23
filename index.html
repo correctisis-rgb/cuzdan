@@ -147,6 +147,13 @@
     const auth = getAuth(app);
     const messaging = getMessaging(app);
 
+    // Servis Worker Kaydı (GitHub Pages yoluna uygun)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/cuzdan/firebase-messaging-sw.js')
+        .then((reg) => console.log('SW Kayıtlı:', reg.scope))
+        .catch((err) => console.log('SW Hata:', err));
+    }
+
     window.kapatPaneller = () => {
         document.getElementById('sifre-panel').classList.add('hidden');
         document.getElementById('bildirim-panel').classList.add('hidden');
@@ -158,7 +165,7 @@
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
                 const token = await getToken(messaging, { vapidKey: 'BKxF7reNqgCfWj6oCQVw9mqg6OljIVEJzEp6OEkwaQZbUHjFxlS-EKKc6ynT5xdZuXTN-uQBoaUAvhO2snzzFH4' });
-                if (auth.currentUser) {
+                if (auth.currentUser && token) {
                     await addDoc(collection(db, "bildirim_tokenlari"), { uid: auth.currentUser.uid, token: token, tarih: Date.now() });
                 }
             }
