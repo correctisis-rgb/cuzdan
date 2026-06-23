@@ -14,7 +14,6 @@
         .badge { position: absolute; top: -2px; right: -2px; background: red; color: white; border-radius: 50%; width: 12px; height: 12px; font-size: 8px; line-height: 12px; display: none; }
         #profil-menu, #duyuru-menu { position: absolute; top: 45px; right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
         #duyuru-menu { right: 45px; width: 200px; max-height: 250px; overflow-y: auto; }
-        /* Pop-up stili */
         #popup-duyuru { position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 80%; max-width: 300px; background: white; color: black; padding: 20px; border-radius: 15px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
         .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 25px; }
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
@@ -149,24 +148,26 @@
     const auth = getAuth(app);
 
     let ilkYukleme = true;
+
     function duyurulariDinle() {
         onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
+            if (snapshot.empty) return;
+            
             let html = "";
-            let sonDuyuru = null;
-            snapshot.forEach((d, index) => {
-                if (index === 0) sonDuyuru = d.data();
+            let sonDuyuru = snapshot.docs[0].data();
+            
+            snapshot.forEach(d => {
                 html += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee;">${d.data().mesaj}</div>`;
             });
-            document.getElementById('duyuru-listesi').innerHTML = html || "Yeni duyuru yok.";
+            document.getElementById('duyuru-listesi').innerHTML = html;
 
-            if (sonDuyuru) {
-                const sonOkunan = localStorage.getItem('sonOkunanDuyuru');
-                if (sonDuyuru.mesaj !== sonOkunan) {
-                    document.getElementById('bildirim-badge').style.display = 'block';
-                    if (!ilkYukleme) {
-                        document.getElementById('popup-metin').innerText = sonDuyuru.mesaj;
-                        document.getElementById('popup-duyuru').classList.remove('hidden');
-                    }
+            const sonOkunan = localStorage.getItem('sonOkunanDuyuru');
+            if (sonDuyuru.mesaj !== sonOkunan) {
+                document.getElementById('bildirim-badge').style.display = 'block';
+                // İlk yüklemede popup açılmasın, sadece badge gözüksün
+                if (!ilkYukleme) {
+                    document.getElementById('popup-metin').innerText = sonDuyuru.mesaj;
+                    document.getElementById('popup-duyuru').classList.remove('hidden');
                 }
             }
             ilkYukleme = false;
@@ -184,7 +185,7 @@
         kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden'); 
     };
 
-    // Diğer tüm fonksiyonlar...
+    // --- Diğer Fonksiyonlar ---
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
     document.getElementById('tarih').valueAsDate = new Date();
