@@ -147,39 +147,33 @@
     const auth = getAuth(app);
     const messaging = getMessaging(app);
 
-    // Servis Worker Kaydı (GitHub Pages yoluna uygun)
+    // Servis Worker Kaydı - Kendi özel dosyamızla ilişkilendiriyoruz
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./firebase-messaging-sw.js')
         .then((reg) => console.log('SW Kayıtlı:', reg.scope))
         .catch((err) => console.log('SW Hata:', err));
     }
 
+    async function bildirimIzniAl() {
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                const token = await getToken(messaging, { 
+                    vapidKey: 'BKxF7reNqgCfWj6oCQVw9mqg6OljIVEJzEp6OEkwaQZbUHjFxlS-EKKc6ynT5xdZuXTN-uQBoaUAvhO2snzzFH4',
+                    serviceWorkerRegistration: await navigator.serviceWorker.ready 
+                });
+                if (token) {
+                    await addDoc(collection(db, "bildirim_tokenlari"), { uid: auth.currentUser.uid, token: token, tarih: Date.now() });
+                }
+            }
+        } catch (err) { console.error("Bildirim hatası:", err); }
+    }
+
     window.kapatPaneller = () => {
-        document.getElementById('sifre-panel').classList.add('hidden');
-        document.getElementById('bildirim-panel').classList.add('hidden');
-        document.getElementById('kahve-panel').classList.add('hidden');
+        ['sifre-panel', 'bildirim-panel', 'kahve-panel'].forEach(id => document.getElementById(id).classList.add('hidden'));
     };
 
-    async function bildirimIzniAl() {
-    try {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-            console.log("Bildirim izni verildi.");
-            const token = await getToken(messaging, { 
-                vapidKey: 'BKxF7reNqgCfWj6oCQVw9mqg6OljIVEJzEp6OEkwaQZbUHjFxlS-EKKc6ynT5xdZuXTN-uQBoaUAvhO2snzzFH4' 
-            });
-            if (token) {
-                console.log("Token alındı:", token);
-                await addDoc(collection(db, "bildirim_tokenlari"), { uid: auth.currentUser.uid, token: token, tarih: Date.now() });
-            }
-        } else {
-            console.log("Bildirim izni reddedildi.");
-        }
-    } catch (err) { 
-        console.error("Bildirim hatası:", err); 
-    }
-}
-
+    // UI Mantığı ve Firebase işlemleri...
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
     document.getElementById('tarih').valueAsDate = new Date();
@@ -207,6 +201,7 @@
         } else { ekranGoster('auth-screen'); }
     });
 
+    // Buton event listenerları
     document.getElementById('btn-giris-yap').onclick = () => { signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster); };
     document.getElementById('btn-kayit-ol').onclick = () => { createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).catch(hataGoster); };
     document.getElementById('btn-sifre-onay-mail').onclick = async () => { await sendPasswordResetEmail(auth, document.getElementById('reset-email').value).then(() => alert("E-posta gönderildi.")).catch(hataGoster); };
