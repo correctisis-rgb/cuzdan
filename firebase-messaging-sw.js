@@ -9,3 +9,15 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
+
+// Arka plan mesajlarını yakala (uygulama kapalıyken)
+messaging.onBackgroundMessage((payload) => {
+  console.log('[firebase-messaging-sw.js] Arka plan mesajı geldi ', payload);
+  const notificationTitle = payload.notification.title;
+  const notificationOptions = {
+    body: payload.notification.body,
+    icon: '/logo.png' // Varsa bir logo ekleyebilirsiniz
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
