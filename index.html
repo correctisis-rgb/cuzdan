@@ -26,10 +26,6 @@
         table { width: 100%; border-collapse: collapse; }
         td { padding: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
         .hidden { display: none !important; }
-        .footer-apps { margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
-        .app-box { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 5px; text-decoration: none; color: white; }
-        .app-icon { font-size: 30px; margin-bottom: 2px; }
-        .app-label { font-size: 10px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 5px; }
         .coffee-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 10px; }
     </style>
 </head>
@@ -147,30 +143,30 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    let ilkYukleme = true;
+    let uygulamaBaslatildi = false;
 
     function duyurulariDinle() {
         onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
             if (snapshot.empty) return;
             
-            let html = "";
-            let sonDuyuru = snapshot.docs[0].data();
+            const sonDuyuruDoc = snapshot.docs[0];
+            const sonDuyuru = sonDuyuruDoc.data();
+            const sonOkunanID = localStorage.getItem('sonOkunanDuyuruID');
             
+            let html = "";
             snapshot.forEach(d => {
                 html += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee;">${d.data().mesaj}</div>`;
             });
             document.getElementById('duyuru-listesi').innerHTML = html;
 
-            const sonOkunan = localStorage.getItem('sonOkunanDuyuru');
-            if (sonDuyuru.mesaj !== sonOkunan) {
+            if (sonDuyuruDoc.id !== sonOkunanID) {
                 document.getElementById('bildirim-badge').style.display = 'block';
-                // İlk yüklemede popup açılmasın, sadece badge gözüksün
-                if (!ilkYukleme) {
+                if (uygulamaBaslatildi) {
                     document.getElementById('popup-metin').innerText = sonDuyuru.mesaj;
                     document.getElementById('popup-duyuru').classList.remove('hidden');
                 }
             }
-            ilkYukleme = false;
+            uygulamaBaslatildi = true;
         });
     }
 
@@ -180,12 +176,14 @@
 
     document.getElementById('btn-duyuru-ac').onclick = () => { 
         document.getElementById('bildirim-badge').style.display = 'none';
-        const ilkDuyuru = document.querySelector('#duyuru-listesi div');
-        if(ilkDuyuru) localStorage.setItem('sonOkunanDuyuru', ilkDuyuru.innerText);
+        const snapshot = collection(db, "duyurular"); 
+        // En güncel duyuru ID'sini kaydet
+        onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (s) => {
+            if(!s.empty) localStorage.setItem('sonOkunanDuyuruID', s.docs[0].id);
+        });
         kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden'); 
     };
 
-    // --- Diğer Fonksiyonlar ---
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
     document.getElementById('tarih').valueAsDate = new Date();
