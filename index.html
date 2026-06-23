@@ -26,6 +26,10 @@
         table { width: 100%; border-collapse: collapse; }
         td { padding: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
         .hidden { display: none !important; }
+        
+        /* Yeni eklenen stil */
+        .footer-apps { margin-top: 10px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 12px; }
+        .app-link { display: inline-block; margin-top: 5px; color: #3b82f6; text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -104,6 +108,11 @@
         <table id="tablo"></table>
     </div>
     <canvas id="grafik" style="max-height: 120px; margin-top: 5px;"></canvas>
+
+    <div class="footer-apps">
+        <div>Diğer Uygulamalarımız</div>
+        <a href="https://correctisis-rgb.github.io/yakit/" class="app-link" target="_blank">⛽ Yakıt Hesaplama</a>
+    </div>
 </div>
 
 <script type="module">
@@ -202,7 +211,6 @@
                 }
             });
 
-            // Bakiye ve Renk (Eksi ise #ef4444 kırmızı, artı ise beyaz)
             const bakiyeSpan = document.getElementById('bakiye');
             bakiyeSpan.innerText = formatla(bakiye);
             bakiyeSpan.style.color = (bakiye < 0) ? "#ef4444" : "white";
@@ -217,7 +225,6 @@
             });
             document.getElementById('tablo').innerHTML = html;
 
-            // Kategori bazlı pasta grafiği
             const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
             const degerler = etiketler.map(k => kategoriToplamlar[k]);
             const ctx = document.getElementById('grafik').getContext('2d');
