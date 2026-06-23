@@ -246,7 +246,24 @@
         tamKisim = tamKisim.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         e.target.value = parts.length > 1 ? tamKisim + ',' + parts[1].substring(0, 2) : tamKisim;
     };
-
+// Kategori Tahmin Sistemi
+document.getElementById('aciklama').addEventListener('input', (e) => {
+    const metin = e.target.value.toLowerCase();
+    const kategoriSelect = document.getElementById('kategori');
+    
+    // Basit anahtar kelime eşleştirme
+    if (metin.includes('market') || metin.includes('bakkal') || metin.includes('alışveriş')) {
+        kategoriSelect.value = 'Market';
+    } else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || metin.includes('internet')) {
+        kategoriSelect.value = 'Fatura';
+    } else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt')) {
+        kategoriSelect.value = 'Ulaşım';
+    } else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser')) {
+        kategoriSelect.value = 'Eğlence';
+    } else if (metin.includes('maaş')) {
+        kategoriSelect.value = 'Maaş';
+    }
+});
     const hataGoster = (err) => {
         let mesaj = "Bir hata oluştu.";
         if(err.code === 'auth/invalid-credential') mesaj = "E-posta veya şifre hatalı.";
