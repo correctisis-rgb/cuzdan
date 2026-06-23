@@ -149,7 +149,7 @@
 
     // Servis Worker Kaydı - Kendi özel dosyamızla ilişkilendiriyoruz
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./firebase-messaging-sw.js')
+        navigator.serviceWorker.register('firebase-messaging-sw.js')
         .then((reg) => console.log('SW Kayıtlı:', reg.scope))
         .catch((err) => console.log('SW Hata:', err));
     }
