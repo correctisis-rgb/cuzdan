@@ -27,11 +27,12 @@
         td { padding: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
         .hidden { display: none !important; }
         
-        /* Yeni düzenleme */
         .footer-apps { margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
         .app-box { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 5px; text-decoration: none; color: white; }
         .app-icon { font-size: 30px; margin-bottom: 2px; }
         .app-label { font-size: 10px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 5px; }
+        
+        .coffee-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -74,6 +75,7 @@
         <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
         <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
         <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
+        <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
         <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
     </div>
 
@@ -86,6 +88,15 @@
     <div id="bildirim-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
         <textarea id="bildirim-metni" placeholder="Sorununuzu veya önerinizi yazın..." style="height:60px;"></textarea>
         <button id="btn-bildirim-gonder" style="background:#3b82f6;">Gönder</button>
+    </div>
+
+    <div id="kahve-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
+        <p style="margin:0 0 5px 0; font-size:12px;">Desteğin için teşekkürler!</p>
+        <div class="coffee-grid">
+            <a href="https://link-kucuk.com" target="_blank" style="text-decoration:none;"><button style="background:#a1887f; font-size:10px;">☕<br>Küçük</button></a>
+            <a href="https://link-orta.com" target="_blank" style="text-decoration:none;"><button style="background:#795548; font-size:10px;">☕☕<br>Orta</button></a>
+            <a href="https://link-buyuk.com" target="_blank" style="text-decoration:none;"><button style="background:#5d4037; font-size:10px;">☕☕☕<br>Büyük</button></a>
+        </div>
     </div>
 
     <div class="nav-container">
@@ -121,14 +132,14 @@
 
     <div class="footer-apps">
         <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
-	    <span>Diğer Uygulamalarımız</span>
+            <span>Diğer Uygulamalarımız</span>
             <span class="app-icon">⛽</span>
             <span class="app-label">Yakıt Hesaplama</span>
         </a>
     </div>
 </div>
+
 <script type="module">
-    // ... (JS kodlarınızın tamamı aynı kalacak) ...
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -178,8 +189,10 @@
     document.getElementById('btn-gecis-sifre-sifirla').onclick = () => ekranGoster('reset-screen');
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => document.getElementById('profil-menu').classList.toggle('hidden');
-    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('bildirim-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
-    document.getElementById('btn-bildir-menu').onclick = () => { document.getElementById('bildirim-panel').classList.remove('hidden'); document.getElementById('sifre-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+    
+    document.getElementById('btn-sifre-guncelle-menu').onclick = () => { document.getElementById('sifre-panel').classList.remove('hidden'); document.getElementById('bildirim-panel').classList.add('hidden'); document.getElementById('kahve-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+    document.getElementById('btn-bildir-menu').onclick = () => { document.getElementById('bildirim-panel').classList.remove('hidden'); document.getElementById('sifre-panel').classList.add('hidden'); document.getElementById('kahve-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
+    document.getElementById('btn-kahve-menu').onclick = () => { document.getElementById('kahve-panel').classList.remove('hidden'); document.getElementById('sifre-panel').classList.add('hidden'); document.getElementById('bildirim-panel').classList.add('hidden'); document.getElementById('profil-menu').classList.add('hidden'); };
 
     document.getElementById('btn-bildirim-gonder').onclick = async () => {
         const metin = document.getElementById('bildirim-metni').value;
@@ -207,27 +220,18 @@
         onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), (snapshot) => {
             let bakiye = 0, veriler = [];
             const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
-
             snapshot.forEach(d => {
                 const data = d.data();
                 const t = new Date(data.tarih);
                 if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
                     veriler.push({ id: d.id, ...data });
-                    if(data.tur === 'gelir') {
-                        bakiye += data.tutar; 
-                        kategoriToplamlar['Gelir'] += data.tutar;
-                    } else { 
-                        bakiye -= data.tutar; 
-                        const kat = data.kategori || 'Genel';
-                        kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar;
-                    }
+                    if(data.tur === 'gelir') { bakiye += data.tutar; kategoriToplamlar['Gelir'] += data.tutar; } 
+                    else { bakiye -= data.tutar; const kat = data.kategori || 'Genel'; kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar; }
                 }
             });
-
             const bakiyeSpan = document.getElementById('bakiye');
             bakiyeSpan.innerText = formatla(bakiye);
             bakiyeSpan.style.color = (bakiye < 0) ? "#ef4444" : "white";
-            
             let html = "";
             veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
                 const t = new Date(d.tarih);
@@ -237,17 +241,12 @@
                            <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
-
             const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
             const degerler = etiketler.map(k => kategoriToplamlar[k]);
             const ctx = document.getElementById('grafik').getContext('2d');
             if (myChart) myChart.destroy();
             if (etiketler.length > 0) {
-                myChart = new Chart(ctx, { 
-                    type: 'doughnut', 
-                    data: { labels: etiketler, datasets: [{ data: degerler, backgroundColor: ['#10b981', '#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'] }] }, 
-                    options: { plugins: { legend: { position: 'right', labels: { color: 'white', font: { size: 9 } } } } } 
-                });
+                myChart = new Chart(ctx, { type: 'doughnut', data: { labels: etiketler, datasets: [{ data: degerler, backgroundColor: ['#10b981', '#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'] }] }, options: { plugins: { legend: { position: 'right', labels: { color: 'white', font: { size: 9 } } } } } });
             }
         });
     }
@@ -258,17 +257,13 @@
         const tutarVal = document.getElementById('tutar').value.replace(/\./g, '');
         const tutar = parseFloat(tutarVal);
         const tarihVal = document.getElementById('tarih').value;
-        
         if (!aciklama) return alert("Açıklama girin.");
         if (isNaN(tutar) || tutar <= 0) return alert("Geçerli tutar girin.");
         if (!tarihVal) return alert("Tarih seçin.");
-        
         const tarihObj = new Date(tarihVal);
         tarihObj.setHours(12, 0, 0, 0); 
-        
         await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, tarih: tarihObj.getTime() });
-        document.getElementById('aciklama').value = ''; 
-        document.getElementById('tutar').value = '';
+        document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
     }
     document.getElementById('btn-gelir').onclick = () => ekle('gelir');
     document.getElementById('btn-gider').onclick = () => ekle('gider');
