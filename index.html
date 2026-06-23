@@ -161,16 +161,24 @@
     };
 
     async function bildirimIzniAl() {
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                const token = await getToken(messaging, { vapidKey: 'BKxF7reNqgCfWj6oCQVw9mqg6OljIVEJzEp6OEkwaQZbUHjFxlS-EKKc6ynT5xdZuXTN-uQBoaUAvhO2snzzFH4' });
-                if (auth.currentUser && token) {
-                    await addDoc(collection(db, "bildirim_tokenlari"), { uid: auth.currentUser.uid, token: token, tarih: Date.now() });
-                }
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            console.log("Bildirim izni verildi.");
+            const token = await getToken(messaging, { 
+                vapidKey: 'BKxF7reNqgCfWj6oCQVw9mqg6OljIVEJzEp6OEkwaQZbUHjFxlS-EKKc6ynT5xdZuXTN-uQBoaUAvhO2snzzFH4' 
+            });
+            if (token) {
+                console.log("Token alındı:", token);
+                await addDoc(collection(db, "bildirim_tokenlari"), { uid: auth.currentUser.uid, token: token, tarih: Date.now() });
             }
-        } catch (err) { console.log("Bildirim izni alınamadı."); }
+        } else {
+            console.log("Bildirim izni reddedildi.");
+        }
+    } catch (err) { 
+        console.error("Bildirim hatası:", err); 
     }
+}
 
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
