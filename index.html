@@ -14,6 +14,8 @@
         .badge { position: absolute; top: -2px; right: -2px; background: red; color: white; border-radius: 50%; width: 12px; height: 12px; font-size: 8px; line-height: 12px; display: none; }
         #profil-menu, #duyuru-menu { position: absolute; top: 45px; right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
         #duyuru-menu { right: 45px; width: 200px; max-height: 250px; overflow-y: auto; }
+        /* Pop-up stili */
+        #popup-duyuru { position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 80%; max-width: 300px; background: white; color: black; padding: 20px; border-radius: 15px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
         .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 25px; }
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
         h3 { margin: 2px 0; }
@@ -34,6 +36,12 @@
 </head>
 <body>
 
+<div id="popup-duyuru" class="hidden">
+    <div style="font-weight:bold; margin-bottom:10px;">📢 YENİ DUYURU</div>
+    <div id="popup-metin" style="margin-bottom:15px; font-size:14px;"></div>
+    <button onclick="document.getElementById('popup-duyuru').classList.add('hidden')" style="background:#10b981;">TAMAM</button>
+</div>
+
 <div class="container" id="auth-screen">
     <h2>AKILLI CÜZDAN</h2>
     <input type="email" id="email" placeholder="E-posta">
@@ -41,13 +49,6 @@
     <button id="btn-giris-yap" style="background:#10b981;">Giriş Yap</button>
     <div class="link-text" id="btn-gecis-sifre-sifirla" style="color:#fbbf24;">Şifremi unuttum</div>
     <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin? Kayıt Ol</div>
-    <div class="footer-apps">
-        <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
-            <span>Diğer Uygulamalarımız</span>
-            <span class="app-icon">⛽</span>
-            <span class="app-label">Yakıt Hesaplama</span>
-        </a>
-    </div>
 </div>
 
 <div class="container hidden" id="signup-screen">
@@ -118,7 +119,6 @@
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="text" id="tutar" placeholder="Tutar" inputmode="decimal">
     <input type="date" id="tarih" style="padding: 5px; color: #555;">
-    
     <select id="kategori">
         <option value="Genel">Genel</option>
         <option value="Maaş">Maaş</option>
@@ -128,24 +128,14 @@
         <option value="Eğlence">Eğlence</option>
         <option value="Diğer">Diğer</option>
     </select>
-
     <div style="display:flex; gap:5px;">
         <button id="btn-gelir" style="background:#10b981;">GELİR (+)</button>
         <button id="btn-gider" style="background:#ef4444;">GİDER (-)</button>
     </div>
-    
     <div class="liste-alani">
         <table id="tablo"></table>
     </div>
     <canvas id="grafik" style="max-height: 120px; margin-top: 5px;"></canvas>
-
-    <div class="footer-apps">
-        <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
-            <span>Diğer Uygulamalarımız</span>
-            <span class="app-icon">⛽</span>
-            <span class="app-label">Yakıt Hesaplama</span>
-        </a>
-    </div>
 </div>
 
 <script type="module">
@@ -158,14 +148,28 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
+    let ilkYukleme = true;
     function duyurulariDinle() {
         onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
             let html = "";
-            snapshot.forEach(doc => {
-                html += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee;">${doc.data().mesaj}</div>`;
+            let sonDuyuru = null;
+            snapshot.forEach((d, index) => {
+                if (index === 0) sonDuyuru = d.data();
+                html += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee;">${d.data().mesaj}</div>`;
             });
             document.getElementById('duyuru-listesi').innerHTML = html || "Yeni duyuru yok.";
-            if(!snapshot.empty) document.getElementById('bildirim-badge').style.display = 'block';
+
+            if (sonDuyuru) {
+                const sonOkunan = localStorage.getItem('sonOkunanDuyuru');
+                if (sonDuyuru.mesaj !== sonOkunan) {
+                    document.getElementById('bildirim-badge').style.display = 'block';
+                    if (!ilkYukleme) {
+                        document.getElementById('popup-metin').innerText = sonDuyuru.mesaj;
+                        document.getElementById('popup-duyuru').classList.remove('hidden');
+                    }
+                }
+            }
+            ilkYukleme = false;
         });
     }
 
@@ -173,6 +177,14 @@
         ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu'].forEach(id => document.getElementById(id).classList.add('hidden'));
     };
 
+    document.getElementById('btn-duyuru-ac').onclick = () => { 
+        document.getElementById('bildirim-badge').style.display = 'none';
+        const ilkDuyuru = document.querySelector('#duyuru-listesi div');
+        if(ilkDuyuru) localStorage.setItem('sonOkunanDuyuru', ilkDuyuru.innerText);
+        kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden'); 
+    };
+
+    // Diğer tüm fonksiyonlar...
     let myChart, seciliTarih = new Date();
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
     document.getElementById('tarih').valueAsDate = new Date();
@@ -181,7 +193,6 @@
     document.getElementById('tutar').oninput = (e) => {
         let val = e.target.value.replace(/\./g, '');
         if (!isNaN(val) && val !== "") e.target.value = new Intl.NumberFormat('tr-TR').format(val);
-        else e.target.value = val;
     };
 
     const hataGoster = (err) => { alert(err.message); };
@@ -208,13 +219,7 @@
     document.getElementById('btn-gecis-giris-2').onclick = () => ekranGoster('auth-screen');
     document.getElementById('btn-gecis-sifre-sifirla').onclick = () => ekranGoster('reset-screen');
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
-    
-    document.getElementById('btn-duyuru-ac').onclick = () => { 
-        document.getElementById('bildirim-badge').style.display = 'none';
-        kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden'); 
-    };
     document.getElementById('profil-baslik').onclick = () => { kapatPaneller(); document.getElementById('profil-menu').classList.toggle('hidden'); };
-    
     document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); };
     document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); };
     document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
@@ -251,14 +256,12 @@
                     else { bakiye -= data.tutar; const kat = data.kategori || 'Genel'; kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar; }
                 }
             });
-            const bakiyeSpan = document.getElementById('bakiye');
-            bakiyeSpan.innerText = formatla(bakiye);
-            bakiyeSpan.style.color = (bakiye < 0) ? "#ef4444" : "white";
+            document.getElementById('bakiye').innerText = formatla(bakiye);
+            document.getElementById('bakiye').style.color = (bakiye < 0) ? "#ef4444" : "white";
             let html = "";
             veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
                 const t = new Date(d.tarih);
-                const tarihStr = t.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit' });
-                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori} • ${tarihStr}</small></td>
+                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori} • ${t.toLocaleDateString('tr-TR')}</small></td>
                            <td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td>
                            <td><button onclick="window.sil('${d.id}')" style="background:none;">❌</button></td></tr>`;
             });
@@ -279,9 +282,7 @@
         const tutarVal = document.getElementById('tutar').value.replace(/\./g, '');
         const tutar = parseFloat(tutarVal);
         const tarihVal = document.getElementById('tarih').value;
-        if (!aciklama) return alert("Açıklama girin.");
-        if (isNaN(tutar) || tutar <= 0) return alert("Geçerli tutar girin.");
-        if (!tarihVal) return alert("Tarih seçin.");
+        if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return alert("Eksik bilgi!");
         const tarihObj = new Date(tarihVal);
         tarihObj.setHours(12, 0, 0, 0); 
         await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, tarih: tarihObj.getTime() });
