@@ -79,6 +79,7 @@
         <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
         <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
         <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
+        <div id="admin-alan"></div>
     </div>
 
     <div id="sifre-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
@@ -148,17 +149,12 @@
     function duyurulariDinle() {
         onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
             if (snapshot.empty) return;
-            
             const sonDuyuruDoc = snapshot.docs[0];
             const sonDuyuru = sonDuyuruDoc.data();
             const sonOkunanID = localStorage.getItem('sonOkunanDuyuruID');
-            
             let html = "";
-            snapshot.forEach(d => {
-                html += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee;">${d.data().mesaj}</div>`;
-            });
+            snapshot.forEach(d => { html += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee;">${d.data().mesaj}</div>`; });
             document.getElementById('duyuru-listesi').innerHTML = html;
-
             if (sonDuyuruDoc.id !== sonOkunanID) {
                 document.getElementById('bildirim-badge').style.display = 'block';
                 if (uygulamaBaslatildi) {
@@ -170,17 +166,11 @@
         });
     }
 
-    window.kapatPaneller = () => {
-        ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu'].forEach(id => document.getElementById(id).classList.add('hidden'));
-    };
+    window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu'].forEach(id => document.getElementById(id).classList.add('hidden')); };
 
     document.getElementById('btn-duyuru-ac').onclick = () => { 
         document.getElementById('bildirim-badge').style.display = 'none';
-        const snapshot = collection(db, "duyurular"); 
-        // En güncel duyuru ID'sini kaydet
-        onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (s) => {
-            if(!s.empty) localStorage.setItem('sonOkunanDuyuruID', s.docs[0].id);
-        });
+        onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (s) => { if(!s.empty) localStorage.setItem('sonOkunanDuyuruID', s.docs[0].id); });
         kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden'); 
     };
 
@@ -195,10 +185,7 @@
     };
 
     const hataGoster = (err) => { alert(err.message); };
-    const ekranGoster = (id) => {
-        ['auth-screen', 'signup-screen', 'reset-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden'));
-        document.getElementById(id).classList.remove('hidden');
-    };
+    const ekranGoster = (id) => { ['auth-screen', 'signup-screen', 'reset-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); };
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -207,6 +194,18 @@
             document.getElementById('user-email').innerText = user.email;
             verileriGetir(user.uid);
             duyurulariDinle(); 
+            // Admin Kontrolü
+            if (user.email === "emre121856031@gmail.com") {
+                const adminAlan = document.getElementById('admin-alan');
+                adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINLA</button>`;
+                adminAlan.onclick = () => {
+                    const mesaj = prompt("Duyuru metnini girin:");
+                    if(mesaj) {
+                        addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() });
+                        alert("Duyuru gönderildi!");
+                    }
+                };
+            }
         } else { ekranGoster('auth-screen'); }
     });
 
