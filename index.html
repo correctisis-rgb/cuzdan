@@ -175,24 +175,17 @@
     const auth = getAuth(app);
 
     // --- GÜNCELLENMİŞ OKUMA MANTIĞI ---
-    let worker;
-    async function getWorker() {
-        if (!worker) {
-            worker = await Tesseract.createWorker('tur');
-        }
-        return worker;
-    }
-
     async function kucultVeOku(file) {
+        const worker = await Tesseract.createWorker('tur');
         const bitmap = await createImageBitmap(file);
         const canvas = document.createElement('canvas');
-        const scale = 800 / bitmap.width;
-        canvas.width = 800;
+        const scale = 1200 / bitmap.width;
+        canvas.width = 1200;
         canvas.height = bitmap.height * scale;
         canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
         
-        const ocrWorker = await getWorker();
-        const { data: { text } } = await ocrWorker.recognize(canvas);
+        const { data: { text } } = await worker.recognize(canvas);
+        await worker.terminate();
         return text;
     }
 
@@ -205,21 +198,20 @@
         try {
             const text = await kucultVeOku(file);
             
-            // 1. "TOPLAM" anahtar kelimesi ile ara
-            const regex = /(?:TOPLAM|ÖDENECEK|TUTAR)\D*(\d{1,3}(?:\.\d{3})*,\d{2})/i;
+            // GELİŞMİŞ REGEX: Önce anahtar kelimeleri ara, bulamazsa en büyük sayıyı al
+            const regex = /(?:TOPLAM|ÖDENECEK|TUTAR)\D*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/i;
             const eslesme = text.match(regex);
 
             if (eslesme && eslesme[1]) {
-                document.getElementById('tutar').value = eslesme[1];
+                document.getElementById('tutar').value = eslesme[1].replace(/\./g, '').replace(',', '.').replace('.', ',');
             } else {
-                // 2. Bulamazsa en büyük sayıyı tahmin et
-                const tumSayilar = text.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+                const tumSayilar = text.match(/\d{1,3}(?:[.,]\d{3})*[.,]\d{2}/g);
                 if (tumSayilar) {
-                    const enBuyuk = tumSayilar.map(s => parseFloat(s.replace(/\./g, '').replace(',', '.')))
-                                              .reduce((a, b) => Math.max(a, b));
+                    const temizSayilar = tumSayilar.map(s => parseFloat(s.replace(/\./g, '').replace(',', '.')));
+                    const enBuyuk = Math.max(...temizSayilar);
                     document.getElementById('tutar').value = enBuyuk.toFixed(2).replace('.', ',');
                 } else {
-                    alert("Fiş tutarı otomatik okunamadı, lütfen manuel girin.");
+                    alert("Tutar otomatik okunamadı, lütfen manuel girin.");
                 }
             }
         } catch (err) { alert("Hata oluştu."); }
