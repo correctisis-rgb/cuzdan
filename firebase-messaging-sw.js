@@ -1,3 +1,4 @@
+// Compat yerine doğrudan modüler yapıyı kullanmak daha sağlıklıdır
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
@@ -10,13 +11,16 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Arka plan mesajlarını yakala (uygulama kapalıyken)
+// Arka plan mesajı geldiğinde otomatik bildirim oluşturur
+// Sadece title ve body geliyorsa ekstra bir işleme gerek kalmayabilir
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Arka plan mesajı geldi ', payload);
+  
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    };
+    icon: '' // İkon yolu doğru olduğundan emin olun
+  };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
