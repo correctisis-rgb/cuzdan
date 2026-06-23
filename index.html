@@ -175,6 +175,13 @@
     const auth = getAuth(app);
     const bildirimSesi = new Audio('bildirim.mp3');
 
+    // Ses izni kilidini açan fonksiyon
+    const sesKilidiniAc = () => {
+        bildirimSesi.play().then(() => bildirimSesi.pause()).catch(() => {});
+        document.body.removeEventListener('click', sesKilidiniAc);
+    };
+    document.body.addEventListener('click', sesKilidiniAc);
+
     async function kucultVeOku(file) {
         const worker = await Tesseract.createWorker('tur');
         const bitmap = await createImageBitmap(file);
@@ -259,13 +266,15 @@
             });
             document.getElementById('duyuru-listesi').innerHTML = html;
             
-            if (!snapshot.empty && snapshot.docs[0].id !== localStorage.getItem('sonOkunanDuyuruID')) {
+            if (uygulamaBaslatildi && !snapshot.empty && snapshot.docs[0].id !== localStorage.getItem('sonOkunanDuyuruID')) {
                 document.getElementById('bildirim-badge').style.display = 'block';
-                if (uygulamaBaslatildi) {
-                    bildirimSesi.play().catch(e => console.log("Ses oynatma izni bekleniyor."));
-                    document.getElementById('popup-metin').innerText = snapshot.docs[0].data().mesaj;
-                    document.getElementById('popup-duyuru').classList.remove('hidden');
-                }
+                bildirimSesi.play().catch(e => console.log("Ses oynatlamadı:", e));
+                document.getElementById('popup-metin').innerText = snapshot.docs[0].data().mesaj;
+                document.getElementById('popup-duyuru').classList.remove('hidden');
+            }
+            // İlk yüklemede bildirim sesi çalmaması için uygulamaBaslatildi kontrolü
+            if (!uygulamaBaslatildi) {
+                localStorage.setItem('sonOkunanDuyuruID', !snapshot.empty ? snapshot.docs[0].id : "");
             }
             uygulamaBaslatildi = true;
         });
