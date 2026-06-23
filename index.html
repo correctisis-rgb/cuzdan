@@ -171,14 +171,22 @@
 
     let uygulamaBaslatildi = false;
 
-    // Gelişmiş Formatlama (Ondalıklı)
-    const formatla = (sayi) => {
-        return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(sayi);
-    };
+    const formatla = (sayi) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(sayi);
+    document.getElementById('tutar').oninput = (e) => e.target.value = e.target.value.replace(/[^0-9,]/g, '');
 
-    // Tutar girişi için virgül düzenlemesi
-    document.getElementById('tutar').oninput = (e) => {
-        e.target.value = e.target.value.replace(/[^0-9,]/g, '');
+    // GÜNCELLENEN HATA GÖSTERME FONKSİYONU
+    const hataGoster = (err) => {
+        let mesaj = "Bir hata oluştu, lütfen tekrar deneyin.";
+        switch (err.code) {
+            case 'auth/invalid-email': mesaj = "Geçersiz e-posta adresi."; break;
+            case 'auth/user-not-found': mesaj = "Böyle bir kullanıcı bulunamadı."; break;
+            case 'auth/wrong-password': mesaj = "Hatalı şifre."; break;
+            case 'auth/email-already-in-use': mesaj = "Bu e-posta zaten kullanımda."; break;
+            case 'auth/weak-password': mesaj = "Şifreniz en az 6 karakter olmalı."; break;
+            case 'auth/invalid-credential': mesaj = "E-posta veya şifre hatalı."; break;
+            case 'auth/too-many-requests': mesaj = "Çok fazla deneme yaptınız, biraz bekleyin."; break;
+        }
+        alert(mesaj);
     };
 
     function duyurulariDinle() {
@@ -217,7 +225,6 @@
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
     document.getElementById('tarih').valueAsDate = new Date();
 
-    const hataGoster = (err) => { alert(err.message); };
     const ekranGoster = (id) => { ['auth-screen', 'signup-screen', 'reset-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); };
 
     onAuthStateChanged(auth, (user) => {
@@ -275,7 +282,7 @@
             await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value));
             await updatePassword(auth.currentUser, document.getElementById('yeni-sifre').value);
             alert("Şifre güncellendi!"); kapatPaneller();
-        } catch (e) { alert("Hata: " + e.message); }
+        } catch (e) { hataGoster(e); }
     };
 
     document.getElementById('btn-onceki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() - 1); verileriGetir(auth.currentUser.uid); };
@@ -316,11 +323,10 @@
     async function ekle(tur) {
         const aciklama = document.getElementById('aciklama').value;
         const kategori = document.getElementById('kategori').value;
-        // Virgülü noktaya çevirerek float değer alıyoruz
         const tutarVal = document.getElementById('tutar').value.replace(',', '.');
         const tutar = parseFloat(tutarVal);
         const tarihVal = document.getElementById('tarih').value;
-        if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return alert("Eksik veya hatalı bilgi!");
+        if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return alert("Lütfen tutarı ve açıklamayı kontrol edin!");
         const tarihObj = new Date(tarihVal);
         tarihObj.setHours(12, 0, 0, 0); 
         await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, tarih: tarihObj.getTime() });
