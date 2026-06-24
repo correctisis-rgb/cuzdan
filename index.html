@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Akıllı Cüzdan">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link class="apple-touch-icon" href="icon-192.png">
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -39,7 +39,7 @@
             backdrop-filter: blur(10px); 
             box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
             width: 96%; /* Yan boşlukları azaltmak için %90'dan artırıldı */
-            max-width: 380px; /* Biraz daha geniş bir max-width */
+            max-width: 380px; /* Giriş ekranları için ideal genişlik */
             text-align: center; 
             position: relative; 
             /* PWA modunda ekranı tam doldurması için dikey ayarlar güncellendi */
@@ -50,6 +50,13 @@
             gap: 4px; 
             box-sizing: border-box;
         }
+        /* Giriş sonrası ana arayüzün daha geniş ve ferah olması için özel kural */
+        .container.app-container {
+            max-width: 480px;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            gap: 2px; /* Elemanlar arası boşluğu kısarak listeye yer açıyoruz */
+        }
         /* Safe Area güncellemelerine göre ikon ve menü konumlandırmaları */
         .header-icons { position: absolute; top: calc(5px + env(safe-area-inset-top)); right: 10px; display: flex; gap: 5px; z-index: 20; }
         .icon-btn { background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; font-size: 14px; position: relative; }
@@ -57,22 +64,23 @@
         #profil-menu, #duyuru-menu { position: absolute; top: calc(40px + env(safe-area-inset-top)); right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
         #duyuru-menu { right: 45px; width: 220px; max-height: 250px; overflow-y: auto; }
         #popup-duyuru { position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 80%; max-width: 300px; background: white; color: black; padding: 20px; border-radius: 15px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
-        .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 25px; }
+        .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; }
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
-        h3 { margin: 2px 0; }
-        input, textarea, select { width: 100%; padding: 8px; margin: 2px 0; border: none; border-radius: 10px; font-size: 14px; box-sizing: border-box; font-family: inherit; }
-        button { padding: 6px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 2px; text-transform: uppercase; }
+        h3 { margin: 2px 0; font-size: 15px; }
+        input, textarea, select { width: 100%; padding: 6px; margin: 1px 0; border: none; border-radius: 10px; font-size: 13px; box-sizing: border-box; font-family: inherit; }
+        button { padding: 5px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 1px; text-transform: uppercase; }
         .close-btn { background: #666 !important; font-size: 10px; padding: 3px; margin-bottom: 5px; width: auto !important; }
         .link-text { font-size: 11px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 2px; }
-        .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.2); }
+        .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.2); height: 120px; }
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
+        td { padding: 3px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 12px; }
+        td small { font-size: 10px; }
         .hidden { display: none !important; }
         .coffee-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 10px; }
-        .footer-apps { margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
-        .app-box { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 5px; text-decoration: none; color: white; }
-        .app-icon { font-size: 30px; margin-bottom: 2px; }
-        .app-label { font-size: 10px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 5px; }
+        .footer-apps { margin-top: auto; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.2); }
+        .app-box { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 2px; text-decoration: none; color: white; }
+        .app-icon { font-size: 24px; margin-bottom: 1px; }
+        .app-label { font-size: 9px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -114,7 +122,7 @@
     <div class="link-text" id="btn-gecis-giris-2">Giriş ekranına dön</div>
 </div>
 
-<div class="container hidden" id="app-screen">
+<div class="container app-container hidden" id="app-screen">
     <div class="header-icons">
         <div class="icon-btn" id="btn-duyuru-ac">🔔<span id="bildirim-badge" class="badge">!</span></div>
         <div class="icon-btn" id="profil-baslik"></div>
@@ -177,7 +185,7 @@
 
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="text" id="tutar" placeholder="Tutar (Örn: 123.456,78)" inputmode="decimal">
-    <input type="date" id="tarih" style="padding: 5px; color: #555;">
+    <input type="date" id="tarih" style="padding: 4px; color: #555;">
     <select id="kategori">
         <option value="Genel">Genel</option>
         <option value="Maaş">Maaş</option>
@@ -194,7 +202,7 @@
     <div class="liste-alani">
         <table id="tablo"></table>
     </div>
-    <canvas id="grafik" style="max-height: 120px; margin-top: 5px;"></canvas>
+    <canvas id="grafik" style="max-height: 110px; margin-top: 3px;"></canvas>
 
     <div class="footer-apps">
         <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
