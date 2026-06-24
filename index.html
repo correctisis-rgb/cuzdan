@@ -32,26 +32,29 @@
         .container { 
             background: rgba(255, 255, 255, 0.15); 
             padding: 0.8rem; 
-            padding-top: calc(0.8rem + env(safe-area-inset-top));
-            padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
+            /* iOS PWA modunda kenar boşluklarını en aza indirmek için güncellendi */
+            padding-top: calc(0.5rem + env(safe-area-inset-top));
+            padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
             border-radius: 20px; 
             backdrop-filter: blur(10px); 
             box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
-            width: 90%; 
-            max-width: 350px; 
+            width: 96%; /* Yan boşlukları azaltmak için %90'dan artırıldı */
+            max-width: 380px; /* Biraz daha geniş bir max-width */
             text-align: center; 
             position: relative; 
-            height: 90dvh;
-            max-height: 95dvh; 
+            /* PWA modunda ekranı tam doldurması için dikey ayarlar güncellendi */
+            height: calc(100dvh - 0.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+            max-height: 98dvh; /* Max yükseklik PWA'da tam ekrana yaklaştırıldı */
             display: flex; 
             flex-direction: column; 
             gap: 4px; 
             box-sizing: border-box;
         }
-        .header-icons { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 10px; display: flex; gap: 5px; z-index: 20; }
+        /* Safe Area güncellemelerine göre ikon ve menü konumlandırmaları */
+        .header-icons { position: absolute; top: calc(5px + env(safe-area-inset-top)); right: 10px; display: flex; gap: 5px; z-index: 20; }
         .icon-btn { background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; font-size: 14px; position: relative; }
         .badge { position: absolute; top: -2px; right: -2px; background: red; color: white; border-radius: 50%; width: 12px; height: 12px; font-size: 8px; line-height: 12px; display: none; }
-        #profil-menu, #duyuru-menu { position: absolute; top: calc(45px + env(safe-area-inset-top)); right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
+        #profil-menu, #duyuru-menu { position: absolute; top: calc(40px + env(safe-area-inset-top)); right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
         #duyuru-menu { right: 45px; width: 220px; max-height: 250px; overflow-y: auto; }
         #popup-duyuru { position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 80%; max-width: 300px; background: white; color: black; padding: 20px; border-radius: 15px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
         .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 25px; }
@@ -366,7 +369,7 @@
             duyurulariDinle();
             if (user.email === "emre121856031@gmail.com") {
                 const adminAlan = document.getElementById('admin-alan');
-                adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINLA</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
+                adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
                 adminAlan.querySelector('button').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
                 document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
             } else { document.getElementById('admin-alan').innerHTML = ''; }
