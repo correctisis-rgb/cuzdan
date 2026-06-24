@@ -1,6 +1,6 @@
 {
   "name": "Akıllı Cüzdan",
-  "short_name": "Cüzdan",
+  "short_name": "Akıllı Cüzdan",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#1c2137",
