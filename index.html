@@ -31,31 +31,39 @@
         }
         .container { 
             background: rgba(255, 255, 255, 0.15); 
-            padding: 0.8rem; 
-            /* iOS PWA modunda kenar boşluklarını en aza indirmek için güncellendi */
-            padding-top: calc(0.5rem + env(safe-area-inset-top));
-            padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+            padding: 1.2rem; 
+            padding-top: calc(1rem + env(safe-area-inset-top));
+            padding-bottom: calc(1rem + env(safe-area-inset-bottom));
             border-radius: 20px; 
             backdrop-filter: blur(10px); 
             box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
-            width: 96%; /* Yan boşlukları azaltmak için %90'dan artırıldı */
-            max-width: 380px; /* Giriş ekranları için ideal genişlik */
+            width: 90%; 
+            max-width: 360px; /* Giriş ekranları için ideal genişlik */
             text-align: center; 
             position: relative; 
-            /* PWA modunda ekranı tam doldurması için dikey ayarlar güncellendi */
-            height: calc(100dvh - 0.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-            max-height: 98dvh; /* Max yükseklik PWA'da tam ekrana yaklaştırıldı */
             display: flex; 
             flex-direction: column; 
-            gap: 4px; 
+            gap: 10px; 
             box-sizing: border-box;
+            /* Giriş ekranlarının ekranda tam dikey ortalanması için otomatik dikey boşluklar */
+            margin-top: auto;
+            margin-bottom: auto;
+            height: auto;
         }
-        /* Giriş sonrası ana arayüzün daha geniş ve ferah olması için özel kural */
+        /* Giriş sonrası ana arayüzün daha geniş, ferah ve tam ekran olması için özel kural */
         .container.app-container {
+            width: 96%;
             max-width: 480px;
+            padding: 0.8rem;
             padding-left: 1rem;
             padding-right: 1rem;
+            padding-top: calc(0.5rem + env(safe-area-inset-top));
+            padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
             gap: 2px; /* Elemanlar arası boşluğu kısarak listeye yer açıyoruz */
+            height: calc(100dvh - 0.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+            max-height: 98dvh; /* Max yükseklik PWA'da tam ekrana yaklaştırıldı */
+            margin-top: unset;
+            margin-bottom: unset;
         }
         /* Safe Area güncellemelerine göre ikon ve menü konumlandırmaları */
         .header-icons { position: absolute; top: calc(5px + env(safe-area-inset-top)); right: 10px; display: flex; gap: 5px; z-index: 20; }
@@ -67,17 +75,20 @@
         .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; }
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
         h3 { margin: 2px 0; font-size: 15px; }
-        input, textarea, select { width: 100%; padding: 6px; margin: 1px 0; border: none; border-radius: 10px; font-size: 13px; box-sizing: border-box; font-family: inherit; }
-        button { padding: 5px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 1px; text-transform: uppercase; }
-        .close-btn { background: #666 !important; font-size: 10px; padding: 3px; margin-bottom: 5px; width: auto !important; }
-        .link-text { font-size: 11px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 2px; }
+        input, textarea, select { width: 100%; padding: 8px; margin: 1px 0; border: none; border-radius: 10px; font-size: 13px; box-sizing: border-box; font-family: inherit; }
+        .container.app-container input, .container.app-container select { padding: 6px; }
+        button { padding: 8px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 1px; text-transform: uppercase; }
+        .container.app-container button { padding: 5px; }
+        .close-btn { background: #666 !important; font-size: 10px; padding: 3px !important; margin-bottom: 5px; width: auto !important; }
+        .link-text { font-size: 12px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 4px; margin-bottom: 4px; }
         .liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.2); height: 120px; }
         table { width: 100%; border-collapse: collapse; }
         td { padding: 3px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 12px; }
         td small { font-size: 10px; }
         .hidden { display: none !important; }
         .coffee-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 10px; }
-        .footer-apps { margin-top: auto; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.2); }
+        .footer-apps { margin-top: 15px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2); }
+        .container.app-container .footer-apps { margin-top: auto; padding-top: 5px; }
         .app-box { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 2px; text-decoration: none; color: white; }
         .app-icon { font-size: 24px; margin-bottom: 1px; }
         .app-label { font-size: 9px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 5px; }
