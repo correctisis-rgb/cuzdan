@@ -136,11 +136,18 @@
 
     <div id="profil-menu" class="hidden">
         <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
+        <button id="btn-rapor-menu" style="background:#10b981; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Rapor / Grafik</button>
         <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
         <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
         <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
         <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
         <div id="admin-alan"></div>
+    </div>
+
+    <div id="grafik-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.15); border-radius:10px;">
+        <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
+        <div style="font-weight:bold; margin-bottom:5px; font-size:13px; text-align:center;">📊 AYLIK RAPOR GRAFİĞİ</div>
+        <canvas id="grafik" style="max-height: 140px; margin-top: 5px; width: 100%;"></canvas>
     </div>
 
     <div id="sifre-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
@@ -202,7 +209,6 @@
     <div class="liste-alani">
         <table id="tablo"></table>
     </div>
-    <canvas id="grafik" style="max-height: 110px; margin-top: 3px;"></canvas>
 
     <div class="footer-apps">
         <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
@@ -354,7 +360,7 @@
     }
 
     window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-    window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel'].forEach(id => document.getElementById(id).classList.add('hidden')); };
+    window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel'].forEach(id => document.getElementById(id).classList.add('hidden')); };
 
     document.getElementById('btn-duyuru-ac').onclick = () => { 
         document.getElementById('bildirim-badge').style.display = 'none';
@@ -410,6 +416,7 @@
     document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); };
     document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); };
     document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
+    document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); };
 
     document.getElementById('btn-bildirim-gonder').onclick = async () => {
         const metin = document.getElementById('bildirim-metni').value;
