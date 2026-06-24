@@ -19,7 +19,7 @@
             margin: 0; 
             overflow: hidden; 
             font-family: 'Segoe UI', sans-serif; 
-            background-color: #1c2137; /* iOS kaydırma esnemelerinde beyaz arka planı engeller */
+            background-color: #1c2137; 
         }
         body { 
             background: linear-gradient(135deg, #1c2137 0%, #764ba2 100%); 
@@ -38,19 +38,17 @@
             backdrop-filter: blur(10px); 
             box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
             width: 90%; 
-            max-width: 360px; /* Giriş ekranları için ideal genişlik */
+            max-width: 360px; 
             text-align: center; 
             position: relative; 
             display: flex; 
             flex-direction: column; 
             gap: 10px; 
             box-sizing: border-box;
-            /* Giriş ekranlarının ekranda tam dikey ortalanması için otomatik dikey boşluklar */
             margin-top: auto;
             margin-bottom: auto;
             height: auto;
         }
-        /* Giriş sonrası ana arayüzün daha geniş, ferah ve tam ekran olması için özel kural */
         .container.app-container {
             width: 96%;
             max-width: 480px;
@@ -59,13 +57,12 @@
             padding-right: 1rem;
             padding-top: calc(0.5rem + env(safe-area-inset-top));
             padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
-            gap: 2px; /* Elemanlar arası boşluğu kısarak listeye yer açıyoruz */
+            gap: 2px; 
             height: calc(100dvh - 0.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-            max-height: 98dvh; /* Max yükseklik PWA'da tam ekrana yaklaştırıldı */
+            max-height: 98dvh; 
             margin-top: unset;
             margin-bottom: unset;
         }
-        /* Safe Area güncellemelerine göre ikon ve menü konumlandırmaları */
         .header-icons { position: absolute; top: calc(5px + env(safe-area-inset-top)); right: 10px; display: flex; gap: 5px; z-index: 20; }
         .icon-btn { background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; font-size: 14px; position: relative; }
         .badge { position: absolute; top: -2px; right: -2px; background: red; color: white; border-radius: 50%; width: 12px; height: 12px; font-size: 8px; line-height: 12px; display: none; }
@@ -302,7 +299,7 @@
         btn.innerText = "📷 FİŞİ OTOMATİK OKUT";
     };
 
-    let uygulamaBaslatildi = false;
+    let unsubDuyuru = null; // Mükerrer dinlemeleri engellemek için referans
     const formatla = (sayi) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(sayi);
     
     document.getElementById('tutar').oninput = (e) => {
@@ -313,7 +310,6 @@
         e.target.value = parts.length > 1 ? tamKisim + ',' + parts[1].substring(0, 2) : tamKisim;
     };
     
-    // Kategori Tahmin Sistemi
     document.getElementById('aciklama').addEventListener('input', (e) => {
         const metin = e.target.value.toLowerCase();
         const kategoriSelect = document.getElementById('kategori');
@@ -345,7 +341,12 @@
     };
 
     function duyurulariDinle() {
-        onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
+        // Eğer zaten aktif bir dinleyici varsa önce onu kapatıyoruz (Giriş çıkışlarda üst üste binmesin)
+        if (unsubDuyuru) unsubDuyuru();
+
+        let isInitialLoad = true; // İlk yükleme kontrolü için kesin bayrak
+
+        unsubDuyuru = onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
             const isAdmin = auth.currentUser && auth.currentUser.email === "emre121856031@gmail.com";
             let html = "";
             snapshot.forEach(d => {
@@ -357,16 +358,22 @@
             });
             document.getElementById('duyuru-listesi').innerHTML = html;
             
-            if (uygulamaBaslatildi && !snapshot.empty && snapshot.docs[0].id !== localStorage.getItem('sonOkunanDuyuruID')) {
-                document.getElementById('bildirim-badge').style.display = 'block';
-                bildirimSesi.play().catch(e => console.log("Ses oynatlamadı:", e));
-                document.getElementById('popup-metin').innerText = snapshot.docs[0].data().mesaj;
-                document.getElementById('popup-duyuru').classList.remove('hidden');
+            // Eğer veritabanı boş değilse ve İLK yükleme bittiyse (Gerçek zamanlı yeni eklenen veri varsa)
+            if (!isInitialLoad && !snapshot.empty) {
+                const enYeniDuyuru = snapshot.docs[0];
+                if (enYeniDuyuru.id !== localStorage.getItem('sonOkunanDuyuruID')) {
+                    document.getElementById('bildirim-badge').style.display = 'block';
+                    bildirimSesi.play().catch(e => console.log("Ses oynatılamadı:", e));
+                    document.getElementById('popup-metin').innerText = enYeniDuyuru.data().mesaj;
+                    document.getElementById('popup-duyuru').classList.remove('hidden');
+                }
             }
-            if (!uygulamaBaslatildi) {
-                localStorage.setItem('sonOkunanDuyuruID', !snapshot.empty ? snapshot.docs[0].id : "");
+            
+            // İlk açılış verilerini çektikten sonra local storage'ı güncelle ve ilk yükleme durumunu bitir
+            if (!snapshot.empty) {
+                localStorage.setItem('sonOkunanDuyuruID', snapshot.docs[0].id);
             }
-            uygulamaBaslatildi = true;
+            isInitialLoad = false; // İlk yükleme bitti, artık sonraki her tetiklenme YENİ duyurudur.
         });
     }
 
@@ -391,14 +398,17 @@
             document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
             document.getElementById('user-email').innerText = user.email;
             verileriGetir(user.uid);
-            duyurulariDinle();
+            duyurulariDinle(); // Kullanıcı oturumu doğrulandığında dinleyiciyi sıfırdan kurar
             if (user.email === "emre121856031@gmail.com") {
                 const adminAlan = document.getElementById('admin-alan');
                 adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
                 adminAlan.querySelector('button').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
                 document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
             } else { document.getElementById('admin-alan').innerHTML = ''; }
-        } else { ekranGoster('auth-screen'); }
+        } else { 
+            ekranGoster('auth-screen'); 
+            if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; } // Çıkış yapıldığında dinleyiciyi tamamen kapatır
+        }
     });
 
     async function mesajlariGetir() {
