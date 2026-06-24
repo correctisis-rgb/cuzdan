@@ -124,7 +124,7 @@
 </div>
 
 <div class="container hidden" id="reset-screen">
-    <h2>ŞİFRE SIFIRLA</h2>
+    <h2>ŞIFA SIFIRLA</h2>
     <input type="email" id="reset-email" placeholder="Kayıtlı E-posta adresiniz">
     <button id="btn-sifre-onay-mail" style="background:#f59e0b;">Gönder</button>
     <div class="link-text" id="btn-gecis-giris-2">Giriş ekranına dön</div>
@@ -145,6 +145,7 @@
     <div id="profil-menu" class="hidden">
         <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
         <button id="btn-rapor-menu" style="background:#10b981; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Rapor / Grafik</button>
+        <button id="btn-excel-aktar" style="background:#059669; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Excel'e Aktar</button>
         <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
         <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
         <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
@@ -341,10 +342,9 @@
     };
 
     function duyurulariDinle() {
-        // Eğer zaten aktif bir dinleyici varsa önce onu kapatıyoruz (Giriş çıkışlarda üst üste binmesin)
         if (unsubDuyuru) unsubDuyuru();
 
-        let isInitialLoad = true; // İlk yükleme kontrolü için kesin bayrak
+        let isInitialLoad = true;
 
         unsubDuyuru = onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
             const isAdmin = auth.currentUser && auth.currentUser.email === "emre121856031@gmail.com";
@@ -358,7 +358,6 @@
             });
             document.getElementById('duyuru-listesi').innerHTML = html;
             
-            // Eğer veritabanı boş değilse ve İLK yükleme bittiyse (Gerçek zamanlı yeni eklenen veri varsa)
             if (!isInitialLoad && !snapshot.empty) {
                 const enYeniDuyuru = snapshot.docs[0];
                 if (enYeniDuyuru.id !== localStorage.getItem('sonOkunanDuyuruID')) {
@@ -369,11 +368,10 @@
                 }
             }
             
-            // İlk açılış verilerini çektikten sonra local storage'ı güncelle ve ilk yükleme durumunu bitir
             if (!snapshot.empty) {
                 localStorage.setItem('sonOkunanDuyuruID', snapshot.docs[0].id);
             }
-            isInitialLoad = false; // İlk yükleme bitti, artık sonraki her tetiklenme YENİ duyurudur.
+            isInitialLoad = false;
         });
     }
 
@@ -386,7 +384,7 @@
         kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden'); 
     };
 
-    let myChart, seciliTarih = new Date();
+    let myChart, seciliTarih = new Date(), mevcutAyVerileri = []; // Excel aktarımı için verileri global kapsamda saklıyoruz
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
     document.getElementById('tarih').valueAsDate = new Date();
 
@@ -398,7 +396,7 @@
             document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
             document.getElementById('user-email').innerText = user.email;
             verileriGetir(user.uid);
-            duyurulariDinle(); // Kullanıcı oturumu doğrulandığında dinleyiciyi sıfırdan kurar
+            duyurulariDinle();
             if (user.email === "emre121856031@gmail.com") {
                 const adminAlan = document.getElementById('admin-alan');
                 adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
@@ -407,7 +405,7 @@
             } else { document.getElementById('admin-alan').innerHTML = ''; }
         } else { 
             ekranGoster('auth-screen'); 
-            if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; } // Çıkış yapıldığında dinleyiciyi tamamen kapatır
+            if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
         }
     });
 
@@ -438,6 +436,41 @@
     document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); };
     document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
     document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); };
+
+    // Excel'e Aktarma Fonksiyonu
+    document.getElementById('btn-excel-aktar').onclick = () => {
+        if (mevcutAyVerileri.length === 0) {
+            alert("Bu aya ait aktarılacak işlem bulunamadı.");
+            return;
+        }
+
+        // CSV Başlık satırı (Excel'in düzgün ayırması için noktalı virgül kullanıyoruz)
+        let csvContent = "\uFEFF"; // Türkçe karakterlerin Excel'de düzgün açılması için UTF-8 BOM ekliyoruz
+        csvContent += "Tarih;Açıklama;Kategori;Tür;Tutar (TL)\n";
+
+        // Verileri satır satır ekleme
+        mevcutAyVerileri.forEach(islem => {
+            const islemTarihi = new Date(islem.tarih).toLocaleDateString('tr-TR');
+            const turMetni = islem.tur === 'gelir' ? 'Gelir (+)' : 'Gider (-)';
+            const temizAciklama = islem.aciklama.replace(/;/g, ','); // CSV yapısını bozmaması için noktalı virgülleri virgüle çeviriyoruz
+            
+            csvContent += `${islemTarihi};${temizAciklama};${islem.kategori};${turMetni};${formatla(islem.tutar)}\n`;
+        });
+
+        // Dosyayı oluşturma ve indirme tetikleme
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const dosyaAdi = `Akilli_Cuzdan_Rapor_${ayIsimleri[seciliTarih.getMonth()]}_${seciliTarih.getFullYear()}.csv`;
+        
+        link.setAttribute("href", url);
+        link.setAttribute("download", dosyaAdi);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        kapatPaneller();
+    };
 
     document.getElementById('btn-bildirim-gonder').onclick = async () => {
         const metin = document.getElementById('bildirim-metni').value;
@@ -471,10 +504,14 @@
                     else { bakiye -= data.tutar; const kat = data.kategori || 'Genel'; kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar; }
                 }
             });
+
+            veriler.sort((a, b) => b.tarih - a.tarih);
+            mevcutAyVerileri = veriler; // Excel butonu için güncel listeyi sakla
+
             document.getElementById('bakiye').innerText = formatla(bakiye);
             document.getElementById('bakiye').style.color = (bakiye < 0) ? "#ef4444" : "white";
             let html = "";
-            veriler.sort((a, b) => b.tarih - a.tarih).forEach(d => {
+            veriler.forEach(d => {
                 const t = new Date(d.tarih);
                 html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td></tr>`;
             });
