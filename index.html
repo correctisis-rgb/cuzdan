@@ -1,15 +1,12 @@
 <!DOCTYPE html>
 <html lang="tr" style="height: 100%; overflow: hidden;">
 <head>
-<link rel="icon" type="image/x-icon" href="favicon.ico">
-
-    
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="manifest" href="manifest.json">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Akıllı Cüzdan">
-<link rel="apple-touch-icon" href="icon-192.png">
-
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Akıllı Cüzdan">
+    <link rel="apple-touch-icon" href="icon-192.png">
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -17,13 +14,44 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
-        html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        body { background: linear-gradient(135deg, #1c2137 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; color: white; }
-        .container { background: rgba(255, 255, 255, 0.15); padding: 0.8rem; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 90%; max-width: 350px; text-align: center; position: relative; max-height: 95vh; display: flex; flex-direction: column; gap: 4px; }
-        .header-icons { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; z-index: 20; }
+        html, body { 
+            height: 100dvh; 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: #1c2137; /* iOS kaydırma esnemelerinde beyaz arka planı engeller */
+        }
+        body { 
+            background: linear-gradient(135deg, #1c2137 0%, #764ba2 100%); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            color: white; 
+            height: 100dvh;
+        }
+        .container { 
+            background: rgba(255, 255, 255, 0.15); 
+            padding: 0.8rem; 
+            padding-top: calc(0.8rem + env(safe-area-inset-top));
+            padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
+            border-radius: 20px; 
+            backdrop-filter: blur(10px); 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
+            width: 90%; 
+            max-width: 350px; 
+            text-align: center; 
+            position: relative; 
+            height: 90dvh;
+            max-height: 95dvh; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 4px; 
+            box-sizing: border-box;
+        }
+        .header-icons { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 10px; display: flex; gap: 5px; z-index: 20; }
         .icon-btn { background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; font-size: 14px; position: relative; }
         .badge { position: absolute; top: -2px; right: -2px; background: red; color: white; border-radius: 50%; width: 12px; height: 12px; font-size: 8px; line-height: 12px; display: none; }
-        #profil-menu, #duyuru-menu { position: absolute; top: 45px; right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
+        #profil-menu, #duyuru-menu { position: absolute; top: calc(45px + env(safe-area-inset-top)); right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
         #duyuru-menu { right: 45px; width: 220px; max-height: 250px; overflow-y: auto; }
         #popup-duyuru { position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 80%; max-width: 300px; background: white; color: black; padding: 20px; border-radius: 15px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
         .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 25px; }
@@ -256,31 +284,32 @@
         tamKisim = tamKisim.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         e.target.value = parts.length > 1 ? tamKisim + ',' + parts[1].substring(0, 2) : tamKisim;
     };
-// Kategori Tahmin Sistemi
-document.getElementById('aciklama').addEventListener('input', (e) => {
-    const metin = e.target.value.toLowerCase();
-    const kategoriSelect = document.getElementById('kategori');
     
-    // Hepsi küçük harf olmalı ki toLowerCase() ile eşleşebilsin
-    if (metin.includes('market') || metin.includes('bakkal') || metin.includes('file') || 
-        metin.includes('hakmar') || metin.includes('a101') || metin.includes('bim') || 
-        metin.includes('migros') || metin.includes('alışveriş')) {
-        kategoriSelect.value = 'Market';
-    } 
-    else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || 
-             metin.includes('telefon') || metin.includes('vodafone') || metin.includes('internet')) {
-        kategoriSelect.value = 'Fatura';
-    } 
-    else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt')) {
-        kategoriSelect.value = 'Ulaşım';
-    } 
-    else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser')) {
-        kategoriSelect.value = 'Eğlence';
-    } 
-    else if (metin.includes('maaş')) {
-        kategoriSelect.value = 'Maaş';
-    }
-});
+    // Kategori Tahmin Sistemi
+    document.getElementById('aciklama').addEventListener('input', (e) => {
+        const metin = e.target.value.toLowerCase();
+        const kategoriSelect = document.getElementById('kategori');
+        
+        if (metin.includes('market') || metin.includes('bakkal') || metin.includes('file') || 
+            metin.includes('hakmar') || metin.includes('a101') || metin.includes('bim') || 
+            metin.includes('migros') || metin.includes('alışveriş')) {
+            kategoriSelect.value = 'Market';
+        } 
+        else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || 
+                 metin.includes('telefon') || metin.includes('vodafone') || metin.includes('internet')) {
+            kategoriSelect.value = 'Fatura';
+        } 
+        else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt')) {
+            kategoriSelect.value = 'Ulaşım';
+        } 
+        else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser')) {
+            kategoriSelect.value = 'Eğlence';
+        } 
+        else if (metin.includes('maaş')) {
+            kategoriSelect.value = 'Maaş';
+        }
+    });
+
     const hataGoster = (err) => {
         let mesaj = "Bir hata oluştu.";
         if(err.code === 'auth/invalid-credential') mesaj = "E-posta veya şifre hatalı.";
@@ -306,7 +335,6 @@ document.getElementById('aciklama').addEventListener('input', (e) => {
                 document.getElementById('popup-metin').innerText = snapshot.docs[0].data().mesaj;
                 document.getElementById('popup-duyuru').classList.remove('hidden');
             }
-            // İlk yüklemede bildirim sesi çalmaması için uygulamaBaslatildi kontrolü
             if (!uygulamaBaslatildi) {
                 localStorage.setItem('sonOkunanDuyuruID', !snapshot.empty ? snapshot.docs[0].id : "");
             }
