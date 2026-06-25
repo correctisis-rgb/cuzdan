@@ -576,7 +576,13 @@ onAuthStateChanged(auth, (user) => {
             verileriGetir(user.uid); 
             console.log("Çevrimdışı mod: Önbellek verileri kullanılıyor.");
         }
-        
+         if (user.email === "emre121856031@gmail.com") {
+                const adminAlan = document.getElementById('admin-alan');
+                adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
+                adminAlan.querySelector('button').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
+                document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
+            } else { document.getElementById('admin-alan').innerHTML = ''; }
+        }
         // ... (admin kontrolleri aynı kalabilir) ...
     } else { 
         ekranGoster('auth-screen'); 
