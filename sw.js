@@ -1,28 +1,28 @@
 const CACHE_NAME = 'akilli-cuzdan-v1';
 const ASSETS = [
     './',
-    './index.html'
-    // İkonlarını veya diğer statik dosyalarını buraya ekleyebilirsin
+    './index.html',
+    'https://cdn.jsdelivr.net/npm/chart.js',
+    'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
 ];
 
-// Yükleme aşaması: Dosyaları önbelleğe al
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS);
-        })
-    );
+    self.skipWaiting(); // Yeni versiyon yüklendiğinde hemen devreye gir
+    event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
 });
 
-// Fetch aşaması: İnternet yoksa önbellekten getir
 self.addEventListener('fetch', (event) => {
+    // API çağrılarını (firebase) önbelleğe alma, doğrudan ağa gönder
+    if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('identitytoolkit')) {
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then((response) => {
-            // Önbellekte varsa onu döndür, yoksa internetten çek
-            return response || fetch(event.request).catch(() => {
-                // Eğer hiçbir şey bulunamazsa (null dönerse) 
-                // hata yerine boş bir yanıt veya fallback döndür
-                return new Response('Çevrimdışı modda içerik bulunamadı.');
+            // Önce önbellekte ara
+            return response || fetch(event.request).then(fetchResponse => {
+                // Ağdan başarılı gelirse, önbelleği güncelle (Opsiyonel)
+                return fetchResponse;
             });
         })
     );
