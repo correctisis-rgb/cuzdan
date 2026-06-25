@@ -14,6 +14,24 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
+
+        :root {
+    --bg-gradient: linear-gradient(135deg, #1c2137 0%, #764ba2 100%);
+    --container-bg: rgba(255, 255, 255, 0.15);
+}
+
+/* Tema 2: Koyu Orman */
+body.tema-orman { --bg-gradient: linear-gradient(135deg, #1a2e1a 0%, #2d5a27 100%); }
+
+/* Tema 3: Gün Batımı */
+body.tema-gunbatimi { --bg-gradient: linear-gradient(135deg, #4c1d95 0%, #db2777 100%); }
+
+/* Mevcut stillerdeki sabit renkleri değişkenlerle değiştirin */
+body { background: var(--bg-gradient); }
+.container { background: var(--container-bg); }
+#splash-screen { background: var(--bg-gradient); }
+
+        
         html, body { 
             height: 100dvh; 
             margin: 0; 
@@ -257,6 +275,14 @@
         <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
         <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
         <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
+        <div style="margin: 10px 0; border-top: 1px solid #ccc; padding-top: 5px;">
+    <small>Tema Seçimi:</small>
+        <select id="tema-secici" style="margin-top:5px; color:black;">
+        <option value="default">Varsayılan (Mor)</option>
+        <option value="tema-orman">Koyu Orman</option>
+        <option value="tema-gunbatimi">Gün Batımı</option>
+        </select>
+        </div>
         <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
         <div id="admin-alan"></div>
     </div>
@@ -841,6 +867,26 @@ onAuthStateChanged(auth, (user) => {
             if (onay) { await ekle(tur); }
         };
     }
+
+
+// Tema değiştirme mantığı
+const temaSecici = document.getElementById('tema-secici');
+
+temaSecici.onchange = () => {
+    const secilen = temaSecici.value;
+    document.body.className = secilen;
+    localStorage.setItem('kullaniciTemasi', secilen);
+};
+
+// Uygulama açılışında kayıtlı temayı yükle
+window.addEventListener('DOMContentLoaded', () => {
+    const kaydedilenTema = localStorage.getItem('kullaniciTemasi');
+    if (kaydedilenTema) {
+        document.body.className = kaydedilenTema;
+        temaSecici.value = kaydedilenTema;
+    }
+});
+    
 </script>
 </body>
 </html>
