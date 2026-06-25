@@ -29,6 +29,24 @@
             color: white; 
             height: 100dvh;
         }
+        /* Çevrimdışı Uyarı Çubuğu Stili */
+        #offline-uyari {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ef4444;
+            color: white;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px 0;
+            z-index: 10001;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+        }
+        .offline-gizle { transform: translateY(-100%); }
+
         /* Açılış ve Yükleme Ekranı Stilleri */
         #splash-screen {
             position: fixed;
@@ -152,13 +170,7 @@
         .app-label { font-size: 9px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 5px; }
         .borc-satir { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px; }
         
-        /* Yan yana ve belirgin butonlar için yeni stil grupları */
-        .butor-group-row {
-            display: flex;
-            gap: 6px;
-            margin: 3px 0;
-            width: 100%;
-        }
+        .butor-group-row { display: flex; gap: 6px; margin: 3px 0; width: 100%; }
         .belirgin-btn {
             flex: 1;
             padding: 8px 4px !important;
@@ -173,13 +185,12 @@
             gap: 4px;
             border: 1px solid rgba(255,255,255,0.1) !important;
         }
-        .belirgin-btn:active {
-            transform: scale(0.97);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
+        .belirgin-btn:active { transform: scale(0.97); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
+
+<div id="offline-uyari" class="offline-gizle">⚡ İNTERNET BAĞLANTISI YOK - ÇEVRİMDIŞI ÇALIŞILIYOR ⚡</div>
 
 <div id="splash-screen">
     <div class="splash-logo">👛</div>
@@ -344,16 +355,34 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    // Firestore importları Çevrimdışı Çalışma (Offline Cache) destekleyecek şekilde modern metotlarla güncellendi
+    import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    
+    // Veritabanını çevrimdışı (offline) önbellek (cache) aktif olacak şekilde başlatıyoruz
+    const db = initializeFirestore(app, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+    
     const auth = getAuth(app);
     const bildirimSesi = new Audio('bildirim.mp3');
 
-    // Ses izni kilidini açan fonksiyon
+    // İnternet Durumunu Takip Eden ve UI Güncelleyen Fonksiyonlar
+    const offlineUyari = document.getElementById('offline-uyari');
+    window.addEventListener('offline', () => offlineUyari.classList.remove('offline-gizle'));
+    window.addEventListener('online', () => offlineUyari.classList.add('offline-gizle'));
+    if (!navigator.onLine) offlineUyari.classList.remove('offline-gizle');
+
+    // Service Worker Kaydı (Tam çevrimdışı arayüz için sw.js gereklidir)
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(() => console.log('ServiceWorker bulunamadı, sadece veritabanı çevrimdışı çalışacak.'));
+        });
+    }
+
     const sesKilidiniAc = () => {
         bildirimSesi.play().then(() => bildirimSesi.pause()).catch(() => {});
         document.body.removeEventListener('click', sesKilidiniAc);
@@ -414,7 +443,7 @@
         btn.innerText = "📷 FİŞİ OKUT";
     };
 
-    let unsubDuyuru = null; // Mükerrer dinlemeleri engellemek için referans
+    let unsubDuyuru = null; 
     const formatla = (sayi) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(sayi);
     
     document.getElementById('tutar').oninput = (e) => {
@@ -455,12 +484,12 @@
     });
 
     const hataGoster = (err) => {
+        if (!navigator.onLine) { alert("Bu işlem için internet bağlantısı gerekiyor."); return; }
         let mesaj = "Bir hata oluştu.";
         if(err.code === 'auth/invalid-credential') mesaj = "E-posta veya şifre hatalı.";
         alert(mesaj);
     };
 
-    // Yeni Şifre Politikası Doğrulama Fonksiyonu (8 Karakter, Büyük, Küçük, Sembol)
     const sifrePolitikasiKontrol = (sifre) => {
         const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
         return regex.test(sifre);
@@ -469,7 +498,6 @@
 
     function duyurulariDinle() {
         if (unsubDuyuru) unsubDuyuru();
-
         let isInitialLoad = true;
 
         unsubDuyuru = onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
@@ -484,7 +512,7 @@
             });
             document.getElementById('duyuru-listesi').innerHTML = html;
             
-            if (!isInitialLoad && !snapshot.empty) {
+            if (!isInitialLoad && !snapshot.empty && navigator.onLine) {
                 const enYeniDuyuru = snapshot.docs[0];
                 if (enYeniDuyuru.id !== localStorage.getItem('sonOkunanDuyuruID')) {
                     document.getElementById('bildirim-badge').style.display = 'block';
@@ -510,13 +538,12 @@
         kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden'); 
     };
 
-    let myChart, seciliTarih = new Date(), mevcutAyVerileri = []; // Excel aktarımı için verileri global kapsamda saklıyoruz
+    let myChart, seciliTarih = new Date(), mevcutAyVerileri = []; 
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
     document.getElementById('tarih').valueAsDate = new Date();
 
     const ekranGoster = (id) => { ['auth-screen', 'signup-screen', 'reset-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); };
 
-    // Açılış Ekranını Yumuşakça Gizleyen Yardımcı Fonksiyon
     const splashGizle = () => {
         const splash = document.getElementById('splash-screen');
         if (splash) {
@@ -543,11 +570,11 @@
             if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
         }
         
-        // İlk yüklenme durumunda Firebase yanıt verdiği an splash ekranını 1 saniye içinde kapatıyoruz
         setTimeout(splashGizle, 1000);
     });
 
     async function mesajlariGetir() {
+        if(!navigator.onLine) { alert("Mesajları görmek için internete bağlanın."); return; }
         kapatPaneller();
         document.getElementById('mesajlar-panel').classList.remove('hidden');
         const snapshot = await getDocs(collection(db, "bildirimler"));
@@ -563,13 +590,9 @@
 
     document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster);
     
-    // Şifre politikası entegre edilmiş Kayıt Ol Butonu
     document.getElementById('btn-kayit-ol').onclick = () => {
         const girilenSifre = document.getElementById('signup-sifre').value;
-        if (!sifrePolitikasiKontrol(girilenSifre)) {
-            alert(sifreHataMesaji);
-            return;
-        }
+        if (!sifrePolitikasiKontrol(girilenSifre)) { alert(sifreHataMesaji); return; }
         createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, girilenSifre).catch(hataGoster);
     };
 
@@ -577,7 +600,6 @@
     document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
     document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
     document.getElementById('btn-gecis-giris-2').onclick = () => ekranGoster('auth-screen');
-    document.getElementById('btn-gecis-sifre-sifirla').onclick = () => ekranGoster('reset-screen');
     document.getElementById('btn-cikis').onclick = () => signOut(auth);
     document.getElementById('profil-baslik').onclick = () => { kapatPaneller(); document.getElementById('profil-menu').classList.toggle('hidden'); };
     document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); };
@@ -586,33 +608,21 @@
     document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); };
     document.getElementById('btn-borclar-menu').onclick = () => { kapatPaneller(); document.getElementById('borclar-panel').classList.remove('hidden'); };
 
-    // Excel'e Aktarma Fonksiyonu
     document.getElementById('btn-excel-aktar').onclick = () => {
-        if (mevcutAyVerileri.length === 0) {
-            alert("Bu aya ait aktarılacak işlem bulunamadı.");
-            return;
-        }
-
-        // CSV Başlık satırı (Excel'in düzgün ayırması için noktalı virgül kullanıyoruz)
-        let csvContent = "\uFEFF"; // Türkçe karakterlerin Excel'de düzgün açılması için UTF-8 BOM ekliyoruz
+        if (mevcutAyVerileri.length === 0) { alert("Bu aya ait aktarılacak işlem bulunamadı."); return; }
+        let csvContent = "\uFEFF"; 
         csvContent += "Tarih;Açıklama;Kategori;Hesap;Tür;Tutar (TL)\n";
-
-        // Verileri satır satır ekleme
         mevcutAyVerileri.forEach(islem => {
             const islemTarihi = new Date(islem.tarih).toLocaleDateString('tr-TR');
             const turMetni = islem.tur === 'gelir' ? 'Gelir (+)' : 'Gider (-)';
-            const temizAciklama = islem.aciklama.replace(/;/g, ','); // CSV yapısını bozmaması için noktalı virgülleri virgüle çeviriyoruz
+            const temizAciklama = islem.aciklama.replace(/;/g, ','); 
             const hesapAlani = islem.hesap || 'Nakit';
-            
             csvContent += `${islemTarihi};${temizAciklama};${islem.kategori};${hesapAlani};${turMetni};${formatla(islem.tutar)}\n`;
         });
-
-        // Dosyayı oluşturma ve indirme tetikleme
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         const dosyaAdi = `Akilli_Cuzdan_Rapor_${ayIsimleri[seciliTarih.getMonth()]}_${seciliTarih.getFullYear()}.csv`;
-        
         link.setAttribute("href", url);
         link.setAttribute("download", dosyaAdi);
         link.style.visibility = 'hidden';
@@ -625,17 +635,15 @@
     document.getElementById('btn-bildirim-gonder').onclick = async () => {
         const metin = document.getElementById('bildirim-metni').value;
         if (!metin) return;
+        // Çevrimdışı iken de bildirim eklenebilir, internet gelince yollanır
         await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
         alert("Gönderildi!"); document.getElementById('bildirim-metni').value = ''; kapatPaneller();
     };
 
-    // Şifre politikası entegre edilmiş Şifre Değiştirme Paneli
     document.getElementById('btn-sifre-onayla').onclick = async () => {
+        if(!navigator.onLine) { alert("Şifre değiştirmek için internet bağlantısı gereklidir."); return; }
         const yeniSifre = document.getElementById('yeni-sifre').value;
-        if (!sifrePolitikasiKontrol(yeniSifre)) {
-            alert(sifreHataMesaji);
-            return;
-        }
+        if (!sifrePolitikasiKontrol(yeniSifre)) { alert(sifreHataMesaji); return; }
         try {
             await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value));
             await updatePassword(auth.currentUser, yeniSifre);
@@ -651,42 +659,28 @@
         onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), (snapshot) => {
             let bakiye = 0, veriler = [];
             const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
-            
-            // Hesap borçlarını/harcamalarını takip edecek nesne
             const hesapBorclari = { 'Nakit': 0, 'Garanti': 0, 'Ziraat': 0, 'Qnb': 0, 'Diğer Kredi Kartı': 0 };
-            const hesapIsimleriMap = {
-                'Nakit': 'Nakit',
-                'Garanti': 'Garanti BBVA',
-                'Ziraat': 'Ziraat Bankası',
-                'Qnb': 'QNB Finansbank',
-                'Diğer Kredi Kartı': 'Diğer Kredi Kartı'
-            };
+            const hesapIsimleriMap = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
 
             snapshot.forEach(d => {
                 const data = d.data();
                 const t = new Date(data.tarih);
                 if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
-                    veriler.push({ id: d.id, ...data });
+                    // Cihaz önbelleğindeki (henüz sunucuya gitmemiş) verileri de anında UI'da göster
+                    veriler.push({ id: d.id, ...data, isPending: d.metadata.hasPendingWrites });
                     if(data.tur === 'gelir') { bakiye += data.tutar; kategoriToplamlar['Gelir'] += data.tutar; } 
                     else { 
                         bakiye -= data.tutar; 
                         const kat = data.kategori || 'Genel'; 
                         kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar;
-                        
-                        // Harcama/Borç hesabı (Gider türündekiler)
                         const hsp = data.hesap || 'Nakit';
-                        if (hesapBorclari[hsp] !== undefined) {
-                            hesapBorclari[hsp] += data.tutar;
-                        } else {
-                            // Eğer eşleşmeyen veya eski bir değer gelirse Nakit kabul et veya dinamik ekle
-                            hesapBorclari['Nakit'] += data.tutar;
-                        }
+                        if (hesapBorclari[hsp] !== undefined) { hesapBorclari[hsp] += data.tutar; } else { hesapBorclari['Nakit'] += data.tutar; }
                     }
                 }
             });
 
             veriler.sort((a, b) => b.tarih - a.tarih);
-            mevcutAyVerileri = veriler; // Excel bütünü için güncel listeyi sakla
+            mevcutAyVerileri = veriler; 
 
             document.getElementById('bakiye').innerText = formatla(bakiye);
             document.getElementById('bakiye').style.color = (bakiye < 0) ? "#ef4444" : "white";
@@ -695,25 +689,20 @@
                 const t = new Date(d.tarih);
                 const hspGosterim = hesapIsimleriMap[d.hesap] || d.hesap || 'Nakit';
                 const hesapMetni = d.hesap ? ` | ${hspGosterim}` : ' | Nakit';
-                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td></tr>`;
+                // Senkronize edilmeyen verilere ufak bir bulut ikonu ekledik
+                const syncIcon = d.isPending ? ' ☁️' : '';
+                html += `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
 
-            // Borç/Harcama Özet Listesini HTML olarak basma
             let borcHtml = "";
             let toplamBorcHarcama = 0;
             Object.keys(hesapBorclari).forEach(key => {
                 const tutar = hesapBorclari[key];
                 toplamBorcHarcama += tutar;
-                borcHtml += `<div class="borc-satir">
-                                <span>${hesapIsimleriMap[key]}:</span>
-                                <span style="font-weight:bold; color:#ff7e5f;">${formatla(tutar)} TL</span>
-                             </div>`;
+                borcHtml += `<div class="borc-satir"><span>${hesapIsimleriMap[key]}:</span><span style="font-weight:bold; color:#ff7e5f;">${formatla(tutar)} TL</span></div>`;
             });
-            borcHtml += `<div class="borc-satir" style="border-top:1px solid #fff; margin-top:5px; padding-top:5px; font-weight:bold;">
-                            <span>Toplam Aylık Harcama:</span>
-                            <span style="color:#ef4444;">${formatla(toplamBorcHarcama)} TL</span>
-                         </div>`;
+            borcHtml += `<div class="borc-satir" style="border-top:1px solid #fff; margin-top:5px; padding-top:5px; font-weight:bold;"><span>Toplam Aylık Harcama:</span><span style="color:#ef4444;">${formatla(toplamBorcHarcama)} TL</span></div>`;
             document.getElementById('borc-listesi').innerHTML = borcHtml;
 
             const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
@@ -736,19 +725,22 @@
         if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return alert("Lütfen tutarı ve açıklamayı kontrol edin!");
         const tarihObj = new Date(tarihVal);
         tarihObj.setHours(12, 0, 0, 0); 
-        await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, hesap, tarih: tarihObj.getTime() });
-        document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
+        
+        // Cihaz çevrimdışı olsa bile addDoc başarılı sayılır ve cache'e yazılır
+        try {
+            await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, hesap, tarih: tarihObj.getTime() });
+            document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
+        } catch (e) { console.error("Ekleme hatası:", e); }
     }
     document.getElementById('btn-gelir').onclick = () => ekle('gelir');
     document.getElementById('btn-gider').onclick = () => ekle('gider');
     window.sil = (id) => deleteDoc(doc(db, "islemler", id));
 
-    // --- SESLİ KOMUT ALTYAPISI (WEB SPEECH API) ---
+    // --- SESLİ KOMUT ALTYAPISI ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
         document.getElementById('btn-sesli-komut').style.display = 'none';
-        console.log("Bu cihaz veya tarayıcı Web Speech API ses tanımayı desteklemiyor.");
     } else {
         const recognition = new SpeechRecognition();
         recognition.lang = 'tr-TR';
@@ -756,9 +748,8 @@
         recognition.maxAlternatives = 1;
 
         const btnSesli = document.getElementById('btn-sesli-komut');
-        let isListening = false; // Dinleme durumunu takip eden değişken
+        let isListening = false; 
 
-        // Buton görünümünü varsayılana döndüren yardımcı fonksiyon
         const dinlemeyiDurdurTasarim = () => {
             isListening = false;
             btnSesli.innerText = "🎤 SESLİ EKLE";
@@ -766,14 +757,13 @@
         };
 
         btnSesli.onclick = () => {
+            if(!navigator.onLine) { alert("Sesli algılama motoru çevrimdışı modda çalışmayabilir."); }
             if (!isListening) {
-                // Eğer dinlemiyorsa dinlemeyi başlat
                 isListening = true;
                 btnSesli.innerText = "🎤 DİNLENİYOR...";
                 btnSesli.style.background = "#ef4444";
                 recognition.start();
             } else {
-                // Eğer zaten dinliyorsa manuel olarak durdur
                 recognition.stop();
                 dinlemeyiDurdurTasarim();
             }
@@ -791,63 +781,34 @@
 
         recognition.onresult = async (event) => {
             const metin = event.results[0][0].transcript.toLowerCase();
-            console.log("Duyulan Metin:", metin);
-
-            // 1. Tutar Bulma (Cümle içindeki sayıları yakalar)
             const sayilar = metin.match(/\d+/g);
             let bulunanTutar = 0;
-            if (sayilar && sayilar.length > 0) {
-                bulunanTutar = parseFloat(sayilar[0]);
-            }
+            if (sayilar && sayilar.length > 0) { bulunanTutar = parseFloat(sayilar[0]); }
+            if (bulunanTutar === 0 || isNaN(bulunanTutar)) { alert(`Söylediğiniz cümleden bir harcama/gelir tutarı çıkarılamadı.`); return; }
 
-            if (bulunanTutar === 0 || isNaN(bulunanTutar)) {
-                alert(`Söylediğiniz cümleden bir harcama/gelir tutarı çıkarılamadı.\nDuyulan: "${metin}"`);
-                return;
-            }
-
-            // Yakalanan tutarı formatlı şekilde input alanına basıyoruz
             document.getElementById('tutar').value = formatla(bulunanTutar);
 
-            // 2. Kategori Tespiti
             const kategoriSelect = document.getElementById('kategori');
             let bulunanKategori = "Genel";
-
-            if (metin.includes('market') || metin.includes('bakkal') || metin.includes('file') || metin.includes('hakmar') || metin.includes('a101') || metin.includes('bim') || metin.includes('migros') || metin.includes('alışveriş') || metin.includes('gıda') || metin.includes('yemek')) {
-                bulunanKategori = 'Market';
-            } else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || metin.includes('telefon') || metin.includes('vodafone') || metin.includes('internet') || metin.includes('kira')) {
-                bulunanKategori = 'Fatura';
-            } else if (metin.includes('ilaç') || metin.includes('hap') || metin.includes('eczane') || metin.includes('sağlık') || metin.includes('hastane')) {
-                bulunanKategori = 'Sağlık';
-            } else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt') || metin.includes('benzin') || metin.includes('ulaşım')) {
-                bulunanKategori = 'Ulaşım';
-            } else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser') || metin.includes('eğlence') || metin.includes('cafe')) {
-                bulunanKategori = 'Eğlence';
-            } else if (metin.includes('maaş') || metin.includes('gelir') || metin.includes('kazanç')) {
-                bulunanKategori = 'Maaş';
-            } else if (metin.includes('diğer')) {
-                bulunanKategori = 'Diğer';
-            }
+            if (metin.includes('market') || metin.includes('bakkal') || metin.includes('file') || metin.includes('hakmar') || metin.includes('a101') || metin.includes('bim') || metin.includes('migros') || metin.includes('alışveriş') || metin.includes('gıda') || metin.includes('yemek')) { bulunanKategori = 'Market'; } 
+            else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || metin.includes('telefon') || metin.includes('vodafone') || metin.includes('internet') || metin.includes('kira')) { bulunanKategori = 'Fatura'; } 
+            else if (metin.includes('ilaç') || metin.includes('hap') || metin.includes('eczane') || metin.includes('sağlık') || metin.includes('hastane')) { bulunanKategori = 'Sağlık'; } 
+            else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt') || metin.includes('benzin') || metin.includes('ulaşım')) { bulunanKategori = 'Ulaşım'; } 
+            else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser') || metin.includes('eğlence') || metin.includes('cafe')) { bulunanKategori = 'Eğlence'; } 
+            else if (metin.includes('maaş') || metin.includes('gelir') || metin.includes('kazanç')) { bulunanKategori = 'Maaş'; } 
+            else if (metin.includes('diğer')) { bulunanKategori = 'Diğer'; }
             kategoriSelect.value = bulunanKategori;
 
-            // 3. Açıklama Belirleme
-            // İlk harfini büyüterek cümlenin tamamını açıklama alanına yazıyoruz
             document.getElementById('aciklama').value = event.results[0][0].transcript.charAt(0).toUpperCase() + event.results[0][0].transcript.slice(1);
 
-            // 4. Tarih Tespiti (Cümlede "dün" geçiyorsa tarihi dün yapar)
             const tarihInput = document.getElementById('tarih');
             let hedefTarih = new Date();
-            if (metin.includes('dün')) {
-                hedefTarih.setDate(hedefTarih.getDate() - 1);
-            }
+            if (metin.includes('dün')) { hedefTarih.setDate(hedefTarih.getDate() - 1); }
             if (tarihInput) tarihInput.valueAsDate = hedefTarih;
 
-            // 5. Tür Belirleme (Gelir kelimeleri geçmiyorsa varsayılan Giderdir)
             let tur = 'gider';
-            if (metin.includes('maaş') || metin.includes('gelir') || metin.includes('aldım') || metin.includes('geldi') || metin.includes('yattı') || metin.includes('kazandım')) {
-                tur = 'gelir';
-            }
+            if (metin.includes('maaş') || metin.includes('gelir') || metin.includes('aldım') || metin.includes('geldi') || metin.includes('yattı') || metin.includes('kazandım')) { tur = 'gelir'; }
 
-            // Hesap Türü Eşleştirme İpucu
             const hesapSelect = document.getElementById('hesap');
             if (metin.includes('garanti')) hesapSelect.value = 'Garanti';
             else if (metin.includes('ziraat')) hesapSelect.value = 'Ziraat';
@@ -855,12 +816,8 @@
             else if (metin.includes('kart')) hesapSelect.value = 'Diğer Kredi Kartı';
             else if (metin.includes('nakit') || metin.includes('peşin')) hesapSelect.value = 'Nakit';
 
-            // Yapay zeka eşleştirmesini onaylatıp doğrudan Firebase'e push ediyoruz
             const onay = confirm(`Mikrofon ile işlem algılandı, onaylıyor musunuz?\n\nTür: ${tur.toUpperCase()}\nAçıklama: ${document.getElementById('aciklama').value}\nTutar: ${bulunanTutar} TL\nKategori: ${bulunanKategori}\nHesap: ${hesapSelect.options[hesapSelect.selectedIndex].text}`);
-            
-            if (onay) {
-                await ekle(tur);
-            }
+            if (onay) { await ekle(tur); }
         };
     }
 </script>
