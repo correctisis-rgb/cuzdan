@@ -582,7 +582,7 @@ onAuthStateChanged(auth, (user) => {
                 adminAlan.querySelector('button').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
                 document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
             } else { document.getElementById('admin-alan').innerHTML = ''; }
-        }
+        
         // ... (admin kontrolleri aynı kalabilir) ...
     } else { 
         ekranGoster('auth-screen'); 
