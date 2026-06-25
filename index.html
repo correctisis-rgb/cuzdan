@@ -274,6 +274,7 @@
     
     <input type="file" id="fis-kamera" accept="image/*" capture="environment" style="display:none;">
     <button id="btn-fis-oku" style="background:#575fcf; font-size:10px; padding:4px;">📷 FİŞİ OTOMATİK OKUT</button>
+    <button id="btn-sesli-komut" style="background:#00d2d3; font-size:10px; padding:4px; margin-top:2px;">🎤 SESLİ KOMUT İLE EKLE</button>
 
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="text" id="tutar" placeholder="Tutar (Örn: 123.456,78)" inputmode="decimal">
@@ -712,6 +713,113 @@
     document.getElementById('btn-gelir').onclick = () => ekle('gelir');
     document.getElementById('btn-gider').onclick = () => ekle('gider');
     window.sil = (id) => deleteDoc(doc(db, "islemler", id));
+
+    // --- SESLİ KOMUT ALTYAPISI (WEB SPEECH API) ---
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        document.getElementById('btn-sesli-komut').style.display = 'none';
+        console.log("Bu cihaz veya tarayıcı Web Speech API ses tanımayı desteklemiyor.");
+    } else {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'tr-TR';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        const btnSesli = document.getElementById('btn-sesli-komut');
+
+        btnSesli.onclick = () => {
+            btnSesli.innerText = "🎤 DİNLENİYOR... KONUŞUN";
+            btnSesli.style.background = "#ef4444";
+            recognition.start();
+        };
+
+        recognition.onspeechend = () => {
+            recognition.stop();
+            btnSesli.innerText = "🎤 SESLİ KOMUT İLE EKLE";
+            btnSesli.style.background = "#00d2d3";
+        };
+
+        recognition.onerror = (event) => {
+            alert("Ses tanınamadı veya mikrofon izni verilmedi: " + event.error);
+            btnSesli.innerText = "🎤 SESLİ KOMUT İLE EKLE";
+            btnSesli.style.background = "#00d2d3";
+        };
+
+        recognition.onresult = async (event) => {
+            const metin = event.results[0][0].transcript.toLowerCase();
+            console.log("Duyulan Metin:", metin);
+
+            // 1. Tutar Bulma (Cümle içindeki sayıları yakalar)
+            const sayilar = metin.match(/\d+/g);
+            let bulunanTutar = 0;
+            if (sayilar && sayilar.length > 0) {
+                bulunanTutar = parseFloat(sayilar[0]);
+            }
+
+            if (bulunanTutar === 0 || isNaN(bulunanTutar)) {
+                alert(`Söylediğiniz cümleden bir harcama/gelir tutarı çıkarılamadı.\nDuyulan: "${metin}"`);
+                return;
+            }
+
+            // Yakalanan tutarı formatlı şekilde input alanına basıyoruz
+            document.getElementById('tutar').value = formatla(bulunanTutar);
+
+            // 2. Kategori Tespiti
+            const kategoriSelect = document.getElementById('kategori');
+            let bulunanKategori = "Genel";
+
+            if (metin.includes('market') || metin.includes('bakkal') || metin.includes('file') || metin.includes('hakmar') || metin.includes('a101') || metin.includes('bim') || metin.includes('migros') || metin.includes('alışveriş') || metin.includes('gıda') || metin.includes('yemek')) {
+                bulunanKategori = 'Market';
+            } else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || metin.includes('telefon') || metin.includes('vodafone') || metin.includes('internet') || metin.includes('kira')) {
+                bulunanKategori = 'Fatura';
+            } else if (metin.includes('ilaç') || metin.includes('hap') || metin.includes('eczane') || metin.includes('sağlık') || metin.includes('hastane')) {
+                bulunanKategori = 'Sağlık';
+            } else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt') || metin.includes('benzin') || bounds.includes('ulaşım')) {
+                bulunanKategori = 'Ulaşım';
+            } else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser') || metin.includes('eğlence') || metin.includes('cafe')) {
+                bulunanKategori = 'Eğlence';
+            } else if (metin.includes('maaş') || metin.includes('gelir') || metin.includes('kazanç')) {
+                bulunanKategori = 'Maaş';
+            } else if (metin.includes('diğer')) {
+                bulunanKategori = 'Diğer';
+            }
+            kategoriSelect.value = bulunanKategori;
+
+            // 3. Açıklama Belirleme
+            // İlk harfini büyüterek cümlenin tamamını açıklama alanına yazıyoruz
+            document.getElementById('aciklama').value = event.results[0][0].transcript.charAt(0).toUpperCase() + event.results[0][0].transcript.slice(1);
+
+            // 4. Tarih Tespiti (Cümlede "dün" geçiyorsa tarihi dün yapar)
+            const tarihInput = document.getElementById('tarih');
+            let hedefTarih = new Date();
+            if (metin.includes('dün')) {
+                hedefTarih.setDate(hedefTarih.getDate() - 1);
+            }
+            tarihInput.valueAsDate = hedefTarih;
+
+            // 5. Tür Belirleme (Gelir kelimeleri geçmiyorsa varsayılan Giderdir)
+            let tur = 'gider';
+            if (metin.includes('maaş') || metin.includes('gelir') || metin.includes('aldım') || metin.includes('geldi') || metin.includes('yattı') || metin.includes('kazandım')) {
+                tur = 'gelir';
+            }
+
+            // Hesap Türü Eşleştirme İpucu (İsteğe bağlı geliştirilebilir, varsayılan formda ne seçiliyse o kalır)
+            const hesapSelect = document.getElementById('hesap');
+            if (metin.includes('garanti')) hesapSelect.value = 'Garanti';
+            else if (metin.includes('ziraat')) hesapSelect.value = 'Ziraat';
+            else if (metin.includes('finans') || metin.includes('qnb')) hashspSelect.value = 'Qnb';
+            else if (metin.includes('kart')) hesapSelect.value = 'Diğer Kredi Kartı';
+            else if (metin.includes('nakit') || metin.includes('peşin')) hesapSelect.value = 'Nakit';
+
+            // Yapay zeka eşleştirmesini onaylatıp doğrudan Firebase'e push ediyoruz
+            const onay = confirm(`Mikrofon ile işlem algılandı, onaylıyor musunuz?\n\nTür: ${tur.toUpperCase()}\nAçıklama: ${document.getElementById('aciklama').value}\nTutar: ${bulunanTutar} TL\nKategori: ${bulunanKategori}\nHesap: ${hesapSelect.options[hesapSelect.selectedIndex].text}`);
+            
+            if (onay) {
+                await ekle(tur);
+            }
+        };
+    }
 </script>
 </body>
 </html>
