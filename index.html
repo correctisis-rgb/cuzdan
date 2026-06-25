@@ -363,6 +363,13 @@
         alert(mesaj);
     };
 
+    // Yeni Şifre Politikası Doğrulama Fonksiyonu (8 Karakter, Büyük, Küçük, Sembol)
+    const sifrePolitikasiKontrol = (sifre) => {
+        const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+        return regex.test(sifre);
+    };
+    const sifreHataMesaji = "Şifreniz en az 8 karakter uzunluğunda olmalı, en az bir büyük harf, bir küçük harf ve bir sembol (!@#$%^&* vb.) içermelidir.";
+
     function duyurulariDinle() {
         if (unsubDuyuru) unsubDuyuru();
 
@@ -446,7 +453,17 @@
     window.silMesaj = async (id) => { if(confirm("Silmek istediğine emin misin?")) { await deleteDoc(doc(db, "bildirimler", id)); mesajlariGetir(); } };
 
     document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster);
-    document.getElementById('btn-kayit-ol').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, document.getElementById('signup-sifre').value).catch(hataGoster);
+    
+    // Şifre politikası entegre edilmiş Kayıt Ol Butonu
+    document.getElementById('btn-kayit-ol').onclick = () => {
+        const girilenSifre = document.getElementById('signup-sifre').value;
+        if (!sifrePolitikasiKontrol(girilenSifre)) {
+            alert(sifreHataMesaji);
+            return;
+        }
+        createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, girilenSifre).catch(hataGoster);
+    };
+
     document.getElementById('btn-sifre-onay-mail').onclick = async () => await sendPasswordResetEmail(auth, document.getElementById('reset-email').value).then(() => alert("E-posta gönderildi.")).catch(hataGoster);
     document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
     document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
@@ -503,10 +520,16 @@
         alert("Gönderildi!"); document.getElementById('bildirim-metni').value = ''; kapatPaneller();
     };
 
+    // Şifre politikası entegre edilmiş Şifre Değiştirme Paneli
     document.getElementById('btn-sifre-onayla').onclick = async () => {
+        const yeniSifre = document.getElementById('yeni-sifre').value;
+        if (!sifrePolitikasiKontrol(yeniSifre)) {
+            alert(sifreHataMesaji);
+            return;
+        }
         try {
             await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value));
-            await updatePassword(auth.currentUser, document.getElementById('yeni-sifre').value);
+            await updatePassword(auth.currentUser, yeniSifre);
             alert("Şifre güncellendi!"); kapatPaneller();
         } catch (e) { hataGoster(e); }
     };
