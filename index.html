@@ -727,23 +727,37 @@
         recognition.maxAlternatives = 1;
 
         const btnSesli = document.getElementById('btn-sesli-komut');
+        let isListening = false; // Dinleme durumunu takip eden değişken
+
+        // Buton görünümünü varsayılana döndüren yardımcı fonksiyon
+        const dinlemeyiDurdurTasarim = () => {
+            isListening = false;
+            btnSesli.innerText = "🎤 SESLİ KOMUT İLE EKLE";
+            btnSesli.style.background = "#00d2d3";
+        };
 
         btnSesli.onclick = () => {
-            btnSesli.innerText = "🎤 DİNLENİYOR... KONUŞUN";
-            btnSesli.style.background = "#ef4444";
-            recognition.start();
+            if (!isListening) {
+                // Eğer dinlemiyorsa dinlemeyi başlat
+                isListening = true;
+                btnSesli.innerText = "🎤 DİNLENİYOR... DURDURMAK İÇİN BASIN";
+                btnSesli.style.background = "#ef4444";
+                recognition.start();
+            } else {
+                // Eğer zaten dinliyorsa manuel olarak durdur
+                recognition.stop();
+                dinlemeyiDurdurTasarim();
+            }
         };
 
         recognition.onspeechend = () => {
             recognition.stop();
-            btnSesli.innerText = "🎤 SESLİ KOMUT İLE EKLE";
-            btnSesli.style.background = "#00d2d3";
+            dinlemeyiDurdurTasarim();
         };
 
         recognition.onerror = (event) => {
             alert("Ses tanınamadı veya mikrofon izni verilmedi: " + event.error);
-            btnSesli.innerText = "🎤 SESLİ KOMUT İLE EKLE";
-            btnSesli.style.background = "#00d2d3";
+            dinlemeyiDurdurTasarim();
         };
 
         recognition.onresult = async (event) => {
@@ -775,7 +789,7 @@
                 bulunanKategori = 'Fatura';
             } else if (metin.includes('ilaç') || metin.includes('hap') || metin.includes('eczane') || metin.includes('sağlık') || metin.includes('hastane')) {
                 bulunanKategori = 'Sağlık';
-            } else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt') || metin.includes('benzin') || bounds.includes('ulaşım')) {
+            } else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt') || metin.includes('benzin') || metin.includes('ulaşım')) {
                 bulunanKategori = 'Ulaşım';
             } else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser') || metin.includes('eğlence') || metin.includes('cafe')) {
                 bulunanKategori = 'Eğlence';
@@ -804,11 +818,11 @@
                 tur = 'gelir';
             }
 
-            // Hesap Türü Eşleştirme İpucu (İsteğe bağlı geliştirilebilir, varsayılan formda ne seçiliyse o kalır)
+            // Hesap Türü Eşleştirme İpucu
             const hesapSelect = document.getElementById('hesap');
             if (metin.includes('garanti')) hesapSelect.value = 'Garanti';
             else if (metin.includes('ziraat')) hesapSelect.value = 'Ziraat';
-            else if (metin.includes('finans') || metin.includes('qnb')) hashspSelect.value = 'Qnb';
+            else if (metin.includes('finans') || metin.includes('qnb')) hesapSelect.value = 'Qnb';
             else if (metin.includes('kart')) hesapSelect.value = 'Diğer Kredi Kartı';
             else if (metin.includes('nakit') || metin.includes('peşin')) hesapSelect.value = 'Nakit';
 
