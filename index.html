@@ -68,7 +68,25 @@
         .badge { position: absolute; top: -2px; right: -2px; background: red; color: white; border-radius: 50%; width: 12px; height: 12px; font-size: 8px; line-height: 12px; display: none; }
         #profil-menu, #duyuru-menu { position: absolute; top: calc(40px + env(safe-area-inset-top)); right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
         #duyuru-menu { right: 45px; width: 220px; max-height: 250px; overflow-y: auto; }
-        #popup-duyuru { position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 80%; max-width: 300px; background: white; color: black; padding: 20px; border-radius: 15px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
+        #popup-duyuru { 
+            position: fixed; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            width: 85%; 
+            max-width: 320px; 
+            max-height: 80dvh; 
+            background: white; 
+            color: black; 
+            padding: 20px; 
+            border-radius: 15px; 
+            z-index: 1000; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            text-align: center; 
+            display: flex; 
+            flex-direction: column; 
+            box-sizing: border-box; 
+        }
         .nav-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; }
         .nav-btn { cursor: pointer; padding: 2px 10px; background: rgba(255,255,255,0.2); border-radius: 8px; font-weight: bold; }
         h3 { margin: 2px 0; font-size: 20px; }
@@ -95,9 +113,9 @@
 <body>
 
 <div id="popup-duyuru" class="hidden">
-    <div style="font-weight:bold; margin-bottom:10px;">📢 YENİ DUYURU</div>
-    <div id="popup-metin" style="margin-bottom:15px; font-size:14px;"></div>
-    <button onclick="document.getElementById('popup-duyuru').classList.add('hidden')" style="background:#10b981;">TAMAM</button>
+    <div style="font-weight:bold; margin-bottom:10px; flex-shrink:0;">📢 YENİ DUYURU</div>
+    <div id="popup-metin" style="margin-bottom:15px; font-size:14px; overflow-y:auto; text-align:left; flex-grow:1; padding-right:5px;"></div>
+    <button onclick="document.getElementById('popup-duyuru').classList.add('hidden')" style="background:#10b981; flex-shrink:0;">TAMAM</button>
 </div>
 
 <div class="container" id="auth-screen">
@@ -368,7 +386,7 @@
         const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
         return regex.test(sifre);
     };
-    const sifreHataMesaji = "Şifreniz en az 8 karakter uzunluğunda olmalı, en az bir büyük harf, bir küçük harf ve bir sembol (!@#$%^&* vb.) içermelidir.";
+    const sifreHataMesaji = "Şifreniz en az 8 karakter uzunluğunda olmalı, en az bir büyük harf, bir küçük harf and bir sembol (!@#$%^&* vb.) içermelidir.";
 
     function duyurulariDinle() {
         if (unsubDuyuru) unsubDuyuru();
@@ -577,7 +595,7 @@
             });
 
             veriler.sort((a, b) => b.tarih - a.tarih);
-            mevcutAyVerileri = veriler; // Excel butonu için güncel listeyi sakla
+            mevcutAyVerileri = veriler; // Excel bütünü için güncel listeyi sakla
 
             document.getElementById('bakiye').innerText = formatla(bakiye);
             document.getElementById('bakiye').style.color = (bakiye < 0) ? "#ef4444" : "white";
