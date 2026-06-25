@@ -89,6 +89,7 @@
         .app-box { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 2px; text-decoration: none; color: white; }
         .app-icon { font-size: 24px; margin-bottom: 1px; }
         .app-label { font-size: 9px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 5px; }
+        .borc-satir { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px; }
     </style>
 </head>
 <body>
@@ -145,6 +146,7 @@
     <div id="profil-menu" class="hidden">
         <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
         <button id="btn-rapor-menu" style="background:#10b981; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Rapor / Grafik</button>
+        <button id="btn-borclar-menu" style="background:#6366f1; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💳 Hesap Özetleri / Borçlar</button>
         <button id="btn-excel-aktar" style="background:#059669; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Excel'e Aktar</button>
         <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
         <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
@@ -157,6 +159,12 @@
         <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
         <div style="font-weight:bold; margin-bottom:5px; font-size:13px; text-align:center;">📊 AYLIK RAPOR GRAFİĞİ</div>
         <canvas id="grafik" style="max-height: 140px; margin-top: 5px; width: 100%;"></canvas>
+    </div>
+
+    <div id="borclar-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:left;">
+        <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
+        <div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">💳 AYLIK HARCAMA & BORÇ ÖZETİ</div>
+        <div id="borc-listesi"></div>
     </div>
 
     <div id="sifre-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
@@ -389,7 +397,7 @@
     }
 
     window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-    window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel'].forEach(id => document.getElementById(id).classList.add('hidden')); };
+    window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel'].forEach(id => document.getElementById(id).classList.add('hidden')); };
 
     document.getElementById('btn-duyuru-ac').onclick = () => { 
         document.getElementById('bildirim-badge').style.display = 'none';
@@ -449,6 +457,7 @@
     document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); };
     document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
     document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); };
+    document.getElementById('btn-borclar-menu').onclick = () => { kapatPaneller(); document.getElementById('borclar-panel').classList.remove('hidden'); };
 
     // Excel'e Aktarma Fonksiyonu
     document.getElementById('btn-excel-aktar').onclick = () => {
@@ -509,13 +518,37 @@
         onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), (snapshot) => {
             let bakiye = 0, veriler = [];
             const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
+            
+            // Hesap borçlarını/harcamalarını takip edecek nesne
+            const hesapBorclari = { 'Nakit': 0, 'Garanti': 0, 'Ziraat': 0, 'Qnb': 0, 'Diğer Kredi Kartı': 0 };
+            const hesapIsimleriMap = {
+                'Nakit': 'Nakit',
+                'Garanti': 'Garanti BBVA',
+                'Ziraat': 'Ziraat Bankası',
+                'Qnb': 'QNB Finansbank',
+                'Diğer Kredi Kartı': 'Diğer Kredi Kartı'
+            };
+
             snapshot.forEach(d => {
                 const data = d.data();
                 const t = new Date(data.tarih);
                 if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
                     veriler.push({ id: d.id, ...data });
                     if(data.tur === 'gelir') { bakiye += data.tutar; kategoriToplamlar['Gelir'] += data.tutar; } 
-                    else { bakiye -= data.tutar; const kat = data.kategori || 'Genel'; kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar; }
+                    else { 
+                        bakiye -= data.tutar; 
+                        const kat = data.kategori || 'Genel'; 
+                        kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar;
+                        
+                        // Harcama/Borç hesabı (Gider türündekiler)
+                        const hsp = data.hesap || 'Nakit';
+                        if (hesapBorclari[hsp] !== undefined) {
+                            hesapBorclari[hsp] += data.tutar;
+                        } else {
+                            // Eğer eşleşmeyen veya eski bir değer gelirse Nakit kabul et veya dinamik ekle
+                            hesapBorclari['Nakit'] += data.tutar;
+                        }
+                    }
                 }
             });
 
@@ -527,10 +560,29 @@
             let html = "";
             veriler.forEach(d => {
                 const t = new Date(d.tarih);
-                const hesapMetni = d.hesap ? ` | ${d.hesap}` : '';
+                const hspGosterim = hesapIsimleriMap[d.hesap] || d.hesap || 'Nakit';
+                const hesapMetni = d.hesap ? ` | ${hspGosterim}` : ' | Nakit';
                 html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
+
+            // Borç/Harcama Özet Listesini HTML olarak basma
+            let borcHtml = "";
+            let toplamBorcHarcama = 0;
+            Object.keys(hesapBorclari).forEach(key => {
+                const tutar = hesapBorclari[key];
+                toplamBorcHarcama += tutar;
+                borcHtml += `<div class="borc-satir">
+                                <span>${hesapIsimleriMap[key]}:</span>
+                                <span style="font-weight:bold; color:#ff7e5f;">${formatla(tutar)} TL</span>
+                             </div>`;
+            });
+            borcHtml += `<div class="borc-satir" style="border-top:1px solid #fff; margin-top:5px; padding-top:5px; font-weight:bold;">
+                            <span>Toplam Aylık Harcama:</span>
+                            <span style="color:#ef4444;">${formatla(toplamBorcHarcama)} TL</span>
+                         </div>`;
+            document.getElementById('borc-listesi').innerHTML = borcHtml;
+
             const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
             const degerler = etiketler.map(k => kategoriToplamlar[k]);
             const ctx = document.getElementById('grafik').getContext('2d');
