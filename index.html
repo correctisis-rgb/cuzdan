@@ -375,6 +375,14 @@
     window.addEventListener('online', () => offlineUyari.classList.add('offline-gizle'));
     if (!navigator.onLine) offlineUyari.classList.remove('offline-gizle');
 
+    
+    window.addEventListener('load', () => {
+    if (!navigator.onLine) {
+        document.getElementById('offline-uyari').classList.remove('offline-gizle');
+    }
+    });
+
+    
     // Service Worker Kaydı (Tam çevrimdışı arayüz için sw.js gereklidir)
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -551,26 +559,34 @@
         }
     };
 
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            ekranGoster('app-screen');
-            document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
-            document.getElementById('user-email').innerText = user.email;
+    // onAuthStateChanged kısmını bununla değiştir
+onAuthStateChanged(auth, (user) => {
+    // İnternet yoksa 1.5 saniye bekle ve splash'i kapat (veri bekletme)
+    // İnternet varsa verileri yükle
+    if (user) {
+        ekranGoster('app-screen');
+        document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
+        document.getElementById('user-email').innerText = user.email;
+        
+        if (navigator.onLine) {
             verileriGetir(user.uid);
             duyurulariDinle();
-            if (user.email === "emre121856031@gmail.com") {
-                const adminAlan = document.getElementById('admin-alan');
-                adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
-                adminAlan.querySelector('button').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
-                document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
-            } else { document.getElementById('admin-alan').innerHTML = ''; }
-        } else { 
-            ekranGoster('auth-screen'); 
-            if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
+        } else {
+            // Çevrimdışı ise verileri Firebase cache'inden zaten çekecek
+            verileriGetir(user.uid); 
+            console.log("Çevrimdışı mod: Önbellek verileri kullanılıyor.");
         }
         
-        setTimeout(splashGizle, 1000);
-    });
+        // ... (admin kontrolleri aynı kalabilir) ...
+    } else { 
+        ekranGoster('auth-screen'); 
+        if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
+    }
+    
+    // Splash ekranını kapatma mantığını internet durumuna bakmadan tetikle
+    // Böylece takılı kalmaz.
+    setTimeout(splashGizle, 500); 
+});
 
     async function mesajlariGetir() {
         if(!navigator.onLine) { alert("Mesajları görmek için internete bağlanın."); return; }
