@@ -124,7 +124,7 @@
 </div>
 
 <div class="container hidden" id="reset-screen">
-    <h2>ŞIFA SIFIRLA</h2>
+    <h2>ŞİFRE SIFIRLA</h2>
     <input type="email" id="reset-email" placeholder="Kayıtlı E-posta adresiniz">
     <button id="btn-sifre-onay-mail" style="background:#f59e0b;">Gönder</button>
     <div class="link-text" id="btn-gecis-giris-2">Giriş ekranına dön</div>
@@ -208,8 +208,15 @@
         <option value="Market">Market</option>
         <option value="Fatura">Fatura</option>
         <option value="Ulaşım">Ulaşım</option>
+        <option value="Sağlık">Sağlık</option>
         <option value="Eğlence">Eğlence</option>
         <option value="Diğer">Diğer</option>
+    </select>
+    <select id="hesap">
+        <option value="Nakit">Nakit</option>
+        <option value="Garanti">Garanti BBVA</option>
+        <option value="Ziraat">Ziraat Bankası</option>
+        <option value="Kredi Kartı">Kredi Kartı</option>
     </select>
     <div style="display:flex; gap:5px;">
         <button id="btn-gelir" style="background:#10b981;">GELİR (+)</button>
@@ -446,15 +453,16 @@
 
         // CSV Başlık satırı (Excel'in düzgün ayırması için noktalı virgül kullanıyoruz)
         let csvContent = "\uFEFF"; // Türkçe karakterlerin Excel'de düzgün açılması için UTF-8 BOM ekliyoruz
-        csvContent += "Tarih;Açıklama;Kategori;Tür;Tutar (TL)\n";
+        csvContent += "Tarih;Açıklama;Kategori;Hesap;Tür;Tutar (TL)\n";
 
         // Verileri satır satır ekleme
         mevcutAyVerileri.forEach(islem => {
             const islemTarihi = new Date(islem.tarih).toLocaleDateString('tr-TR');
             const turMetni = islem.tur === 'gelir' ? 'Gelir (+)' : 'Gider (-)';
             const temizAciklama = islem.aciklama.replace(/;/g, ','); // CSV yapısını bozmaması için noktalı virgülleri virgüle çeviriyoruz
+            const hesapAlani = islem.hesap || 'Nakit';
             
-            csvContent += `${islemTarihi};${temizAciklama};${islem.kategori};${turMetni};${formatla(islem.tutar)}\n`;
+            csvContent += `${islemTarihi};${temizAciklama};${islem.kategori};${hesapAlani};${turMetni};${formatla(islem.tutar)}\n`;
         });
 
         // Dosyayı oluşturma ve indirme tetikleme
@@ -513,7 +521,8 @@
             let html = "";
             veriler.forEach(d => {
                 const t = new Date(d.tarih);
-                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td></tr>`;
+                const hesapMetni = d.hesap ? ` | ${d.hesap}` : '';
+                html += `<tr><td><strong>${d.aciklama}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;">❌</button></td></tr>`;
             });
             document.getElementById('tablo').innerHTML = html;
             const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
@@ -529,13 +538,14 @@
     async function ekle(tur) {
         const aciklama = document.getElementById('aciklama').value;
         const kategori = document.getElementById('kategori').value;
+        const hesap = document.getElementById('hesap').value;
         const rawValue = document.getElementById('tutar').value;
         const tutar = parseFloat(rawValue.replace(/\./g, '').replace(',', '.'));
         const tarihVal = document.getElementById('tarih').value;
         if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return alert("Lütfen tutarı ve açıklamayı kontrol edin!");
         const tarihObj = new Date(tarihVal);
         tarihObj.setHours(12, 0, 0, 0); 
-        await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, tarih: tarihObj.getTime() });
+        await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, hesap, tarih: tarihObj.getTime() });
         document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
     }
     document.getElementById('btn-gelir').onclick = () => ekle('gelir');
