@@ -151,6 +151,32 @@
         .app-icon { font-size: 24px; margin-bottom: 1px; }
         .app-label { font-size: 9px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 5px; }
         .borc-satir { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px; }
+        
+        /* Yan yana ve belirgin butonlar için yeni stil grupları */
+        .butor-group-row {
+            display: flex;
+            gap: 6px;
+            margin: 3px 0;
+            width: 100%;
+        }
+        .belirgin-btn {
+            flex: 1;
+            padding: 8px 4px !important;
+            font-size: 11px !important;
+            letter-spacing: 0.3px;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+        }
+        .belirgin-btn:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body>
@@ -273,8 +299,11 @@
     <h3>BAKİYE: <span id="bakiye" style="color: white;">0,00</span> TL</h3>
     
     <input type="file" id="fis-kamera" accept="image/*" capture="environment" style="display:none;">
-    <button id="btn-fis-oku" style="background:#575fcf; font-size:10px; padding:4px;">📷 FİŞİ OTOMATİK OKUT</button>
-    <button id="btn-sesli-komut" style="background:#00d2d3; font-size:10px; padding:4px; margin-top:2px;">🎤 SESLİ KOMUT İLE EKLE</button>
+    
+    <div class="butor-group-row">
+        <button id="btn-fis-oku" class="belirgin-btn" style="background:#575fcf;">📷 FİŞİ OKUT</button>
+        <button id="btn-sesli-komut" class="belirgin-btn" style="background:#00d2d3;">🎤 SESLİ EKLE</button>
+    </div>
 
     <input type="text" id="aciklama" placeholder="Açıklama">
     <input type="text" id="tutar" placeholder="Tutar (Örn: 123.456,78)" inputmode="decimal">
@@ -382,7 +411,7 @@
                 alert("Tutar net okunamadı. Lütfen fişin net fotoğrafını çekin.");
             }
         } catch (err) { alert("Okuma sırasında hata oluştu."); }
-        btn.innerText = "📷 FİŞİ OTOMATİK OKUT";
+        btn.innerText = "📷 FİŞİ OKUT";
     };
 
     let unsubDuyuru = null; // Mükerrer dinlemeleri engellemek için referans
@@ -732,7 +761,7 @@
         // Buton görünümünü varsayılana döndüren yardımcı fonksiyon
         const dinlemeyiDurdurTasarim = () => {
             isListening = false;
-            btnSesli.innerText = "🎤 SESLİ KOMUT İLE EKLE";
+            btnSesli.innerText = "🎤 SESLİ EKLE";
             btnSesli.style.background = "#00d2d3";
         };
 
@@ -740,7 +769,7 @@
             if (!isListening) {
                 // Eğer dinlemiyorsa dinlemeyi başlat
                 isListening = true;
-                btnSesli.innerText = "🎤 DİNLENİYOR... DURDURMAK İÇİN BASIN";
+                btnSesli.innerText = "🎤 DİNLENİYOR...";
                 btnSesli.style.background = "#ef4444";
                 recognition.start();
             } else {
@@ -810,7 +839,7 @@
             if (metin.includes('dün')) {
                 hedefTarih.setDate(hedefTarih.getDate() - 1);
             }
-            tarihInput.valueAsDate = hedefTarih;
+            if (tarihInput) tarihInput.valueAsDate = hedefTarih;
 
             // 5. Tür Belirleme (Gelir kelimeleri geçmiyorsa varsayılan Giderdir)
             let tur = 'gider';
