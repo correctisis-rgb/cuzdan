@@ -385,10 +385,10 @@
     
     // Service Worker Kaydı (Tam çevrimdışı arayüz için sw.js gereklidir)
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js').catch(() => console.log('ServiceWorker bulunamadı, sadece veritabanı çevrimdışı çalışacak.'));
-        });
-    }
+    navigator.serviceWorker.register('sw.js').then(reg => {
+        console.log('SW kayıt edildi:', reg.scope);
+    });
+}
 
     const sesKilidiniAc = () => {
         bildirimSesi.play().then(() => bildirimSesi.pause()).catch(() => {});
