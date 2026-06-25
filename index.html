@@ -216,7 +216,8 @@
         <option value="Nakit">Nakit</option>
         <option value="Garanti">Garanti BBVA</option>
         <option value="Ziraat">Ziraat Bankası</option>
-        <option value="Kredi Kartı">Kredi Kartı</option>
+        <option value="Qnb">QNB Finansbank</option>
+        <option value="Diğer Kredi Kartı">Diğer Kredi Kartı</option>
     </select>
     <div style="display:flex; gap:5px;">
         <button id="btn-gelir" style="background:#10b981;">GELİR (+)</button>
@@ -331,6 +332,11 @@
                  metin.includes('telefon') || metin.includes('vodafone') || metin.includes('internet')) {
             kategoriSelect.value = 'Fatura';
         } 
+
+        else if (metin.includes('ilaç') || metin.includes('hap') || metin.includes('eczane')) {
+            kategoriSelect.value = 'Sağlık';
+        } 
+            
         else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt')) {
             kategoriSelect.value = 'Ulaşım';
         } 
