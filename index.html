@@ -431,6 +431,10 @@ btn.innerText = "OKUNUYOR...";
 
 try {
 const text = await kucultVeOku(file);
+
+  console.log(text);
+alert(text);
+  
 const regex = /(?:GENEL\s*TOPLAM|TOPLAM\s*ÖDENECEK|TOPLAM\s*TUTAR|ÖDENECEK\s*TUTAR|ÖDENECEK|TOPLAM|TUTAR)\D*([\d.]+,\d{2})/i;
 const eslesme = text.match(regex);
 
