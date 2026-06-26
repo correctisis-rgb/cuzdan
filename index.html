@@ -595,7 +595,7 @@ if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
 
 // Splash ekranını kapatma mantığını internet durumuna bakmadan tetikle
 // Böylece takılı kalmaz.
-setTimeout(splashGizle, 500); 
+splashGizle();
 });
 
 async function mesajlariGetir() {
