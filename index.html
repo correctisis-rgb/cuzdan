@@ -302,6 +302,29 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <div id="mesaj-listesi"></div>
 </div>
 
+<div id="kullanici-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.4); border-radius:10px; text-align:left; max-height:300px; overflow-y:auto; z-index:1001;">
+<button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
+<div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">👥 KULLANICI YÖNETİMİ</div>
+<div id="kullanici-istatistik" style="display:flex; gap:6px; margin-bottom:8px;">
+  <div style="flex:1; background:rgba(16,185,129,0.2); border:1px solid #10b981; border-radius:8px; padding:6px; text-align:center;">
+    <div style="font-size:18px; font-weight:bold;" id="stat-toplam">-</div>
+    <div style="font-size:9px; opacity:0.8;">TOPLAM KAYITLI</div>
+  </div>
+  <div style="flex:1; background:rgba(99,102,241,0.2); border:1px solid #6366f1; border-radius:8px; padding:6px; text-align:center;">
+    <div style="font-size:18px; font-weight:bold;" id="stat-24h">-</div>
+    <div style="font-size:9px; opacity:0.8;">SON 24 SAAT</div>
+  </div>
+  <div style="flex:1; background:rgba(251,191,36,0.2); border:1px solid #fbbf24; border-radius:8px; padding:6px; text-align:center;">
+    <div style="font-size:18px; font-weight:bold;" id="stat-online">-</div>
+    <div style="font-size:9px; opacity:0.8;">ŞU AN ONLINE</div>
+  </div>
+</div>
+<div style="font-size:11px; font-weight:bold; margin-bottom:4px; opacity:0.7;">🟢 AKTİF KULLANICILAR</div>
+<div id="online-liste" style="font-size:11px; margin-bottom:8px;"></div>
+<div style="font-size:11px; font-weight:bold; margin-bottom:4px; opacity:0.7;">🕐 TÜM KAYITLI KULLANICILAR</div>
+<div id="kullanici-liste" style="font-size:11px;"></div>
+</div>
+
 <div class="nav-container">
 <span class="nav-btn" id="btn-onceki">&lt;</span>
 <h3 id="ay-baslik"></h3>
@@ -395,6 +418,23 @@ function presenceBaslat(user) {
       dbSet(userPresenceRef, { email: user.email, girisTarihi: Date.now() });
     }
   });
+  // Kullanıcı bilgilerini kaydet (sessiz, arka planda)
+  userKaydet(user);
+}
+
+async function userKaydet(user) {
+  if (!navigator.onLine) return;
+  const userRef = dbRef(rtdb, 'users/' + user.uid);
+  // Mevcut kaydı oku - ilkKayit tarihini korumak için
+  onValue(userRef, (snap) => {
+    const mevcutData = snap.val();
+    const ilkKayit = mevcutData ? mevcutData.ilkKayit : Date.now();
+    dbSet(userRef, {
+      email: user.email,
+      sonGiris: Date.now(),
+      ilkKayit: ilkKayit
+    });
+  }, { onlyOnce: true });
 }
 
 function presenceDinle() {
@@ -404,6 +444,53 @@ function presenceDinle() {
     const sayi = data ? Object.keys(data).length : 0;
     const el = document.getElementById('aktif-kullanici-sayisi');
     if (el) el.innerText = '🟢 Şu an aktif: ' + sayi + ' kullanıcı';
+  });
+}
+
+function kullanicilariDinle() {
+  const usersRef = dbRef(rtdb, 'users');
+  const presenceRef = dbRef(rtdb, 'presence');
+
+  onValue(usersRef, (usersSnap) => {
+    const usersData = usersSnap.val() || {};
+    const toplamKullanici = Object.keys(usersData).length;
+    const simdi = Date.now();
+    const yirmiDortSaat = 24 * 60 * 60 * 1000;
+
+    let son24h = 0;
+    let kullaniciListeHtml = '';
+    const kullanicilar = Object.values(usersData).sort((a, b) => b.sonGiris - a.sonGiris);
+
+    kullanicilar.forEach(u => {
+      const fark = simdi - u.sonGiris;
+      if (fark < yirmiDortSaat) son24h++;
+      const sonGirisTarih = new Date(u.sonGiris).toLocaleString('tr-TR');
+      const ilkKayitTarih = new Date(u.ilkKayit).toLocaleDateString('tr-TR');
+      kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-weight:bold;">${u.email}</div>
+          <div style="opacity:0.6; font-size:10px;">Son giriş: ${sonGirisTarih} | Kayıt: ${ilkKayitTarih}</div>
+        </div>
+      </div>`;
+    });
+
+    document.getElementById('stat-toplam').innerText = toplamKullanici;
+    document.getElementById('stat-24h').innerText = son24h;
+    document.getElementById('kullanici-liste').innerHTML = kullaniciListeHtml || '<div style="opacity:0.5;">Henüz kayıt yok</div>';
+
+    // Online listesini de güncelle
+    onValue(presenceRef, (presSnap) => {
+      const presData = presSnap.val() || {};
+      const onlineSayi = Object.keys(presData).length;
+      document.getElementById('stat-online').innerText = onlineSayi;
+      let onlineHtml = '';
+      Object.values(presData).forEach(p => {
+        const girisTarih = new Date(p.girisTarihi).toLocaleTimeString('tr-TR');
+        onlineHtml += `<div style="padding:3px 0; display:flex; align-items:center; gap:5px;"><span style="color:#10b981;">●</span><span>${p.email}</span><span style="opacity:0.5; font-size:10px;">(${girisTarih}'den beri)</span></div>`;
+      });
+      const onlineEl = document.getElementById('online-liste');
+      if (onlineEl) onlineEl.innerHTML = onlineHtml || '<div style="opacity:0.5;">Kimse online değil</div>';
+    }, { onlyOnce: true });
   });
 }
 
@@ -575,7 +662,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel'].forEach(id => document.getElementById(id).classList.add('hidden')); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); };
 
 document.getElementById('btn-duyuru-ac').onclick = () => { 
 document.getElementById('bildirim-badge').style.display = 'none';
@@ -613,9 +700,10 @@ console.log("Çevrimdışı mod: Önbellek verileri kullanılıyor.");
 }
 if (user.email === "emre121856031@gmail.com") {
 const adminAlan = document.getElementById('admin-alan');
-adminAlan.innerHTML = `<div id="aktif-kullanici-sayisi" style="background:rgba(16,185,129,0.2); border:1px solid #10b981; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:bold; margin-top:5px; text-align:center;">🟢 Yükleniyor...</div><button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
+adminAlan.innerHTML = `<div id="aktif-kullanici-sayisi" style="background:rgba(16,185,129,0.2); border:1px solid #10b981; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:bold; margin-top:5px; text-align:center;">🟢 Yükleniyor...</div><button id="btn-kullanici-yonetim" style="background:#0ea5e9; margin-top:5px;">👥 KULLANICI YÖNETİMİ</button><button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
 adminAlan.querySelector('button').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
 document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
+document.getElementById('btn-kullanici-yonetim').onclick = () => { kapatPaneller(); document.getElementById('kullanici-panel').classList.remove('hidden'); kullanicilariDinle(); };
 presenceDinle();
 } else { document.getElementById('admin-alan').innerHTML = ''; }
 presenceBaslat(user);
