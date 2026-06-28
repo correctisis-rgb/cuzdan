@@ -28,7 +28,23 @@ justify-content: center;
 align-items: center; 
 color: white; 
 height: 100dvh;
+transition: background 0.5s ease;
 }
+/* TEMA: Mor (varsayılan) */
+body.tema-mor, body.tema-mor #splash-screen { background: linear-gradient(135deg, #1c2137 0%, #764ba2 100%); }
+body.tema-mor .icon-btn { color: #764ba2; }
+/* TEMA: Okyanus Mavisi */
+body.tema-okyanus, body.tema-okyanus #splash-screen { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); }
+body.tema-okyanus .icon-btn { color: #2c5364; }
+/* TEMA: Gün Batımı */
+body.tema-gunbatimi, body.tema-gunbatimi #splash-screen { background: linear-gradient(135deg, #1a1a2e 0%, #c94b4b 60%, #e8a838 100%); }
+body.tema-gunbatimi .icon-btn { color: #c94b4b; }
+.tema-sec-btn {
+  width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent;
+  cursor: pointer; display: inline-block; transition: transform 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+.tema-sec-btn.aktif { border-color: white; transform: scale(1.15); }
 /* Çevrimdışı Uyarı Çubuğu Stili */
 #offline-uyari {
 position: fixed;
@@ -55,7 +71,7 @@ top: 0;
 left: 0;
 width: 100%;
 height: 100dvh;
-background: linear-gradient(135deg, #1c2137 0%, #764ba2 100%);
+background: inherit;
 display: flex;
 flex-direction: column;
 justify-content: center;
@@ -257,6 +273,14 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
 <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
 <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
+<div style="margin:4px 0 2px 0; padding:5px; background:rgba(0,0,0,0.1); border-radius:8px;">
+  <div style="font-size:10px; color:#555; margin-bottom:4px; font-weight:bold;">🎨 TEMA SEÇ</div>
+  <div style="display:flex; gap:8px; align-items:center; justify-content:center;">
+    <div class="tema-sec-btn" id="tema-mor" onclick="temaDegistir('mor')" style="background:linear-gradient(135deg,#1c2137,#764ba2);" title="Mor"></div>
+    <div class="tema-sec-btn" id="tema-okyanus" onclick="temaDegistir('okyanus')" style="background:linear-gradient(135deg,#0f2027,#2c5364);" title="Okyanus Mavisi"></div>
+    <div class="tema-sec-btn" id="tema-gunbatimi" onclick="temaDegistir('gunbatimi')" style="background:linear-gradient(135deg,#1a1a2e,#c94b4b,#e8a838);" title="Gün Batımı"></div>
+  </div>
+</div>
 <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
 <div id="admin-alan"></div>
 </div>
@@ -516,6 +540,33 @@ async function kullanicilariDinle() {
   // Online liste presenceDinle tarafından canlı güncelleniyor
 }
 
+// --- TEMA SİSTEMİ ---
+function temaDegistir(tema) {
+  document.body.classList.remove('tema-mor', 'tema-okyanus', 'tema-gunbatimi');
+  document.body.classList.add('tema-' + tema);
+  // LocalStorage'a kaydet (kullanıcı bazlı)
+  const uid = auth.currentUser ? auth.currentUser.uid : 'default';
+  localStorage.setItem('tema_' + uid, tema);
+  // Aktif butonu işaretle
+  temaButonGuncelle(tema);
+}
+
+function temaButonGuncelle(tema) {
+  ['mor', 'okyanus', 'gunbatimi'].forEach(t => {
+    const btn = document.getElementById('tema-' + t);
+    if (btn) btn.classList.toggle('aktif', t === tema);
+  });
+}
+
+function temaYukle(uid) {
+  const kayitliTema = localStorage.getItem('tema_' + uid) || 'mor';
+  document.body.classList.remove('tema-mor', 'tema-okyanus', 'tema-gunbatimi');
+  document.body.classList.add('tema-' + kayitliTema);
+  temaButonGuncelle(kayitliTema);
+}
+
+window.temaDegistir = temaDegistir;
+
 const offlineUyari = document.getElementById('offline-uyari');
 window.addEventListener('offline', () => offlineUyari.classList.remove('offline-gizle'));
 window.addEventListener('online', () => offlineUyari.classList.add('offline-gizle'));
@@ -709,6 +760,7 @@ splash.style.visibility = 'hidden';
 onAuthStateChanged(auth, (user) => {
 if (user) {
 loadCustomData(user); // YENİ: Cihaza kaydedilmiş kategorileri/kartları yükle
+temaYukle(user.uid);
 ekranGoster('app-screen');
 document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
 document.getElementById('user-email').innerText = user.email;
