@@ -370,10 +370,11 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <script type="module">
 // YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDatabase, ref as dbRef, set as dbSet, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
+const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", databaseURL: "https://cuzdan-99641-default-rtdb.firebaseio.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
 const app = initializeApp(firebaseConfig);
 
 const db = initializeFirestore(app, {
@@ -381,7 +382,30 @@ localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 
 const auth = getAuth(app);
+const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
+
+// --- AKTİF KULLANICI PRESENCE SİSTEMİ ---
+function presenceBaslat(user) {
+  const userPresenceRef = dbRef(rtdb, 'presence/' + user.uid);
+  const connectedRef = dbRef(rtdb, '.info/connected');
+  onValue(connectedRef, (snap) => {
+    if (snap.val() === true) {
+      onDisconnect(userPresenceRef).remove();
+      dbSet(userPresenceRef, { email: user.email, girisTarihi: Date.now() });
+    }
+  });
+}
+
+function presenceDinle() {
+  const presenceRef = dbRef(rtdb, 'presence');
+  onValue(presenceRef, (snap) => {
+    const data = snap.val();
+    const sayi = data ? Object.keys(data).length : 0;
+    const el = document.getElementById('aktif-kullanici-sayisi');
+    if (el) el.innerText = '🟢 Şu an aktif: ' + sayi + ' kullanıcı';
+  });
+}
 
 const offlineUyari = document.getElementById('offline-uyari');
 window.addEventListener('offline', () => offlineUyari.classList.remove('offline-gizle'));
@@ -589,10 +613,12 @@ console.log("Çevrimdışı mod: Önbellek verileri kullanılıyor.");
 }
 if (user.email === "emre121856031@gmail.com") {
 const adminAlan = document.getElementById('admin-alan');
-adminAlan.innerHTML = `<button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
+adminAlan.innerHTML = `<div id="aktif-kullanici-sayisi" style="background:rgba(16,185,129,0.2); border:1px solid #10b981; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:bold; margin-top:5px; text-align:center;">🟢 Yükleniyor...</div><button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
 adminAlan.querySelector('button').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
 document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
+presenceDinle();
 } else { document.getElementById('admin-alan').innerHTML = ''; }
+presenceBaslat(user);
 } else { 
 ekranGoster('auth-screen'); 
 if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
@@ -628,7 +654,7 @@ document.getElementById('btn-sifre-onay-mail').onclick = async () => await sendP
 document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
 document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
 document.getElementById('btn-gecis-giris-2').onclick = () => ekranGoster('auth-screen');
-document.getElementById('btn-cikis').onclick = () => signOut(auth);
+document.getElementById('btn-cikis').onclick = () => { if(auth.currentUser) { dbSet(dbRef(rtdb, 'presence/' + auth.currentUser.uid), null); } signOut(auth); };
 document.getElementById('profil-baslik').onclick = () => { kapatPaneller(); document.getElementById('profil-menu').classList.toggle('hidden'); };
 document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); };
 document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); };
