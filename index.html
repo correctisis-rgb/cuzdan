@@ -333,6 +333,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
     <option value="Diğer">Diğer</option>
     </select>
     <button id="btn-ekle-kategori" style="background:#f59e0b; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Yeni Kategori Ekle">+</button>
+    <button id="btn-sil-kategori" style="background:#ef4444; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Seçili Kategoriyi Sil">−</button>
 </div>
 
 <div style="display:flex; gap:5px; margin-top:2px;">
@@ -344,6 +345,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
     <option value="Diğer Kredi Kartı">Diğer Kredi Kartı</option>
     </select>
     <button id="btn-ekle-hesap" style="background:#f59e0b; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Yeni Kart/Hesap Ekle">+</button>
+    <button id="btn-sil-hesap" style="background:#ef4444; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Seçili Hesabı Sil">−</button>
 </div>
 
 <div style="display:flex; gap:5px; margin-top:2px;">
@@ -822,6 +824,36 @@ if(auth.currentUser) {
 const accs = JSON.parse(localStorage.getItem('custom_accs_' + auth.currentUser.uid) || '[]');
 if (!accs.includes(yeni)) { accs.push(yeni); localStorage.setItem('custom_accs_' + auth.currentUser.uid, JSON.stringify(accs)); }
 }
+}
+};
+
+document.getElementById('btn-sil-kategori').onclick = () => {
+const select = document.getElementById('kategori');
+const seciliDeger = select.value;
+const sabitKategoriler = ['Genel', 'Maaş', 'Market', 'Fatura', 'Ulaşım', 'Sağlık', 'Eğlence', 'Diğer'];
+if (sabitKategoriler.includes(seciliDeger)) { alert("Varsayılan kategoriler silinemez."); return; }
+if (!confirm(`"${seciliDeger}" kategorisini silmek istediğine emin misin?`)) return;
+select.querySelector(`option[value="${seciliDeger}"]`).remove();
+select.value = 'Genel';
+if (auth.currentUser) {
+let cats = JSON.parse(localStorage.getItem('custom_cats_' + auth.currentUser.uid) || '[]');
+cats = cats.filter(c => c !== seciliDeger);
+localStorage.setItem('custom_cats_' + auth.currentUser.uid, JSON.stringify(cats));
+}
+};
+
+document.getElementById('btn-sil-hesap').onclick = () => {
+const select = document.getElementById('hesap');
+const seciliDeger = select.value;
+const sabitHesaplar = ['Nakit', 'Garanti', 'Ziraat', 'Qnb', 'Diğer Kredi Kartı'];
+if (sabitHesaplar.includes(seciliDeger)) { alert("Varsayılan ödeme şekilleri silinemez."); return; }
+if (!confirm(`"${seciliDeger}" hesabını silmek istediğine emin misin?`)) return;
+select.querySelector(`option[value="${seciliDeger}"]`).remove();
+select.value = 'Nakit';
+if (auth.currentUser) {
+let accs = JSON.parse(localStorage.getItem('custom_accs_' + auth.currentUser.uid) || '[]');
+accs = accs.filter(a => a !== seciliDeger);
+localStorage.setItem('custom_accs_' + auth.currentUser.uid, JSON.stringify(accs));
 }
 };
 
