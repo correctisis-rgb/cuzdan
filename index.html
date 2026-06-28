@@ -440,23 +440,52 @@ async function userKaydet(user) {
 function presenceDinle() {
   const presenceRef = dbRef(rtdb, 'presence');
   onValue(presenceRef, (snap) => {
-    const data = snap.val();
-    const sayi = data ? Object.keys(data).length : 0;
+    const data = snap.val() || {};
+    const sayi = Object.keys(data).length;
+
+    // Admin özet çubuğu
     const el = document.getElementById('aktif-kullanici-sayisi');
     if (el) el.innerText = '🟢 Şu an aktif: ' + sayi + ' kullanıcı';
+
+    // Kullanıcı paneli açıksa anlık güncelle
+    const statOnline = document.getElementById('stat-online');
+    if (statOnline) statOnline.innerText = sayi;
+
+    const onlineEl = document.getElementById('online-liste');
+    if (onlineEl) {
+      let onlineHtml = '';
+      Object.values(data).forEach(p => {
+        const girisTarih = new Date(p.girisTarihi).toLocaleTimeString('tr-TR');
+        onlineHtml += `<div style="padding:3px 0; display:flex; align-items:center; gap:5px;">
+          <span style="color:#10b981;">●</span>
+          <span style="font-size:11px;">${p.email}</span>
+          <span style="opacity:0.5; font-size:10px;">(${girisTarih}'den beri)</span>
+        </div>`;
+      });
+      onlineEl.innerHTML = onlineHtml || '<div style="opacity:0.5;">Kimse online değil</div>';
+    }
   });
 }
 
-function kullanicilariDinle() {
-  const usersRef = dbRef(rtdb, 'users');
+async function kullanicilariDinle() {
   const presenceRef = dbRef(rtdb, 'presence');
+  const usersRef = dbRef(rtdb, 'users');
+  const simdi = Date.now();
+  const yirmiDortSaat = 24 * 60 * 60 * 1000;
 
+  // --- Firestore'dan benzersiz UID'leri çek (toplam kayıtlı kullanıcı) ---
+  const islemlerSnap = await getDocs(collection(db, "islemler"));
+  const benzersizUidler = new Set();
+  islemlerSnap.forEach(d => { if(d.data().uid) benzersizUidler.add(d.data().uid); });
+  // users RTDB'deki kayıtları da ekle
   onValue(usersRef, (usersSnap) => {
     const usersData = usersSnap.val() || {};
-    const toplamKullanici = Object.keys(usersData).length;
-    const simdi = Date.now();
-    const yirmiDortSaat = 24 * 60 * 60 * 1000;
+    Object.keys(usersData).forEach(uid => benzersizUidler.add(uid));
 
+    // Toplam = Firestore benzersiz uid + RTDB users birleşimi
+    document.getElementById('stat-toplam').innerText = benzersizUidler.size;
+
+    // Son 24 saat ve kullanıcı listesi (sadece RTDB'de kayıtlı olanlar detaylı gösterilir)
     let son24h = 0;
     let kullaniciListeHtml = '';
     const kullanicilar = Object.values(usersData).sort((a, b) => b.sonGiris - a.sonGiris);
@@ -466,32 +495,25 @@ function kullanicilariDinle() {
       if (fark < yirmiDortSaat) son24h++;
       const sonGirisTarih = new Date(u.sonGiris).toLocaleString('tr-TR');
       const ilkKayitTarih = new Date(u.ilkKayit).toLocaleDateString('tr-TR');
-      kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <div style="font-weight:bold;">${u.email}</div>
-          <div style="opacity:0.6; font-size:10px;">Son giriş: ${sonGirisTarih} | Kayıt: ${ilkKayitTarih}</div>
-        </div>
+      kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+        <div style="font-weight:bold; font-size:11px;">${u.email}</div>
+        <div style="opacity:0.6; font-size:10px;">Son giriş: ${sonGirisTarih} | Kayıt: ${ilkKayitTarih}</div>
       </div>`;
     });
 
-    document.getElementById('stat-toplam').innerText = toplamKullanici;
+    // Firestore'da olup RTDB'de olmayan kullanıcıları da göster (sadece uid)
+    const rtdbUidler = new Set(Object.keys(usersData));
+    let firestoreOnly = 0;
+    benzersizUidler.forEach(uid => { if(!rtdbUidler.has(uid)) firestoreOnly++; });
+    if (firestoreOnly > 0) {
+      kullaniciListeHtml += `<div style="padding:4px 0; opacity:0.5; font-size:10px; font-style:italic;">+ ${firestoreOnly} eski kullanıcı (henüz yeni sisteme geçmedi)</div>`;
+    }
+
     document.getElementById('stat-24h').innerText = son24h;
     document.getElementById('kullanici-liste').innerHTML = kullaniciListeHtml || '<div style="opacity:0.5;">Henüz kayıt yok</div>';
 
-    // Online listesini de güncelle
-    onValue(presenceRef, (presSnap) => {
-      const presData = presSnap.val() || {};
-      const onlineSayi = Object.keys(presData).length;
-      document.getElementById('stat-online').innerText = onlineSayi;
-      let onlineHtml = '';
-      Object.values(presData).forEach(p => {
-        const girisTarih = new Date(p.girisTarihi).toLocaleTimeString('tr-TR');
-        onlineHtml += `<div style="padding:3px 0; display:flex; align-items:center; gap:5px;"><span style="color:#10b981;">●</span><span>${p.email}</span><span style="opacity:0.5; font-size:10px;">(${girisTarih}'den beri)</span></div>`;
-      });
-      const onlineEl = document.getElementById('online-liste');
-      if (onlineEl) onlineEl.innerHTML = onlineHtml || '<div style="opacity:0.5;">Kimse online değil</div>';
-    }, { onlyOnce: true });
-  });
+  }, { onlyOnce: true });
+  // Online liste presenceDinle tarafından canlı güncelleniyor
 }
 
 const offlineUyari = document.getElementById('offline-uyari');
