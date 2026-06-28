@@ -845,7 +845,7 @@ localStorage.setItem('custom_cats_' + auth.currentUser.uid, JSON.stringify(cats)
 document.getElementById('btn-sil-hesap').onclick = () => {
 const select = document.getElementById('hesap');
 const seciliDeger = select.value;
-const sabitHesaplar = ['Nakit', 'Garanti', 'Ziraat', 'Qnb', 'Diğer Kredi Kartı'];
+const sabitHesaplar = ['Nakit', 'Diğer Kredi Kartı'];
 if (sabitHesaplar.includes(seciliDeger)) { alert("Varsayılan ödeme şekilleri silinemez."); return; }
 if (!confirm(`"${seciliDeger}" hesabını silmek istediğine emin misin?`)) return;
 select.querySelector(`option[value="${seciliDeger}"]`).remove();
