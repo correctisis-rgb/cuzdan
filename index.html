@@ -401,6 +401,38 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <button id="btn-taksit" style="background:#8b5cf6; flex:1;">TAKSİT (💸)</button>
 </div>
 
+<div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+  <button id="btn-arama-ac" style="background:rgba(255,255,255,0.2); border:none; border-radius:8px; color:white; padding:4px 10px; font-size:12px; cursor:pointer; width:auto;">🔍 Ara / Filtrele</button>
+  <span id="filtre-sonuc-bilgi" style="font-size:10px; opacity:0.7;"></span>
+</div>
+
+<div id="arama-panel" class="hidden" style="background:rgba(0,0,0,0.25); border-radius:10px; padding:7px; margin-top:3px;">
+  <input type="text" id="arama-metin" placeholder="Açıklamada ara..." style="margin-bottom:4px;">
+  <div style="display:flex; gap:5px;">
+    <select id="filtre-kategori" style="flex:1; font-size:12px;">
+      <option value="">Tüm Kategoriler</option>
+      <option value="Genel">Genel</option>
+      <option value="Maaş">Maaş</option>
+      <option value="Market">Market</option>
+      <option value="Fatura">Fatura</option>
+      <option value="Ulaşım">Ulaşım</option>
+      <option value="Sağlık">Sağlık</option>
+      <option value="Eğlence">Eğlence</option>
+      <option value="Diğer">Diğer</option>
+    </select>
+    <select id="filtre-tur" style="flex:1; font-size:12px;">
+      <option value="">Tümü</option>
+      <option value="gelir">Gelir</option>
+      <option value="gider">Gider</option>
+    </select>
+  </div>
+  <div style="display:flex; gap:5px; margin-top:4px;">
+    <input type="date" id="filtre-tarih-baslangic" style="flex:1; font-size:11px; padding:4px; color:#555;">
+    <input type="date" id="filtre-tarih-bitis" style="flex:1; font-size:11px; padding:4px; color:#555;">
+  </div>
+  <button id="btn-filtre-temizle" style="background:rgba(255,255,255,0.15); margin-top:4px; font-size:11px; padding:4px;">✕ Filtreyi Temizle</button>
+</div>
+
 <div class="liste-alani">
 <table id="tablo"></table>
 </div>
@@ -743,7 +775,43 @@ onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (s) => 
 kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden'); 
 };
 
-let myChart, seciliTarih = new Date(), mevcutAyVerileri = []; 
+let myChart, seciliTarih = new Date(), mevcutAyVerileri = [];
+
+// --- ARAMA / FİLTRELEME ---
+const hesapIsimleriMapGlobal = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
+
+function tabloYenile() {
+  const aramaMetin = (document.getElementById('arama-metin')?.value || '').toLowerCase().trim();
+  const filtreKat = document.getElementById('filtre-kategori')?.value || '';
+  const filtreTur = document.getElementById('filtre-tur')?.value || '';
+  const filtreBas = document.getElementById('filtre-tarih-baslangic')?.value;
+  const filtreBit = document.getElementById('filtre-tarih-bitis')?.value;
+  const basTarih = filtreBas ? new Date(filtreBas).setHours(0,0,0,0) : null;
+  const bitTarih = filtreBit ? new Date(filtreBit).setHours(23,59,59,999) : null;
+
+  const filtrelenmis = mevcutAyVerileri.filter(d => {
+    if (aramaMetin && !d.aciklama.toLowerCase().includes(aramaMetin)) return false;
+    if (filtreKat && d.kategori !== filtreKat) return false;
+    if (filtreTur && d.tur !== filtreTur) return false;
+    if (basTarih && d.tarih < basTarih) return false;
+    if (bitTarih && d.tarih > bitTarih) return false;
+    return true;
+  });
+
+  const filtreAktif = aramaMetin || filtreKat || filtreTur || filtreBas || filtreBit;
+  const bilgiEl = document.getElementById('filtre-sonuc-bilgi');
+  if (bilgiEl) bilgiEl.innerText = filtreAktif ? `${filtrelenmis.length} / ${mevcutAyVerileri.length} işlem` : '';
+
+  let html = "";
+  filtrelenmis.forEach(d => {
+    const t = new Date(d.tarih);
+    const hspGosterim = hesapIsimleriMapGlobal[d.hesap] || d.hesap || 'Nakit';
+    const hesapMetni = d.hesap ? ` | ${hspGosterim}` : ' | Nakit';
+    const syncIcon = d.isPending ? ' ☁️' : '';
+    html += `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;"><button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button></td></tr>`;
+  });
+  document.getElementById('tablo').innerHTML = html || '<tr><td colspan="3" style="text-align:center; opacity:0.5; padding:10px;">Sonuç bulunamadı</td></tr>';
+} 
 const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 document.getElementById('tarih').valueAsDate = new Date();
 
@@ -898,17 +966,7 @@ mevcutAyVerileri = veriler;
 
 document.getElementById('bakiye').innerText = formatla(bakiye);
 document.getElementById('bakiye').style.color = (bakiye < 0) ? "#ef4444" : "white";
-let html = "";
-veriler.forEach(d => {
-const t = new Date(d.tarih);
-const hspGosterim = hesapIsimleriMap[d.hesap] || d.hesap || 'Nakit';
-const hesapMetni = d.hesap ? ` | ${hspGosterim}` : ' | Nakit';
-const syncIcon = d.isPending ? ' ☁️' : '';
-
-// YENİ: Düzenle (✏️) butonu eklendi
-html += `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;"><button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button></td></tr>`;
-});
-document.getElementById('tablo').innerHTML = html;
+tabloYenile();
 
 let borcHtml = "";
 let toplamBorcHarcama = 0;
@@ -980,6 +1038,40 @@ document.getElementById('aciklama').value = ''; document.getElementById('tutar')
 
 document.getElementById('btn-gelir').onclick = () => ekle('gelir');
 document.getElementById('btn-gider').onclick = () => ekle('gider');
+// --- ARAMA BUTON VE FİLTRE EVENT'LERİ ---
+document.getElementById('btn-arama-ac').onclick = () => {
+  const panel = document.getElementById('arama-panel');
+  const btn = document.getElementById('btn-arama-ac');
+  const acik = !panel.classList.contains('hidden');
+  panel.classList.toggle('hidden');
+  btn.innerText = acik ? '🔍 Ara / Filtrele' : '🔍 Aramayı Kapat';
+  if (acik) {
+    // Kapanınca filtreyi temizle
+    document.getElementById('arama-metin').value = '';
+    document.getElementById('filtre-kategori').value = '';
+    document.getElementById('filtre-tur').value = '';
+    document.getElementById('filtre-tarih-baslangic').value = '';
+    document.getElementById('filtre-tarih-bitis').value = '';
+    tabloYenile();
+  } else {
+    document.getElementById('arama-metin').focus();
+  }
+};
+
+document.getElementById('btn-filtre-temizle').onclick = () => {
+  document.getElementById('arama-metin').value = '';
+  document.getElementById('filtre-kategori').value = '';
+  document.getElementById('filtre-tur').value = '';
+  document.getElementById('filtre-tarih-baslangic').value = '';
+  document.getElementById('filtre-tarih-bitis').value = '';
+  tabloYenile();
+};
+
+['arama-metin', 'filtre-kategori', 'filtre-tur', 'filtre-tarih-baslangic', 'filtre-tarih-bitis'].forEach(id => {
+  document.getElementById(id).addEventListener('input', tabloYenile);
+  document.getElementById(id).addEventListener('change', tabloYenile);
+});
+
 window.sil = (id) => deleteDoc(doc(db, "islemler", id));
 
 // --- YENİ: Kategori / Hesap Ekleme Yapıları ---
