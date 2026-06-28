@@ -835,8 +835,8 @@ console.log("Çevrimdışı mod: Önbellek verileri kullanılıyor.");
 }
 if (user.email === "emre121856031@gmail.com") {
 const adminAlan = document.getElementById('admin-alan');
-adminAlan.innerHTML = `<div id="aktif-kullanici-sayisi" style="background:rgba(16,185,129,0.2); border:1px solid #10b981; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:bold; margin-top:5px; text-align:center;">🟢 Yükleniyor...</div><button id="btn-kullanici-yonetim" style="background:#0ea5e9; margin-top:5px;">👥 KULLANICI YÖNETİMİ</button><button style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
-adminAlan.querySelector('button').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
+adminAlan.innerHTML = `<div id="aktif-kullanici-sayisi" style="background:rgba(16,185,129,0.2); border:1px solid #10b981; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:bold; margin-top:5px; text-align:center;">🟢 Yükleniyor...</div><button id="btn-kullanici-yonetim" style="background:#0ea5e9; margin-top:5px;">👥 KULLANICI YÖNETİMİ</button><button id="btn-duyuru-yayinla" style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
+document.getElementById('btn-duyuru-yayinla').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
 document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
 document.getElementById('btn-kullanici-yonetim').onclick = () => { kapatPaneller(); document.getElementById('kullanici-panel').classList.remove('hidden'); kullanicilariDinle(); };
 presenceDinle();
