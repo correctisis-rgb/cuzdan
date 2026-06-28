@@ -332,11 +332,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
     <option value="Eğlence">Eğlence</option>
     <option value="Diğer">Diğer</option>
     </select>
-    <div style="display:flex; gap:5px; margin-top:2px;">
-    <select id="kategori" style="flex:1;"></select>
-    <button id="btn-ekle-kategori" style="background:#f59e0b; width:30px; font-weight:bold; padding:0; border-radius:10px;">+</button>
-    <button id="btn-sil-kategori" style="background:#ef4444; width:30px; font-weight:bold; padding:0; border-radius:10px;">-</button>
-    </div>
+    <button id="btn-ekle-kategori" style="background:#f59e0b; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Yeni Kategori Ekle">+</button>
 </div>
 
 <div style="display:flex; gap:5px; margin-top:2px;">
@@ -347,11 +343,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
     <option value="Qnb">QNB Finansbank</option>
     <option value="Diğer Kredi Kartı">Diğer Kredi Kartı</option>
     </select>
-    <div style="display:flex; gap:5px; margin-top:2px;">
-    <select id="hesap" style="flex:1;"></select>
-    <button id="btn-ekle-hesap" style="background:#f59e0b; width:30px; font-weight:bold; padding:0; border-radius:10px;">+</button>
-    <button id="btn-sil-hesap" style="background:#ef4444; width:30px; font-weight:bold; padding:0; border-radius:10px;">-</button>
-    </div>
+    <button id="btn-ekle-hesap" style="background:#f59e0b; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Yeni Kart/Hesap Ekle">+</button>
 </div>
 
 <div style="display:flex; gap:5px; margin-top:2px;">
@@ -800,62 +792,37 @@ document.getElementById('btn-gelir').onclick = () => ekle('gelir');
 document.getElementById('btn-gider').onclick = () => ekle('gider');
 window.sil = (id) => deleteDoc(doc(db, "islemler", id));
 
-// --- Kategori ve Hesap Yönetimi ---
+// --- YENİ: Kategori / Hesap Ekleme Yapıları ---
 function loadCustomData(user) {
-    if(!user) return;
-    // Eğer localStorage'da veri yoksa varsayılan listeyi kullan
-    const cats = JSON.parse(localStorage.getItem('custom_cats_' + user.uid) || '["Genel","Maaş","Market","Fatura","Ulaşım","Sağlık","Eğlence","Diğer"]');
-    const accs = JSON.parse(localStorage.getItem('custom_accs_' + user.uid) || '["Nakit","Garanti","Ziraat","Qnb","Diğer Kredi Kartı"]');
-    
-    const catSelect = document.getElementById('kategori');
-    const accSelect = document.getElementById('hesap');
-    
-    catSelect.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
-    accSelect.innerHTML = accs.map(a => `<option value="${a}">${a}</option>`).join('');
+if(!user) return;
+const cats = JSON.parse(localStorage.getItem('custom_cats_' + user.uid) || '[]');
+const accs = JSON.parse(localStorage.getItem('custom_accs_' + user.uid) || '[]');
+cats.forEach(c => { if(!document.querySelector(`#kategori option[value="${c}"]`)) document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`); });
+accs.forEach(a => { if(!document.querySelector(`#hesap option[value="${a}"]`)) document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`); });
 }
 
-// Kategori İşlemleri
 document.getElementById('btn-ekle-kategori').onclick = () => {
-    const yeni = prompt("Yeni Kategori Adı:");
-    if(yeni && yeni.trim() !== "") {
-        const cats = JSON.parse(localStorage.getItem('custom_cats_' + auth.currentUser.uid) || '[]');
-        cats.push(yeni);
-        localStorage.setItem('custom_cats_' + auth.currentUser.uid, JSON.stringify(cats));
-        loadCustomData(auth.currentUser);
-    }
+const yeni = prompt("Yeni Kategori Adı:");
+if(yeni && yeni.trim() !== "") {
+document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
+document.getElementById('kategori').value = yeni;
+if(auth.currentUser) {
+const cats = JSON.parse(localStorage.getItem('custom_cats_' + auth.currentUser.uid) || '[]');
+if (!cats.includes(yeni)) { cats.push(yeni); localStorage.setItem('custom_cats_' + auth.currentUser.uid, JSON.stringify(cats)); }
+}
+}
 };
 
-document.getElementById('btn-sil-kategori').onclick = () => {
-    const catSelect = document.getElementById('kategori');
-    const silinecek = catSelect.value;
-    if(confirm(`${silinecek} kategorisini silmek istiyor musun?`)) {
-        let cats = JSON.parse(localStorage.getItem('custom_cats_' + auth.currentUser.uid) || '[]');
-        cats = cats.filter(c => c !== silinecek);
-        localStorage.setItem('custom_cats_' + auth.currentUser.uid, JSON.stringify(cats));
-        loadCustomData(auth.currentUser);
-    }
-};
-
-// Hesap İşlemleri
 document.getElementById('btn-ekle-hesap').onclick = () => {
-    const yeni = prompt("Yeni Kart/Hesap Adı:");
-    if(yeni && yeni.trim() !== "") {
-        const accs = JSON.parse(localStorage.getItem('custom_accs_' + auth.currentUser.uid) || '[]');
-        accs.push(yeni);
-        localStorage.setItem('custom_accs_' + auth.currentUser.uid, JSON.stringify(accs));
-        loadCustomData(auth.currentUser);
-    }
-};
-
-document.getElementById('btn-sil-hesap').onclick = () => {
-    const accSelect = document.getElementById('hesap');
-    const silinecek = accSelect.value;
-    if(confirm(`${silinecek} hesabını silmek istiyor musun?`)) {
-        let accs = JSON.parse(localStorage.getItem('custom_accs_' + auth.currentUser.uid) || '[]');
-        accs = accs.filter(a => a !== silinecek);
-        localStorage.setItem('custom_accs_' + auth.currentUser.uid, JSON.stringify(accs));
-        loadCustomData(auth.currentUser);
-    }
+const yeni = prompt("Yeni Kart/Hesap Adı:");
+if(yeni && yeni.trim() !== "") {
+document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
+document.getElementById('hesap').value = yeni;
+if(auth.currentUser) {
+const accs = JSON.parse(localStorage.getItem('custom_accs_' + auth.currentUser.uid) || '[]');
+if (!accs.includes(yeni)) { accs.push(yeni); localStorage.setItem('custom_accs_' + auth.currentUser.uid, JSON.stringify(accs)); }
+}
+}
 };
 
 // --- YENİ: Taksit Sistemi ---
