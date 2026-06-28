@@ -29,6 +29,7 @@ align-items: center;
 color: white; 
 height: 100dvh;
 }
+/* Çevrimdışı Uyarı Çubuğu Stili */
 #offline-uyari {
 position: fixed;
 top: 0;
@@ -39,6 +40,7 @@ color: white;
 text-align: center;
 font-size: 11px;
 font-weight: bold;
+/* Çentik (notch) için güvenli alan boşluğu padding'e eklendi */
 padding: max(4px, env(safe-area-inset-top)) 0 4px 0;
 z-index: 10001;
 box-shadow: 0 2px 10px rgba(0,0,0,0.5);
@@ -46,6 +48,7 @@ transition: transform 0.3s ease;
 }
 .offline-gizle { transform: translateY(-100%); }
 
+/* Açılış ve Yükleme Ekranı Stilleri */
 #splash-screen {
 position: fixed;
 top: 0;
@@ -60,11 +63,33 @@ align-items: center;
 z-index: 9999;
 transition: opacity 0.5s ease, visibility 0.5s ease;
 }
-.splash-logo { font-size: 70px; margin-bottom: 20px; animation: pulse 2s infinite alternate; }
-.spinner { width: 40px; height: 40px; border: 4px solid rgba(255, 255, 255, 0.1); border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
-.splash-text { font-size: 14px; font-weight: 500; letter-spacing: 0.5px; color: rgba(255, 255, 255, 0.8); }
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes pulse { from { transform: scale(0.95); } to { transform: scale(1.05); } }
+.splash-logo {
+font-size: 70px;
+margin-bottom: 20px;
+animation: pulse 2s infinite alternate;
+}
+.spinner {
+width: 40px;
+height: 40px;
+border: 4px solid rgba(255, 255, 255, 0.1);
+border-top-color: #10b981;
+border-radius: 50%;
+animation: spin 1s linear infinite;
+margin-bottom: 15px;
+}
+.splash-text {
+font-size: 14px;
+font-weight: 500;
+letter-spacing: 0.5px;
+color: rgba(255, 255, 255, 0.8);
+}
+@keyframes spin {
+to { transform: rotate(360deg); }
+}
+@keyframes pulse {
+from { transform: scale(0.95); }
+to { transform: scale(1.05); }
+}
 
 .container { 
 background: rgba(255, 255, 255, 0.15); 
@@ -145,8 +170,22 @@ td small { font-size: 10px; }
 .app-icon { font-size: 24px; margin-bottom: 1px; }
 .app-label { font-size: 9px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 5px; }
 .borc-satir { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px; }
+
 .butor-group-row { display: flex; gap: 6px; margin: 3px 0; width: 100%; }
-.belirgin-btn { flex: 1; padding: 8px 4px !important; font-size: 20px !important; letter-spacing: 0.3px; border-radius: 18px !important; box-shadow: 0 4px 10px rgba(0,0,0,0.25); transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px solid rgba(255,255,255,0.1) !important; }
+.belirgin-btn {
+flex: 1;
+padding: 8px 4px !important;
+font-size: 20px !important;
+letter-spacing: 0.3px;
+border-radius: 18px !important;
+box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+transition: all 0.2s ease;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 4px;
+border: 1px solid rgba(255,255,255,0.1) !important;
+}
 .belirgin-btn:active { transform: scale(0.97); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 </style>
 </head>
@@ -283,28 +322,28 @@ td small { font-size: 10px; }
 <input type="date" id="tarih" style="padding: 4px; color: #555;">
 
 <div style="display:flex; gap:5px; margin-top:2px;">
-<select id="kategori" style="flex:1;">
-<option value="Genel">Genel</option>
-<option value="Maaş">Maaş</option>
-<option value="Market">Market</option>
-<option value="Fatura">Fatura</option>
-<option value="Ulaşım">Ulaşım</option>
-<option value="Sağlık">Sağlık</option>
-<option value="Eğlence">Eğlence</option>
-<option value="Diğer">Diğer</option>
-</select>
-<button id="btn-ekle-kategori" style="background:#f59e0b; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Yeni Kategori Ekle">+</button>
+    <select id="kategori" style="flex:1;">
+    <option value="Genel">Genel</option>
+    <option value="Maaş">Maaş</option>
+    <option value="Market">Market</option>
+    <option value="Fatura">Fatura</option>
+    <option value="Ulaşım">Ulaşım</option>
+    <option value="Sağlık">Sağlık</option>
+    <option value="Eğlence">Eğlence</option>
+    <option value="Diğer">Diğer</option>
+    </select>
+    <button id="btn-ekle-kategori" style="background:#f59e0b; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Yeni Kategori Ekle">+</button>
 </div>
 
 <div style="display:flex; gap:5px; margin-top:2px;">
-<select id="hesap" style="flex:1;">
-<option value="Nakit">Nakit</option>
-<option value="Garanti">Garanti BBVA</option>
-<option value="Ziraat">Ziraat Bankası</option>
-<option value="Qnb">QNB Finansbank</option>
-<option value="Diğer Kredi Kartı">Diğer Kredi Kartı</option>
-</select>
-<button id="btn-ekle-hesap" style="background:#f59e0b; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Yeni Kart/Hesap Ekle">+</button>
+    <select id="hesap" style="flex:1;">
+    <option value="Nakit">Nakit</option>
+    <option value="Garanti">Garanti BBVA</option>
+    <option value="Ziraat">Ziraat Bankası</option>
+    <option value="Qnb">QNB Finansbank</option>
+    <option value="Diğer Kredi Kartı">Diğer Kredi Kartı</option>
+    </select>
+    <button id="btn-ekle-hesap" style="background:#f59e0b; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Yeni Kart/Hesap Ekle">+</button>
 </div>
 
 <div style="display:flex; gap:5px; margin-top:2px;">
@@ -327,6 +366,7 @@ td small { font-size: 10px; }
 </div>
 
 <script type="module">
+// YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -347,11 +387,15 @@ window.addEventListener('online', () => offlineUyari.classList.add('offline-gizl
 if (!navigator.onLine) offlineUyari.classList.remove('offline-gizle');
 
 window.addEventListener('load', () => {
-if (!navigator.onLine) { document.getElementById('offline-uyari').classList.remove('offline-gizle'); }
+if (!navigator.onLine) {
+document.getElementById('offline-uyari').classList.remove('offline-gizle');
+}
 });
 
 if ('serviceWorker' in navigator) {
-navigator.serviceWorker.register('sw.js').then(reg => { console.log('SW kayıt edildi:', reg.scope); });
+navigator.serviceWorker.register('sw.js').then(reg => {
+console.log('SW kayıt edildi:', reg.scope);
+});
 }
 
 const sesKilidiniAc = () => {
@@ -395,7 +439,8 @@ btn.innerText = "OKUNUYOR...";
 
 try {
 const text = await kucultVeOku(file);
-console.log(text);
+
+  console.log(text);
 alert(text);
   
 const regex = /(?:GENEL\s*TOPLAM|TOPLAM\s*ÖDENECEK|TOPLAM\s*TUTAR|ÖDENECEK\s*TUTAR|ÖDENECEK|TOPLAM|TUTAR)\D*([\d.]+,\d{2})/i;
@@ -410,7 +455,9 @@ hamTutar = hamTutar.replace(/\./g, '').replace(',', '.');
 hamTutar = parseFloat(hamTutar).toFixed(2).replace('.', ',');
 }
 document.getElementById('tutar').value = hamTutar;
-} else { alert("Tutar net okunamadı. Lütfen fişin net fotoğrafını çekin."); }
+} else {
+alert("Tutar net okunamadı. Lütfen fişin net fotoğrafını çekin.");
+}
 } catch (err) { alert("Okuma sırasında hata oluştu."); }
 btn.innerText = "📷 FİŞİ OKUT";
 };
@@ -430,12 +477,29 @@ document.getElementById('aciklama').addEventListener('input', (e) => {
 const metin = e.target.value.toLowerCase();
 const kategoriSelect = document.getElementById('kategori');
 
-if (metin.includes('market') || metin.includes('bakkal') || metin.includes('file') || metin.includes('hakmar') || metin.includes('a101') || metin.includes('bim') || metin.includes('migros') || metin.includes('alışveriş')) { kategoriSelect.value = 'Market'; } 
-else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || metin.includes('telefon') || metin.includes('vodafone') || metin.includes('internet')) { kategoriSelect.value = 'Fatura'; } 
-else if (metin.includes('ilaç') || metin.includes('hap') || metin.includes('eczane')) { kategoriSelect.value = 'Sağlık'; } 
-else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt')) { kategoriSelect.value = 'Ulaşım'; } 
-else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser')) { kategoriSelect.value = 'Eğlence'; } 
-else if (metin.includes('maaş')) { kategoriSelect.value = 'Maaş'; }
+if (metin.includes('market') || metin.includes('bakkal') || metin.includes('file') || 
+metin.includes('hakmar') || metin.includes('a101') || metin.includes('bim') || 
+metin.includes('migros') || metin.includes('alışveriş')) {
+kategoriSelect.value = 'Market';
+} 
+else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || 
+metin.includes('telefon') || metin.includes('vodafone') || metin.includes('internet')) {
+kategoriSelect.value = 'Fatura';
+} 
+
+else if (metin.includes('ilaç') || metin.includes('hap') || metin.includes('eczane')) {
+kategoriSelect.value = 'Sağlık';
+} 
+
+else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt')) {
+kategoriSelect.value = 'Ulaşım';
+} 
+else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser')) {
+kategoriSelect.value = 'Eğlence';
+} 
+else if (metin.includes('maaş')) {
+kategoriSelect.value = 'Maaş';
+}
 });
 
 const hataGoster = (err) => {
@@ -477,7 +541,9 @@ document.getElementById('popup-duyuru').classList.remove('hidden');
 }
 }
 
-if (!snapshot.empty) { localStorage.setItem('sonOkunanDuyuruID', snapshot.docs[0].id); }
+if (!snapshot.empty) {
+localStorage.setItem('sonOkunanDuyuruID', snapshot.docs[0].id);
+}
 isInitialLoad = false;
 });
 }
@@ -499,12 +565,15 @@ const ekranGoster = (id) => { ['auth-screen', 'signup-screen', 'reset-screen', '
 
 const splashGizle = () => {
 const splash = document.getElementById('splash-screen');
-if (splash) { splash.style.opacity = '0'; splash.style.visibility = 'hidden'; }
+if (splash) {
+splash.style.opacity = '0';
+splash.style.visibility = 'hidden';
+}
 };
 
 onAuthStateChanged(auth, (user) => {
 if (user) {
-loadCustomData(user);
+loadCustomData(user); // YENİ: Cihaza kaydedilmiş kategorileri/kartları yükle
 ekranGoster('app-screen');
 document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
 document.getElementById('user-email').innerText = user.email;
@@ -526,6 +595,7 @@ document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
 ekranGoster('auth-screen'); 
 if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
 }
+
 splashGizle();
 });
 
@@ -545,11 +615,13 @@ document.getElementById('mesaj-listesi').innerHTML = html || "Henüz mesaj yok."
 window.silMesaj = async (id) => { if(confirm("Silmek istediğine emin misin?")) { await deleteDoc(doc(db, "bildirimler", id)); mesajlariGetir(); } };
 
 document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster);
+
 document.getElementById('btn-kayit-ol').onclick = () => {
 const girilenSifre = document.getElementById('signup-sifre').value;
 if (!sifrePolitikasiKontrol(girilenSifre)) { alert(sifreHataMesaji); return; }
 createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, girilenSifre).catch(hataGoster);
 };
+
 document.getElementById('btn-sifre-onay-mail').onclick = async () => await sendPasswordResetEmail(auth, document.getElementById('reset-email').value).then(() => alert("E-posta gönderildi.")).catch(hataGoster);
 document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
 document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
@@ -642,7 +714,9 @@ const t = new Date(d.tarih);
 const hspGosterim = hesapIsimleriMap[d.hesap] || d.hesap || 'Nakit';
 const hesapMetni = d.hesap ? ` | ${hspGosterim}` : ' | Nakit';
 const syncIcon = d.isPending ? ' ☁️' : '';
-html += `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="display:flex; flex-direction:column; gap:8px;"><button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer; font-size:14px;" title="Düzenle">✏️</button><button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer; font-size:14px;" title="Sil">❌</button></td></tr>`;
+
+// YENİ: Düzenle (✏️) butonu eklendi
+html += `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;"><button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button></td></tr>`;
 });
 document.getElementById('tablo').innerHTML = html;
 
@@ -668,6 +742,27 @@ myChart = new Chart(ctx, { type: 'doughnut', data: { labels: etiketler, datasets
 });
 }
 
+// YENİ: Düzenleme ve Ekleme Fonksiyonları Güncellendi
+window.duzenlenecekId = null;
+
+window.duzenle = (id, aciklama, tutar, tur, kategori, hesap, tarih) => {
+document.getElementById('aciklama').value = aciklama;
+document.getElementById('tutar').value = formatla(tutar).replace(/\./g, ''); 
+
+if (!document.querySelector(`#kategori option[value="${kategori}"]`)) { document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${kategori}">${kategori}</option>`); }
+document.getElementById('kategori').value = kategori;
+
+if (!document.querySelector(`#hesap option[value="${hesap}"]`)) { document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${hesap}">${hesap}</option>`); }
+document.getElementById('hesap').value = hesap;
+
+document.getElementById('tarih').valueAsDate = new Date(tarih);
+window.duzenlenecekId = id;
+
+document.getElementById('btn-gider').innerText = "GÜNCELLE (-)";
+document.getElementById('btn-gelir').innerText = "GÜNCELLE (+)";
+document.getElementById('btn-taksit').innerText = "İPTAL";
+};
+
 async function ekle(tur) {
 const aciklama = document.getElementById('aciklama').value;
 const kategori = document.getElementById('kategori').value;
@@ -690,94 +785,21 @@ document.getElementById('btn-taksit').innerText = "TAKSİT (💸)";
 await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, hesap, tarih: tarihObj.getTime() });
 }
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
-} catch (e) { console.error("Ekleme/Güncelleme hatası:", e); }
+} catch (e) { console.error("Ekleme hatası:", e); }
 }
 
 document.getElementById('btn-gelir').onclick = () => ekle('gelir');
 document.getElementById('btn-gider').onclick = () => ekle('gider');
 window.sil = (id) => deleteDoc(doc(db, "islemler", id));
 
-
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SpeechRecognition) { document.getElementById('btn-sesli-komut').style.display = 'none'; } else {
-const recognition = new SpeechRecognition();
-recognition.lang = 'tr-TR';
-recognition.interimResults = false;
-recognition.maxAlternatives = 1;
-const btnSesli = document.getElementById('btn-sesli-komut');
-let isListening = false; 
-
-const dinlemeyiDurdurTasarim = () => { isListening = false; btnSesli.innerText = "🎤 SESLİ EKLE"; btnSesli.style.background = "#00d2d3"; };
-
-btnSesli.onclick = () => {
-if(!navigator.onLine) { alert("Sesli algılama motoru çevrimdışı modda çalışmayabilir."); }
-if (!isListening) { isListening = true; btnSesli.innerText = "🎤 DİNLENİYOR..."; btnSesli.style.background = "#ef4444"; recognition.start(); } 
-else { recognition.stop(); dinlemeyiDurdurTasarim(); }
-};
-
-recognition.onspeechend = () => { recognition.stop(); dinlemeyiDurdurTasarim(); };
-recognition.onerror = (event) => { alert("Ses tanınamadı veya mikrofon izni verilmedi: " + event.error); dinlemeyiDurdurTasarim(); };
-
-recognition.onresult = async (event) => {
-const metin = event.results[0][0].transcript.toLowerCase();
-const sayilar = metin.match(/\d+/g);
-let bulunanTutar = 0;
-if (sayilar && sayilar.length > 0) { bulunanTutar = parseFloat(sayilar[0]); }
-if (bulunanTutar === 0 || isNaN(bulunanTutar)) { alert(`Söylediğiniz cümleden bir harcama/gelir tutarı çıkarılamadı.`); return; }
-
-document.getElementById('tutar').value = formatla(bulunanTutar);
-const kategoriSelect = document.getElementById('kategori');
-let bulunanKategori = "Genel";
-if (metin.includes('market') || metin.includes('bakkal') || metin.includes('file') || metin.includes('hakmar') || metin.includes('a101') || metin.includes('bim') || metin.includes('migros') || metin.includes('alışveriş') || metin.includes('gıda') || metin.includes('yemek')) { bulunanKategori = 'Market'; } 
-else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || metin.includes('telefon') || metin.includes('vodafone') || metin.includes('internet') || metin.includes('kira')) { bulunanKategori = 'Fatura'; } 
-else if (metin.includes('ilaç') || metin.includes('hap') || metin.includes('eczane') || metin.includes('sağlık') || metin.includes('hastane')) { bulunanKategori = 'Sağlık'; } 
-else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt') || metin.includes('benzin') || metin.includes('ulaşım')) { bulunanKategori = 'Ulaşım'; } 
-else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser') || metin.includes('eğlence') || metin.includes('cafe')) { bulunanKategori = 'Eğlence'; } 
-else if (metin.includes('maaş') || metin.includes('gelir') || metin.includes('kazanç')) { bulunanKategori = 'Maaş'; } 
-else if (metin.includes('diğer')) { bulunanKategori = 'Diğer'; }
-kategoriSelect.value = bulunanKategori;
-
-document.getElementById('aciklama').value = event.results[0][0].transcript.charAt(0).toUpperCase() + event.results[0][0].transcript.slice(1);
-const tarihInput = document.getElementById('tarih');
-let hedefTarih = new Date();
-if (metin.includes('dün')) { hedefTarih.setDate(hedefTarih.getDate() - 1); }
-if (tarihInput) tarihInput.valueAsDate = hedefTarih;
-
-let tur = 'gider';
-if (metin.includes('maaş') || metin.includes('gelir') || metin.includes('aldım') || metin.includes('geldi') || metin.includes('yattı') || metin.includes('kazandım')) { tur = 'gelir'; }
-
-const hesapSelect = document.getElementById('hesap');
-if (metin.includes('garanti')) hesapSelect.value = 'Garanti';
-else if (metin.includes('ziraat')) hesapSelect.value = 'Ziraat';
-else if (metin.includes('finans') || metin.includes('qnb')) hesapSelect.value = 'Qnb';
-else if (metin.includes('kart')) hesapSelect.value = 'Diğer Kredi Kartı';
-else if (metin.includes('nakit') || metin.includes('peşin')) hesapSelect.value = 'Nakit';
-
-const onay = confirm(`Mikrofon ile işlem algılandı, onaylıyor musunuz?\n\nTür: ${tur.toUpperCase()}\nAçıklama: ${document.getElementById('aciklama').value}\nTutar: ${bulunanTutar} TL\nKategori: ${bulunanKategori}\nHesap: ${hesapSelect.options[hesapSelect.selectedIndex].text}`);
-if (onay) { await ekle(tur); }
+// --- YENİ: Kategori / Hesap Ekleme Yapıları ---
+function loadCustomData(user) {
+if(!user) return;
+const cats = JSON.parse(localStorage.getItem('custom_cats_' + user.uid) || '[]');
+const accs = JSON.parse(localStorage.getItem('custom_accs_' + user.uid) || '[]');
+cats.forEach(c => { if(!document.querySelector(`#kategori option[value="${c}"]`)) document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`); });
+accs.forEach(a => { if(!document.querySelector(`#hesap option[value="${a}"]`)) document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`); });
 }
-
-
-// --- YENİ EKLENEN ÖZELLİKLER (Kategori/Hesap Ekleme, Taksit & Düzenleme) ---
-window.duzenlenecekId = null;
-
-window.duzenle = (id, aciklama, tutar, tur, kategori, hesap, tarih) => {
-document.getElementById('aciklama').value = aciklama;
-document.getElementById('tutar').value = formatla(tutar).replace(/\./g, ''); 
-
-if (!document.querySelector(`#kategori option[value="${kategori}"]`)) { document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${kategori}">${kategori}</option>`); }
-document.getElementById('kategori').value = kategori;
-
-if (!document.querySelector(`#hesap option[value="${hesap}"]`)) { document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${hesap}">${hesap}</option>`); }
-document.getElementById('hesap').value = hesap;
-
-document.getElementById('tarih').valueAsDate = new Date(tarih);
-window.duzenlenecekId = id;
-
-document.getElementById('btn-gider').innerText = "GÜNCELLE (-)";
-document.getElementById('btn-gelir').innerText = "GÜNCELLE (+)";
-document.getElementById('btn-taksit').innerText = "İPTAL";
-};
 
 document.getElementById('btn-ekle-kategori').onclick = () => {
 const yeni = prompt("Yeni Kategori Adı:");
@@ -792,7 +814,7 @@ if (!cats.includes(yeni)) { cats.push(yeni); localStorage.setItem('custom_cats_'
 };
 
 document.getElementById('btn-ekle-hesap').onclick = () => {
-const yeni = prompt("Yeni Hesap/Kart Adı:");
+const yeni = prompt("Yeni Kart/Hesap Adı:");
 if(yeni && yeni.trim() !== "") {
 document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
 document.getElementById('hesap').value = yeni;
@@ -803,6 +825,7 @@ if (!accs.includes(yeni)) { accs.push(yeni); localStorage.setItem('custom_accs_'
 }
 };
 
+// --- YENİ: Taksit Sistemi ---
 document.getElementById('btn-taksit').onclick = async () => {
 if (window.duzenlenecekId) {
 window.duzenlenecekId = null;
@@ -852,14 +875,90 @@ alert("Taksitler başarıyla eklendi!");
 }
 };
 
-function loadCustomData(user) {
-if(!user) return;
-const cats = JSON.parse(localStorage.getItem('custom_cats_' + user.uid) || '[]');
-const accs = JSON.parse(localStorage.getItem('custom_accs_' + user.uid) || '[]');
-cats.forEach(c => { if(!document.querySelector(`#kategori option[value="${c}"]`)) document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`); });
-accs.forEach(a => { if(!document.querySelector(`#hesap option[value="${a}"]`)) document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`); });
-}
+// --- SESLİ KOMUT ALTYAPISI ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+if (!SpeechRecognition) {
+document.getElementById('btn-sesli-komut').style.display = 'none';
+} else {
+const recognition = new SpeechRecognition();
+recognition.lang = 'tr-TR';
+recognition.interimResults = false;
+recognition.maxAlternatives = 1;
+
+const btnSesli = document.getElementById('btn-sesli-komut');
+let isListening = false; 
+
+const dinlemeyiDurdurTasarim = () => {
+isListening = false;
+btnSesli.innerText = "🎤 SESLİ EKLE";
+btnSesli.style.background = "#00d2d3";
+};
+
+btnSesli.onclick = () => {
+if(!navigator.onLine) { alert("Sesli algılama motoru çevrimdışı modda çalışmayabilir."); }
+if (!isListening) {
+isListening = true;
+btnSesli.innerText = "🎤 DİNLENİYOR...";
+btnSesli.style.background = "#ef4444";
+recognition.start();
+} else {
+recognition.stop();
+dinlemeyiDurdurTasarim();
+}
+};
+
+recognition.onspeechend = () => {
+recognition.stop();
+dinlemeyiDurdurTasarim();
+};
+
+recognition.onerror = (event) => {
+alert("Ses tanınamadı veya mikrofon izni verilmedi: " + event.error);
+dinlemeyiDurdurTasarim();
+};
+
+recognition.onresult = async (event) => {
+const metin = event.results[0][0].transcript.toLowerCase();
+const sayilar = metin.match(/\d+/g);
+let bulunanTutar = 0;
+if (sayilar && sayilar.length > 0) { bulunanTutar = parseFloat(sayilar[0]); }
+if (bulunanTutar === 0 || isNaN(bulunanTutar)) { alert(`Söylediğiniz cümleden bir harcama/gelir tutarı çıkarılamadı.`); return; }
+
+document.getElementById('tutar').value = formatla(bulunanTutar);
+
+const kategoriSelect = document.getElementById('kategori');
+let bulunanKategori = "Genel";
+if (metin.includes('market') || metin.includes('bakkal') || metin.includes('file') || metin.includes('hakmar') || metin.includes('a101') || metin.includes('bim') || metin.includes('migros') || metin.includes('alışveriş') || metin.includes('gıda') || metin.includes('yemek')) { bulunanKategori = 'Market'; } 
+else if (metin.includes('fatura') || metin.includes('elektrik') || metin.includes('su ') || metin.includes('telefon') || metin.includes('vodafone') || metin.includes('internet') || metin.includes('kira')) { bulunanKategori = 'Fatura'; } 
+else if (metin.includes('ilaç') || metin.includes('hap') || metin.includes('eczane') || metin.includes('sağlık') || metin.includes('hastane')) { bulunanKategori = 'Sağlık'; } 
+else if (metin.includes('otobüs') || metin.includes('metro') || metin.includes('taksi') || metin.includes('yakıt') || metin.includes('benzin') || metin.includes('ulaşım')) { bulunanKategori = 'Ulaşım'; } 
+else if (metin.includes('sinema') || metin.includes('oyun') || metin.includes('netflix') || metin.includes('konser') || metin.includes('eğlence') || metin.includes('cafe')) { bulunanKategori = 'Eğlence'; } 
+else if (metin.includes('maaş') || metin.includes('gelir') || metin.includes('kazanç')) { bulunanKategori = 'Maaş'; } 
+else if (metin.includes('diğer')) { bulunanKategori = 'Diğer'; }
+kategoriSelect.value = bulunanKategori;
+
+document.getElementById('aciklama').value = event.results[0][0].transcript.charAt(0).toUpperCase() + event.results[0][0].transcript.slice(1);
+
+const tarihInput = document.getElementById('tarih');
+let hedefTarih = new Date();
+if (metin.includes('dün')) { hedefTarih.setDate(hedefTarih.getDate() - 1); }
+if (tarihInput) tarihInput.valueAsDate = hedefTarih;
+
+let tur = 'gider';
+if (metin.includes('maaş') || metin.includes('gelir') || metin.includes('aldım') || metin.includes('geldi') || metin.includes('yattı') || metin.includes('kazandım')) { tur = 'gelir'; }
+
+const hesapSelect = document.getElementById('hesap');
+if (metin.includes('garanti')) hesapSelect.value = 'Garanti';
+else if (metin.includes('ziraat')) hesapSelect.value = 'Ziraat';
+else if (metin.includes('finans') || metin.includes('qnb')) hesapSelect.value = 'Qnb';
+else if (metin.includes('kart')) hesapSelect.value = 'Diğer Kredi Kartı';
+else if (metin.includes('nakit') || metin.includes('peşin')) hesapSelect.value = 'Nakit';
+
+const onay = confirm(`Mikrofon ile işlem algılandı, onaylıyor musunuz?\n\nTür: ${tur.toUpperCase()}\nAçıklama: ${document.getElementById('aciklama').value}\nTutar: ${bulunanTutar} TL\nKategori: ${bulunanKategori}\nHesap: ${hesapSelect.options[hesapSelect.selectedIndex].text}`);
+if (onay) { await ekle(tur); }
+};
+}
 </script>
 </body>
 </html>
