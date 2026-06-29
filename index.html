@@ -187,6 +187,10 @@ td small { font-size: 10px; }
 .app-label { font-size: 9px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 5px; }
 .borc-satir { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px; }
 
+/* Toast animasyonu */
+@keyframes toast-gir { from { opacity:0; transform:translateX(-50%) translateY(20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+#toast { animation: toast-gir 0.3s ease; }
+
 /* Bakiye animasyonu */
 #bakiye { display: inline-block; transition: transform 0.15s ease, opacity 0.15s ease; }
 @keyframes bakiye-yukari { 0% { transform: translateY(0); opacity:1; } 50% { transform: translateY(-8px); opacity:0; } 51% { transform: translateY(8px); opacity:0; } 100% { transform: translateY(0); opacity:1; } }
@@ -363,6 +367,12 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 </div>
 
 <h3>BAKİYE: <span id="bakiye" style="color: white;">0,00</span> TL</h3>
+<div id="gelir-gider-ozet" style="display:flex; justify-content:center; gap:12px; font-size:11px; margin-top:-6px; margin-bottom:2px; opacity:0.9;">
+  <span>↑ <span id="ozet-gelir" style="color:#00ff9d; font-weight:bold;">0,00</span> TL</span>
+  <span style="opacity:0.4;">|</span>
+  <span>↓ <span id="ozet-gider" style="color:#ff4d4d; font-weight:bold;">0,00</span> TL</span>
+</div>
+<div id="toast" style="display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(30,30,30,0.95); color:white; padding:10px 16px; border-radius:12px; font-size:13px; z-index:9999; box-shadow:0 4px 15px rgba(0,0,0,0.4); display:flex; align-items:center; gap:10px; min-width:220px; justify-content:space-between;"><span id="toast-mesaj"></span><button id="toast-geri-al" style="background:#f59e0b; color:black; font-size:11px; padding:3px 8px; border-radius:6px; width:auto; margin:0; font-weight:bold;">GERİ AL</button></div>
 
 <input type="file" id="fis-kamera" accept="image/*" capture="environment" style="display:none;">
 
@@ -824,6 +834,13 @@ function tabloYenile() {
   if (bilgiEl) bilgiEl.innerText = filtreAktif ? `${filtrelenmis.length} / ${mevcutAyVerileri.length} işlem` : '';
 
   let html = "";
+  if (filtrelenmis.length === 0) {
+    const bos = mevcutAyVerileri.length === 0
+      ? '<tr><td colspan="3" style="text-align:center; padding:20px 0;"><div style="font-size:36px; margin-bottom:6px;">💸</div><div style="opacity:0.6; font-size:13px;">Bu ay henüz işlem yok</div><div style="opacity:0.4; font-size:11px; margin-top:3px;">Gelir veya gider ekleyerek başla!</div></td></tr>'
+      : '<tr><td colspan="3" style="text-align:center; opacity:0.5; padding:10px;">Sonuç bulunamadı</td></tr>';
+    document.getElementById('tablo').innerHTML = bos;
+    return;
+  }
   filtrelenmis.forEach(d => {
     const t = new Date(d.tarih);
     const hspGosterim = hesapIsimleriMapGlobal[d.hesap] || d.hesap || 'Nakit';
@@ -831,7 +848,7 @@ function tabloYenile() {
     const syncIcon = d.isPending ? ' ☁️' : '';
     html += `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;"><button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button></td></tr>`;
   });
-  document.getElementById('tablo').innerHTML = html || '<tr><td colspan="3" style="text-align:center; opacity:0.5; padding:10px;">Sonuç bulunamadı</td></tr>';
+  document.getElementById('tablo').innerHTML = html;
 } 
 const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 document.getElementById('tarih').valueAsDate = new Date();
@@ -991,9 +1008,18 @@ const eskiBakiye = parseFloat(bakiyeEl.innerText.replace(/\./g,'').replace(',','
 bakiyeEl.innerText = formatla(bakiye);
 bakiyeEl.style.color = (bakiye < 0) ? "#ef4444" : "white";
 bakiyeEl.classList.remove('bakiye-yukari', 'bakiye-asagi');
-void bakiyeEl.offsetWidth; // reflow
+void bakiyeEl.offsetWidth;
 if (bakiye > eskiBakiye) bakiyeEl.classList.add('bakiye-yukari');
 else if (bakiye < eskiBakiye) bakiyeEl.classList.add('bakiye-asagi');
+
+// Gelir/Gider özeti güncelle
+const toplamGelir = veriler.filter(d => d.tur === 'gelir').reduce((t, d) => t + d.tutar, 0);
+const toplamGider = veriler.filter(d => d.tur === 'gider').reduce((t, d) => t + d.tutar, 0);
+const ozetGelir = document.getElementById('ozet-gelir');
+const ozetGider = document.getElementById('ozet-gider');
+if (ozetGelir) ozetGelir.innerText = formatla(toplamGelir);
+if (ozetGider) ozetGider.innerText = formatla(toplamGider);
+
 tabloYenile();
 
 let borcHtml = "";
@@ -1100,7 +1126,35 @@ document.getElementById('btn-filtre-temizle').onclick = () => {
   document.getElementById(id).addEventListener('change', tabloYenile);
 });
 
-window.sil = (id) => deleteDoc(doc(db, "islemler", id));
+// --- GERİ AL SİSTEMİ ---
+let silinecekTimer = null;
+let silinecekVeri = null;
+
+window.sil = (id) => {
+  const islem = mevcutAyVerileri.find(d => d.id === id);
+  if (!islem) return;
+  silinecekVeri = { id, ...islem };
+
+  // Toast göster
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-mesaj').innerText = `"${islem.aciklama.substring(0,25)}" silindi`;
+  toast.style.display = 'flex';
+
+  // 5 saniye sonra gerçekten sil
+  clearTimeout(silinecekTimer);
+  silinecekTimer = setTimeout(() => {
+    deleteDoc(doc(db, "islemler", id));
+    toast.style.display = 'none';
+    silinecekVeri = null;
+  }, 5000);
+};
+
+document.getElementById('toast-geri-al').onclick = () => {
+  clearTimeout(silinecekTimer);
+  document.getElementById('toast').style.display = 'none';
+  silinecekVeri = null;
+  // İşlemi geri almak için - Firestore'dan silinmedi, sadece timer iptal edildi
+};
 
 // --- YENİ: Kategori / Hesap Ekleme Yapıları ---
 function loadCustomData(user) {
