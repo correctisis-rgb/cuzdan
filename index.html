@@ -187,6 +187,13 @@ td small { font-size: 10px; }
 .app-label { font-size: 9px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 5px; }
 .borc-satir { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px; }
 
+/* Bakiye animasyonu */
+#bakiye { display: inline-block; transition: transform 0.15s ease, opacity 0.15s ease; }
+@keyframes bakiye-yukari { 0% { transform: translateY(0); opacity:1; } 50% { transform: translateY(-8px); opacity:0; } 51% { transform: translateY(8px); opacity:0; } 100% { transform: translateY(0); opacity:1; } }
+@keyframes bakiye-asagi { 0% { transform: translateY(0); opacity:1; } 50% { transform: translateY(8px); opacity:0; } 51% { transform: translateY(-8px); opacity:0; } 100% { transform: translateY(0); opacity:1; } }
+.bakiye-yukari { animation: bakiye-yukari 0.4s ease; }
+.bakiye-asagi { animation: bakiye-asagi 0.4s ease; }
+
 .butor-group-row { display: flex; gap: 6px; margin: 3px 0; width: 100%; }
 .belirgin-btn {
 flex: 1;
@@ -364,7 +371,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <button id="btn-sesli-komut" class="belirgin-btn" style="background:#00d2d3;">🎤 SESLİ EKLE</button>
 </div>
 
-<input type="text" id="aciklama" placeholder="Açıklama">
+<input type="text" id="aciklama" placeholder="Açıklama" maxlength="60">
 <input type="text" id="tutar" placeholder="Tutar (Örn: 123.456,78)" inputmode="decimal">
 <input type="date" id="tarih" style="padding: 4px; color: #555;">
 
@@ -771,6 +778,26 @@ kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden
 
 let myChart, seciliTarih = new Date(), mevcutAyVerileri = [];
 
+// --- OTURUM ZAMAN AŞIMI (15 dakika) ---
+const TIMEOUT_SURE = 15 * 60 * 1000;
+let oturumTimer;
+
+function oturumTimerSifirla() {
+  clearTimeout(oturumTimer);
+  oturumTimer = setTimeout(() => {
+    if (auth.currentUser) {
+      if(auth.currentUser) dbSet(dbRef(rtdb, 'presence/' + auth.currentUser.uid), null);
+      signOut(auth);
+      alert("⏱️ 15 dakika işlem yapılmadığı için oturumunuz kapatıldı.");
+    }
+  }, TIMEOUT_SURE);
+}
+
+// Kullanıcı etkileşimlerinde timer'ı sıfırla
+['click', 'touchstart', 'keydown', 'scroll'].forEach(olay => {
+  document.addEventListener(olay, oturumTimerSifirla, { passive: true });
+});
+
 // --- ARAMA / FİLTRELEME ---
 const hesapIsimleriMapGlobal = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
 
@@ -823,6 +850,7 @@ onAuthStateChanged(auth, (user) => {
 if (user) {
 loadCustomData(user); // YENİ: Cihaza kaydedilmiş kategorileri/kartları yükle
 temaYukle(user.uid);
+oturumTimerSifirla();
 ekranGoster('app-screen');
 document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
 document.getElementById('user-email').innerText = user.email;
@@ -958,8 +986,14 @@ if (hesapBorclari[hsp] !== undefined) { hesapBorclari[hsp] += data.tutar; } else
 veriler.sort((a, b) => b.tarih - a.tarih);
 mevcutAyVerileri = veriler; 
 
-document.getElementById('bakiye').innerText = formatla(bakiye);
-document.getElementById('bakiye').style.color = (bakiye < 0) ? "#ef4444" : "white";
+const bakiyeEl = document.getElementById('bakiye');
+const eskiBakiye = parseFloat(bakiyeEl.innerText.replace(/\./g,'').replace(',','.')) || 0;
+bakiyeEl.innerText = formatla(bakiye);
+bakiyeEl.style.color = (bakiye < 0) ? "#ef4444" : "white";
+bakiyeEl.classList.remove('bakiye-yukari', 'bakiye-asagi');
+void bakiyeEl.offsetWidth; // reflow
+if (bakiye > eskiBakiye) bakiyeEl.classList.add('bakiye-yukari');
+else if (bakiye < eskiBakiye) bakiyeEl.classList.add('bakiye-asagi');
 tabloYenile();
 
 let borcHtml = "";
