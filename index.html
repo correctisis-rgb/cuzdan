@@ -666,14 +666,13 @@ function adminMesajDinle() {
 
 // --- KULLANICI: Admin cevaplarını dinle ---
 function kullaniciBildirimDinle(uid) {
-  onSnapshot(query(collection(db, "kullanici_bildirimleri"), where("uid","==",uid), where("okundu","==",false)), (snap) => {
+  onSnapshot(query(collection(db, "kullanici_bildirimleri"), where("uid","==",uid)), (snap) => {
     snap.docChanges().forEach(async change => {
       if (change.type === "added") {
         const data = change.doc.data();
-        // Bildirim badge göster
+        if (data.okundu) return; // okunmuşsa atla
         const badge = document.getElementById('bildirim-badge');
         if (badge) { badge.style.display = 'block'; }
-        // Popup göster
         setTimeout(() => {
           if (confirm(`📬 Admin size cevap verdi:\n\n"${data.mesaj}"\n\nTamam`)) {
             updateDoc(doc(db, "kullanici_bildirimleri", change.doc.id), { okundu: true });
