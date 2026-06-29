@@ -1152,6 +1152,7 @@ document.getElementById('btn-sifre-onay-mail').onclick = async () => await sendP
 document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
 document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
 document.getElementById('btn-gecis-giris-2').onclick = () => ekranGoster('auth-screen');
+document.getElementById('btn-gecis-sifre-sifirla').onclick = () => ekranGoster('reset-screen');
 document.getElementById('btn-cikis').onclick = () => { if(auth.currentUser) { dbSet(dbRef(rtdb, 'presence/' + auth.currentUser.uid), null); } signOut(auth); };
 document.getElementById('profil-baslik').onclick = () => { kapatPaneller(); document.getElementById('profil-menu').classList.toggle('hidden'); };
 document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); };
