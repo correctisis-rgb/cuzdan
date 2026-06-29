@@ -347,7 +347,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
       <button style="background:white; color:#5d4037; font-size:11px; padding:4px 10px; border-radius:8px; margin-top:5px; width:auto; font-weight:bold;">☕ Ismarla</button>
     </a>
   </div>
-  <button onclick="document.getElementById('kahve-hatirlatici').classList.add('hidden'); localStorage.setItem('kahve_son_gosterim', Date.now());" style="background:rgba(255,255,255,0.2); color:white; width:24px; height:24px; border-radius:50%; font-size:14px; padding:0; line-height:24px; flex-shrink:0;">✕</button>
+  <button onclick="document.getElementById('kahve-hatirlatici').classList.add('hidden'); sessionStorage.setItem('kahve_gosterildi', '1');" style="background:rgba(255,255,255,0.2); color:white; width:24px; height:24px; border-radius:50%; font-size:14px; padding:0; line-height:24px; flex-shrink:0;">✕</button>
 </div>
 
 <!-- Kullanıcı cevap bildirimi popup -->
@@ -565,25 +565,15 @@ function presenceDinle() {
   });
 }
 
-async function kullanicilariDinle() {
-  const presenceRef = dbRef(rtdb, 'presence');
+function kullanicilariDinle() {
   const usersRef = dbRef(rtdb, 'users');
   const simdi = Date.now();
   const yirmiDortSaat = 24 * 60 * 60 * 1000;
 
-  // --- Firestore'dan benzersiz UID'leri çek (toplam kayıtlı kullanıcı) ---
-  const islemlerSnap = await getDocs(collection(db, "islemler"));
-  const benzersizUidler = new Set();
-  islemlerSnap.forEach(d => { if(d.data().uid) benzersizUidler.add(d.data().uid); });
-  // users RTDB'deki kayıtları da ekle
   onValue(usersRef, (usersSnap) => {
     const usersData = usersSnap.val() || {};
-    Object.keys(usersData).forEach(uid => benzersizUidler.add(uid));
+    const toplamKullanici = Object.keys(usersData).length;
 
-    // Toplam = Firestore benzersiz uid + RTDB users birleşimi
-    document.getElementById('stat-toplam').innerText = benzersizUidler.size;
-
-    // Son 24 saat ve kullanıcı listesi (sadece RTDB'de kayıtlı olanlar detaylı gösterilir)
     let son24h = 0;
     let kullaniciListeHtml = '';
     const kullanicilar = Object.values(usersData).sort((a, b) => b.sonGiris - a.sonGiris);
@@ -599,14 +589,7 @@ async function kullanicilariDinle() {
       </div>`;
     });
 
-    // Firestore'da olup RTDB'de olmayan kullanıcıları da göster (sadece uid)
-    const rtdbUidler = new Set(Object.keys(usersData));
-    let firestoreOnly = 0;
-    benzersizUidler.forEach(uid => { if(!rtdbUidler.has(uid)) firestoreOnly++; });
-    if (firestoreOnly > 0) {
-      kullaniciListeHtml += `<div style="padding:4px 0; opacity:0.5; font-size:10px; font-style:italic;">+ ${firestoreOnly} eski kullanıcı (henüz yeni sisteme geçmedi)</div>`;
-    }
-
+    document.getElementById('stat-toplam').innerText = toplamKullanici;
     document.getElementById('stat-24h').innerText = son24h;
     document.getElementById('kullanici-liste').innerHTML = kullaniciListeHtml || '<div style="opacity:0.5;">Henüz kayıt yok</div>';
 
@@ -969,9 +952,7 @@ oturumTimerSifirla();
 ekranGoster('app-screen');
 // Kahve hatırlatıcı - 10 saniye sonra, haftada bir
 setTimeout(() => {
-  const sonGosterim = parseInt(localStorage.getItem('kahve_son_gosterim') || '0');
-  const birHafta = 7 * 24 * 60 * 60 * 1000;
-  if (Date.now() - sonGosterim > birHafta) {
+  if (!sessionStorage.getItem('kahve_gosterildi')) {
     document.getElementById('kahve-hatirlatici').classList.remove('hidden');
   }
 }, 10000);
