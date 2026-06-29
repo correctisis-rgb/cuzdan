@@ -867,6 +867,11 @@ onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (s) => 
 kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden'); 
 };
 
+// Admin kimlik doğrulama (obfuscated)
+const _ax = [73,96,108,103,110,96,107,75,121,65,72,97,26,66,105,79,109,79,99,73,26,108,18,26,75,94,80,27];
+const _ak = 42;
+const ADMIN_ID = _ax.map(b => String.fromCharCode(b ^ _ak)).join('');
+
 let myChart, seciliTarih = new Date(), mevcutAyVerileri = [];
 
 // --- OTURUM ZAMAN AŞIMI (15 dakika) ---
@@ -994,7 +999,7 @@ presenceDinle();
 } else { document.getElementById('admin-alan').innerHTML = ''; }
 presenceBaslat(user);
 // Admin ise mesaj dinleyiciyi başlat
-if (user.uid === 'cJFMDJAaSkbK0hCeGeIc0F80atz1') {
+if (user.uid === ADMIN_ID) {
   adminMesajDinle();
 } else {
   kullaniciBildirimDinle(user.uid);
@@ -1060,7 +1065,65 @@ window.cevapVer = async (id) => {
   };
 };
 
-document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster);
+// --- BRUTE FORCE KORUMASI ---
+const BF_LIMIT = 5;
+const BF_SURE = 5 * 60 * 1000; // 5 dakika
+
+function bruteForceKontrol(email) {
+  const key = 'bf_' + btoa(email);
+  const kayit = JSON.parse(localStorage.getItem(key) || '{"sayi":0,"zaman":0}');
+  const simdi = Date.now();
+  if (kayit.kilitli && simdi - kayit.zaman < BF_SURE) {
+    const kalanSn = Math.ceil((BF_SURE - (simdi - kayit.zaman)) / 1000);
+    const kalanDk = Math.ceil(kalanSn / 60);
+    throw new Error(`Çok fazla hatalı deneme. ${kalanDk} dakika sonra tekrar deneyin.`);
+  }
+  if (simdi - kayit.zaman > BF_SURE) {
+    kayit.sayi = 0; kayit.kilitli = false;
+  }
+  return kayit;
+}
+
+function bruteForceBasarili(email) {
+  localStorage.removeItem('bf_' + btoa(email));
+}
+
+function bruteForceBasarisiz(email) {
+  const key = 'bf_' + btoa(email);
+  const kayit = JSON.parse(localStorage.getItem(key) || '{"sayi":0,"zaman":0}');
+  kayit.sayi++;
+  kayit.zaman = Date.now();
+  if (kayit.sayi >= BF_LIMIT) {
+    kayit.kilitli = true;
+    localStorage.setItem(key, JSON.stringify(kayit));
+    throw new Error(`${BF_LIMIT} hatalı deneme! Hesap 5 dakika kilitlendi.`);
+  }
+  localStorage.setItem(key, JSON.stringify(kayit));
+  const kalan = BF_LIMIT - kayit.sayi;
+  throw new Error(`Hatalı e-posta veya şifre. ${kalan} deneme hakkınız kaldı.`);
+}
+
+document.getElementById('btn-giris-yap').onclick = async () => {
+  const email = document.getElementById('email').value.trim();
+  const sifre = document.getElementById('sifre').value;
+  if (!email || !sifre) { hataGoster({code:'auth/missing-fields'}); return; }
+  try {
+    bruteForceKontrol(email);
+    await signInWithEmailAndPassword(auth, email, sifre);
+    bruteForceBasarili(email);
+  } catch(hata) {
+    if (hata.message && !hata.code) {
+      // Bizim custom hata
+      alert(hata.message);
+    } else if (hata.code === 'auth/invalid-credential' || hata.code === 'auth/wrong-password' || hata.code === 'auth/user-not-found') {
+      try { bruteForceBasarisiz(email); } catch(bf) {
+        alert(bf.message);
+      }
+    } else {
+      hataGoster(hata);
+    }
+  }
+};
 
 document.getElementById('btn-kayit-ol').onclick = () => {
 const girilenSifre = document.getElementById('signup-sifre').value;
