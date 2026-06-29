@@ -337,6 +337,14 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <div id="mesaj-listesi"></div>
 </div>
 
+<!-- Kullanıcı cevap bildirimi popup -->
+<div id="kullanici-cevap-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5); text-align:center;">
+  <div style="font-size:24px; margin-bottom:6px;">📬</div>
+  <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#10b981;">Admin Cevapladı</div>
+  <div id="kullanici-cevap-metin" style="font-size:13px; padding:10px; background:#f5f5f5; border-radius:8px; margin-bottom:12px; text-align:left;"></div>
+  <button id="kullanici-cevap-tamam" style="background:#10b981; width:100%;">Tamam</button>
+</div>
+
 <!-- Admin mesaj popup -->
 <div id="admin-mesaj-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5);">
   <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#ef4444;">📩 Yeni Mesaj!</div>
@@ -674,9 +682,13 @@ function kullaniciBildirimDinle(uid) {
         const badge = document.getElementById('bildirim-badge');
         if (badge) { badge.style.display = 'block'; }
         setTimeout(() => {
-          if (confirm(`📬 Admin size cevap verdi:\n\n"${data.mesaj}"\n\nTamam`)) {
+          const popup = document.getElementById('kullanici-cevap-popup');
+          document.getElementById('kullanici-cevap-metin').innerText = data.mesaj.replace('Admin cevapladı: ', '');
+          popup.classList.remove('hidden');
+          document.getElementById('kullanici-cevap-tamam').onclick = () => {
+            popup.classList.add('hidden');
             updateDoc(doc(db, "kullanici_bildirimleri", change.doc.id), { okundu: true });
-          }
+          };
         }, 500);
       }
     });
