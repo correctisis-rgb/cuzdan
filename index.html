@@ -337,6 +337,19 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <div id="mesaj-listesi"></div>
 </div>
 
+<!-- Kahve hatırlatıcı popup -->
+<div id="kahve-hatirlatici" class="hidden" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#5d4037,#a1887f); color:white; border-radius:16px; padding:12px 16px; width:85%; max-width:300px; z-index:9998; box-shadow:0 4px 20px rgba(0,0,0,0.4); display:flex; align-items:center; gap:10px;">
+  <div style="font-size:28px; flex-shrink:0;">☕</div>
+  <div style="flex:1;">
+    <div style="font-weight:bold; font-size:13px; margin-bottom:2px;">Bir kahve ısmarlar mısın?</div>
+    <div style="font-size:11px; opacity:0.85;">Uygulamayı beğendiysen destek olabilirsin 🙏</div>
+    <a href="https://www.shopier.com/bikahveismarlaa/48099937" target="_blank" style="text-decoration:none;">
+      <button style="background:white; color:#5d4037; font-size:11px; padding:4px 10px; border-radius:8px; margin-top:5px; width:auto; font-weight:bold;">☕ Ismarla</button>
+    </a>
+  </div>
+  <button onclick="document.getElementById('kahve-hatirlatici').classList.add('hidden'); localStorage.setItem('kahve_son_gosterim', Date.now());" style="background:rgba(255,255,255,0.2); color:white; width:24px; height:24px; border-radius:50%; font-size:14px; padding:0; line-height:24px; flex-shrink:0;">✕</button>
+</div>
+
 <!-- Kullanıcı cevap bildirimi popup -->
 <div id="kullanici-cevap-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5); text-align:center;">
   <div style="font-size:24px; margin-bottom:6px;">📬</div>
@@ -954,6 +967,14 @@ loadCustomData(user); // YENİ: Cihaza kaydedilmiş kategorileri/kartları yükl
 temaYukle(user.uid);
 oturumTimerSifirla();
 ekranGoster('app-screen');
+// Kahve hatırlatıcı - 10 saniye sonra, haftada bir
+setTimeout(() => {
+  const sonGosterim = parseInt(localStorage.getItem('kahve_son_gosterim') || '0');
+  const birHafta = 7 * 24 * 60 * 60 * 1000;
+  if (Date.now() - sonGosterim > birHafta) {
+    document.getElementById('kahve-hatirlatici').classList.remove('hidden');
+  }
+}, 10000);
 document.getElementById('profil-baslik').innerText = user.email[0].toUpperCase();
 document.getElementById('user-email').innerText = user.email;
 
