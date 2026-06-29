@@ -143,7 +143,7 @@ margin-bottom: unset;
 }
 .header-icons { position: absolute; top: calc(5px + env(safe-area-inset-top)); right: 10px; display: flex; gap: 5px; z-index: 20; }
 .icon-btn { background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; font-size: 14px; position: relative; }
-.badge { position: absolute; top: -2px; right: -2px; background: red; color: white; border-radius: 50%; width: 12px; height: 12px; font-size: 8px; line-height: 12px; display: none; }
+.badge { position: absolute; top: -3px; right: -3px; background: red; color: white; border-radius: 50%; width: 14px; height: 14px; font-size: 8px; line-height: 14px; display: none; text-align:center; font-weight:bold; }
 #profil-menu, #duyuru-menu { position: absolute; top: calc(40px + env(safe-area-inset-top)); right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
 #duyuru-menu { right: 45px; width: 220px; max-height: 250px; overflow-y: auto; }
 #popup-duyuru { 
@@ -266,7 +266,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <div class="container app-container hidden" id="app-screen">
 <div class="header-icons">
 <div class="icon-btn" id="btn-duyuru-ac">🔔<span id="bildirim-badge" class="badge">!</span></div>
-<div class="icon-btn" id="profil-baslik"></div>
+<div class="icon-btn" id="profil-baslik" style="position:relative;"><span id="mesaj-badge" class="badge" style="display:none; background:#ef4444;">!</span></div>
 </div>
 
 <div id="duyuru-menu" class="hidden">
@@ -331,10 +331,21 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 </div>
 </div>
 
-<div id="mesajlar-panel" class="hidden" style="margin-top:5px; padding:8px; background:white; color:black; border-radius:10px; text-align:left; max-height:250px; overflow-y:auto; z-index:1001;">
+<div id="mesajlar-panel" class="hidden" style="margin-top:5px; padding:8px; background:white; color:black; border-radius:10px; text-align:left; max-height:320px; overflow-y:auto; z-index:1001;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <div style="font-weight:bold; margin-bottom:5px; border-bottom:1px solid #ccc;">📩 KULLANICI MESAJLARI</div>
 <div id="mesaj-listesi"></div>
+</div>
+
+<!-- Admin mesaj popup -->
+<div id="admin-mesaj-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+  <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#ef4444;">📩 Yeni Mesaj!</div>
+  <div id="popup-mesaj-icerik" style="font-size:12px; margin-bottom:10px; padding:8px; background:#f5f5f5; border-radius:8px;"></div>
+  <textarea id="popup-cevap-input" placeholder="Cevabınızı yazın..." style="width:100%; height:60px; font-size:12px; border:1px solid #ddd; border-radius:8px; padding:6px; box-sizing:border-box; color:black; resize:none;"></textarea>
+  <div style="display:flex; gap:6px; margin-top:8px;">
+    <button id="popup-cevap-gonder" style="flex:1; background:#10b981; font-size:12px; padding:6px;">✓ Cevap Gönder</button>
+    <button onclick="document.getElementById('admin-mesaj-popup').classList.add('hidden')" style="flex:1; background:#6b7280; font-size:12px; padding:6px;">Şimdi Değil</button>
+  </div>
 </div>
 
 <div id="kullanici-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.4); border-radius:10px; text-align:left; max-height:300px; overflow-y:auto; z-index:1001;">
@@ -609,6 +620,69 @@ function temaYukle(uid) {
 }
 
 window.temaDegistir = temaDegistir;
+
+// --- ADMIN MESAJ DİNLEYİCİ (anlık popup + rozet) ---
+let adminMesajDinleniyor = false;
+function adminMesajDinle() {
+  if (adminMesajDinleniyor) return;
+  adminMesajDinleniyor = true;
+  const sonOkunan = parseInt(localStorage.getItem('son_okunan_mesaj') || '0');
+  onSnapshot(query(collection(db, "bildirimler"), orderBy("tarih", "desc")), (snap) => {
+    let okunmayanVar = false;
+    snap.docChanges().forEach(change => {
+      if (change.type === "added") {
+        const data = change.doc.data();
+        if (data.tarih > sonOkunan) {
+          okunmayanVar = true;
+          // Popup göster
+          document.getElementById('popup-mesaj-icerik').innerHTML = `<b>${data.email}</b><br>${data.mesaj}`;
+          document.getElementById('popup-cevap-input').value = '';
+          document.getElementById('admin-mesaj-popup').classList.remove('hidden');
+          const mesajId = change.doc.id;
+          document.getElementById('popup-cevap-gonder').onclick = async () => {
+            const cevap = document.getElementById('popup-cevap-input').value.trim();
+            if (!cevap) return alert("Cevap boş olamaz!");
+            await updateDoc(doc(db, "bildirimler", mesajId), { cevap, cevapTarih: Date.now() });
+            await addDoc(collection(db, "kullanici_bildirimleri"), {
+              uid: data.uid, mesaj: `Admin cevapladı: ${cevap}`, tarih: Date.now(), okundu: false
+            });
+            document.getElementById('admin-mesaj-popup').classList.add('hidden');
+            alert("Cevap gönderildi!");
+          };
+        }
+      }
+    });
+    // Rozeti güncelle
+    const badge = document.getElementById('mesaj-badge');
+    if (badge) {
+      const sonOk = parseInt(localStorage.getItem('son_okunan_mesaj') || '0');
+      let okunmayan = 0;
+      snap.forEach(d => { if(d.data().tarih > sonOk) okunmayan++; });
+      if (okunmayan > 0) { badge.style.display = 'block'; badge.innerText = okunmayan > 9 ? '9+' : okunmayan; }
+      else badge.style.display = 'none';
+    }
+  });
+}
+
+// --- KULLANICI: Admin cevaplarını dinle ---
+function kullaniciBildirimDinle(uid) {
+  onSnapshot(query(collection(db, "kullanici_bildirimleri"), where("uid","==",uid), where("okundu","==",false)), (snap) => {
+    snap.docChanges().forEach(async change => {
+      if (change.type === "added") {
+        const data = change.doc.data();
+        // Bildirim badge göster
+        const badge = document.getElementById('bildirim-badge');
+        if (badge) { badge.style.display = 'block'; }
+        // Popup göster
+        setTimeout(() => {
+          if (confirm(`📬 Admin size cevap verdi:\n\n"${data.mesaj}"\n\nTamam`)) {
+            updateDoc(doc(db, "kullanici_bildirimleri", change.doc.id), { okundu: true });
+          }
+        }, 500);
+      }
+    });
+  });
+}
 
 const offlineUyari = document.getElementById('offline-uyari');
 window.addEventListener('offline', () => offlineUyari.classList.remove('offline-gizle'));
@@ -888,6 +962,12 @@ document.getElementById('btn-kullanici-yonetim').onclick = () => { kapatPaneller
 presenceDinle();
 } else { document.getElementById('admin-alan').innerHTML = ''; }
 presenceBaslat(user);
+// Admin ise mesaj dinleyiciyi başlat
+if (user.uid === 'cJFMDJAaSkbK0hCeGeIc0F80atz1') {
+  adminMesajDinle();
+} else {
+  kullaniciBildirimDinle(user.uid);
+}
 } else { 
 ekranGoster('auth-screen'); 
 if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
@@ -900,16 +980,52 @@ async function mesajlariGetir() {
 if(!navigator.onLine) { alert("Mesajları görmek için internete bağlanın."); return; }
 kapatPaneller();
 document.getElementById('mesajlar-panel').classList.remove('hidden');
-const snapshot = await getDocs(collection(db, "bildirimler"));
+const snapshot = await getDocs(query(collection(db, "bildirimler"), orderBy("tarih", "desc")));
 let html = "";
 snapshot.forEach((d) => {
-const data = d.data();
-html += `<div style="border-bottom:1px solid #eee; padding:5px 0; font-size:11px;"><b>${data.email}</b>: ${data.mesaj}<button onclick="window.silMesaj('${d.id}')" style="background:red; color:white; border:none; float:right;">SİL</button></div>`;
+  const data = d.data();
+  const tarih = new Date(data.tarih).toLocaleString('tr-TR');
+  const cevapHtml = data.cevap ? `<div style="background:#e8f5e9; border-left:3px solid #10b981; padding:4px 6px; margin-top:4px; font-size:10px; border-radius:4px;">✓ Cevap: ${data.cevap}</div>` : '';
+  html += `<div style="border-bottom:1px solid #eee; padding:6px 0;" data-id="${d.id}">
+    <div style="font-size:10px; color:#888; margin-bottom:2px;">${tarih}</div>
+    <div style="font-size:11px;"><b>${data.email}</b></div>
+    <div style="font-size:11px; margin:2px 0;">${data.mesaj}</div>
+    ${cevapHtml}
+    <div style="display:flex; gap:4px; margin-top:4px;">
+      <button onclick="window.cevapVer('${d.id}','${data.email.replace(/'/g,"\\'")}','${data.mesaj.replace(/'/g,"\\'").replace(/
+/g,' ')}')" style="background:#10b981; color:white; border:none; border-radius:4px; font-size:10px; padding:2px 6px; cursor:pointer; width:auto;">💬 Cevap</button>
+      <button onclick="window.silMesaj('${d.id}')" style="background:#ef4444; color:white; border:none; border-radius:4px; font-size:10px; padding:2px 6px; cursor:pointer; width:auto;">🗑 Sil</button>
+    </div>
+  </div>`;
 });
-document.getElementById('mesaj-listesi').innerHTML = html || "Henüz mesaj yok.";
+document.getElementById('mesaj-listesi').innerHTML = html || "<div style='text-align:center; padding:10px; opacity:0.5;'>Henüz mesaj yok</div>";
+// Okundu - rozeti kaldır
+document.getElementById('mesaj-badge').style.display = 'none';
+localStorage.setItem('son_okunan_mesaj', Date.now());
 }
 
 window.silMesaj = async (id) => { if(confirm("Silmek istediğine emin misin?")) { await deleteDoc(doc(db, "bildirimler", id)); mesajlariGetir(); } };
+
+window.cevapVer = async (id, email, mesaj) => {
+  document.getElementById('popup-mesaj-icerik').innerHTML = `<b>${email}</b><br>${mesaj}`;
+  document.getElementById('popup-cevap-input').value = '';
+  document.getElementById('admin-mesaj-popup').classList.remove('hidden');
+  document.getElementById('popup-cevap-gonder').onclick = async () => {
+    const cevap = document.getElementById('popup-cevap-input').value.trim();
+    if (!cevap) return alert("Cevap boş olamaz!");
+    await updateDoc(doc(db, "bildirimler", id), { cevap, cevapTarih: Date.now() });
+    // Kullanıcıya bildirim gönder
+    const mesajDoc = await getDocs(query(collection(db, "bildirimler")));
+    mesajDoc.forEach(d => { if(d.id === id) {
+      addDoc(collection(db, "kullanici_bildirimleri"), {
+        uid: d.data().uid, mesaj: `Admin cevapladı: ${cevap}`, tarih: Date.now(), okundu: false
+      });
+    }});
+    document.getElementById('admin-mesaj-popup').classList.add('hidden');
+    mesajlariGetir();
+    alert("Cevap gönderildi!");
+  };
+};
 
 document.getElementById('btn-giris-yap').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('sifre').value).catch(hataGoster);
 
