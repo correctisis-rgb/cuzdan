@@ -574,7 +574,7 @@ async function kullanicilariDinle() {
 
 // --- TEMA SİSTEMİ ---
 function temaDegistir(tema) {
-  document.body.classList.remove('tema-mor', 'tema-okyanus', 'tema-gunbatimi');
+  document.body.classList.remove('tema-mor', 'tema-okyanus', 'tema-yesil');
   document.body.classList.add('tema-' + tema);
   // LocalStorage'a kaydet (kullanıcı bazlı)
   const uid = auth.currentUser ? auth.currentUser.uid : 'default';
@@ -592,7 +592,7 @@ function temaButonGuncelle(tema) {
 
 function temaYukle(uid) {
   let kayitliTema = localStorage.getItem('tema_' + uid) || 'mor';
-  if (kayitliTema === 'gunbatimi') kayitliTema = 'yesil'; // eski ad uyumu
+  if (kayitliTema === 'yesil') kayitliTema = 'yesil'; // eski ad uyumu
   document.body.classList.remove('tema-mor', 'tema-okyanus', 'tema-yesil');
   document.body.classList.add('tema-' + kayitliTema);
   temaButonGuncelle(kayitliTema);
