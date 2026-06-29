@@ -37,8 +37,8 @@ body.tema-mor .icon-btn { color: #764ba2; }
 body.tema-okyanus, body.tema-okyanus #splash-screen { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); }
 body.tema-okyanus .icon-btn { color: #2c5364; }
 /* TEMA: Orman Yeşili */
-body.tema-gunbatimi, body.tema-gunbatimi #splash-screen { background: linear-gradient(135deg, #0a1f0a 0%, #1a4a1a 50%, #2d7a2d 100%); }
-body.tema-gunbatimi .icon-btn { color: #2d7a2d; }
+body.tema-yesil, body.tema-yesil #splash-screen { background: linear-gradient(135deg, #0a1f0a 0%, #1a4a1a 50%, #2d7a2d 100%); }
+body.tema-yesil .icon-btn { color: #2d7a2d; }
 .tema-sec-btn {
   width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent;
   cursor: pointer; display: inline-block; transition: transform 0.2s, border-color 0.2s;
@@ -278,7 +278,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
   <div style="display:flex; gap:8px; align-items:center; justify-content:center;">
     <div class="tema-sec-btn" id="tema-mor" onclick="temaDegistir('mor')" style="background:linear-gradient(135deg,#1c2137,#764ba2);" title="Mor"></div>
     <div class="tema-sec-btn" id="tema-okyanus" onclick="temaDegistir('okyanus')" style="background:linear-gradient(135deg,#0f2027,#2c5364);" title="Okyanus Mavisi"></div>
-    <div class="tema-sec-btn" id="tema-gunbatimi" onclick="temaDegistir('gunbatimi')" style="background:linear-gradient(135deg,#0a1f0a,#2d7a2d);" title="Orman Yeşili"></div>
+    <div class="tema-sec-btn" id="tema-yesil" onclick="temaDegistir('yesil')" style="background:linear-gradient(135deg,#0a1f0a,#2d7a2d);" title="Orman Yeşili"></div>
   </div>
 </div>
 <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
@@ -442,7 +442,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <script type="module">
 // YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref as dbRef, set as dbSet, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -577,15 +577,16 @@ function temaDegistir(tema) {
 }
 
 function temaButonGuncelle(tema) {
-  ['mor', 'okyanus', 'gunbatimi'].forEach(t => {
+  ['mor', 'okyanus', 'yesil'].forEach(t => {
     const btn = document.getElementById('tema-' + t);
     if (btn) btn.classList.toggle('aktif', t === tema);
   });
 }
 
 function temaYukle(uid) {
-  const kayitliTema = localStorage.getItem('tema_' + uid) || 'mor';
-  document.body.classList.remove('tema-mor', 'tema-okyanus', 'tema-gunbatimi');
+  let kayitliTema = localStorage.getItem('tema_' + uid) || 'mor';
+  if (kayitliTema === 'gunbatimi') kayitliTema = 'yesil'; // eski ad uyumu
+  document.body.classList.remove('tema-mor', 'tema-okyanus', 'tema-yesil');
   document.body.classList.add('tema-' + kayitliTema);
   temaButonGuncelle(kayitliTema);
 }
@@ -651,6 +652,9 @@ btn.innerText = "OKUNUYOR...";
 try {
 const text = await kucultVeOku(file);
 
+  console.log(text);
+alert(text);
+  
 const regex = /(?:GENEL\s*TOPLAM|TOPLAM\s*ÖDENECEK|TOPLAM\s*TUTAR|ÖDENECEK\s*TUTAR|ÖDENECEK|TOPLAM|TUTAR)\D*([\d.]+,\d{2})/i;
 const eslesme = text.match(regex);
 
@@ -1069,7 +1073,10 @@ function loadCustomData(user) {
 if(!user) return;
 const cats = JSON.parse(localStorage.getItem('custom_cats_' + user.uid) || '[]');
 const accs = JSON.parse(localStorage.getItem('custom_accs_' + user.uid) || '[]');
-cats.forEach(c => { if(!document.querySelector(`#kategori option[value="${c}"]`)) document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`); });
+cats.forEach(c => {
+  if(!document.querySelector(`#kategori option[value="${c}"]`)) document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+  if(!document.querySelector(`#filtre-kategori option[value="${c}"]`)) document.getElementById('filtre-kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+});
 accs.forEach(a => { if(!document.querySelector(`#hesap option[value="${a}"]`)) document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`); });
 }
 
@@ -1078,6 +1085,7 @@ const yeni = prompt("Yeni Kategori Adı:");
 if(yeni && yeni.trim() !== "") {
 document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
 document.getElementById('kategori').value = yeni;
+if(!document.querySelector(`#filtre-kategori option[value="${yeni}"]`)) document.getElementById('filtre-kategori').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
 if(auth.currentUser) {
 const cats = JSON.parse(localStorage.getItem('custom_cats_' + auth.currentUser.uid) || '[]');
 if (!cats.includes(yeni)) { cats.push(yeni); localStorage.setItem('custom_cats_' + auth.currentUser.uid, JSON.stringify(cats)); }
@@ -1105,6 +1113,8 @@ if (sabitKategoriler.includes(seciliDeger)) { alert("Varsayılan kategoriler sil
 if (!confirm(`"${seciliDeger}" kategorisini silmek istediğine emin misin?`)) return;
 select.querySelector(`option[value="${seciliDeger}"]`).remove();
 select.value = 'Genel';
+const filtreOpt = document.querySelector(`#filtre-kategori option[value="${seciliDeger}"]`);
+if (filtreOpt) filtreOpt.remove();
 if (auth.currentUser) {
 let cats = JSON.parse(localStorage.getItem('custom_cats_' + auth.currentUser.uid) || '[]');
 cats = cats.filter(c => c !== seciliDeger);
