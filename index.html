@@ -991,8 +991,7 @@ snapshot.forEach((d) => {
     <div style="font-size:11px; margin:2px 0;">${data.mesaj}</div>
     ${cevapHtml}
     <div style="display:flex; gap:4px; margin-top:4px;">
-      <button onclick="window.cevapVer('${d.id}','${data.email.replace(/'/g,"\\'")}','${data.mesaj.replace(/'/g,"\\'").replace(/
-/g,' ')}')" style="background:#10b981; color:white; border:none; border-radius:4px; font-size:10px; padding:2px 6px; cursor:pointer; width:auto;">💬 Cevap</button>
+      <button onclick="window.cevapVer('${d.id}')" style="background:#10b981; color:white; border:none; border-radius:4px; font-size:10px; padding:2px 6px; cursor:pointer; width:auto;">💬 Cevap</button>
       <button onclick="window.silMesaj('${d.id}')" style="background:#ef4444; color:white; border:none; border-radius:4px; font-size:10px; padding:2px 6px; cursor:pointer; width:auto;">🗑 Sil</button>
     </div>
   </div>`;
@@ -1005,7 +1004,10 @@ localStorage.setItem('son_okunan_mesaj', Date.now());
 
 window.silMesaj = async (id) => { if(confirm("Silmek istediğine emin misin?")) { await deleteDoc(doc(db, "bildirimler", id)); mesajlariGetir(); } };
 
-window.cevapVer = async (id, email, mesaj) => {
+window.cevapVer = async (id) => {
+  const snap = await getDocs(query(collection(db, "bildirimler")));
+  let email = '', mesaj = '';
+  snap.forEach(d => { if(d.id === id) { email = d.data().email; mesaj = d.data().mesaj; } });
   document.getElementById('popup-mesaj-icerik').innerHTML = `<b>${email}</b><br>${mesaj}`;
   document.getElementById('popup-cevap-input').value = '';
   document.getElementById('admin-mesaj-popup').classList.remove('hidden');
