@@ -892,6 +892,18 @@ function oturumTimerSifirla() {
 // --- ARAMA / FİLTRELEME ---
 const hesapIsimleriMapGlobal = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
 
+const SAYFA_BOYUTU = 10;
+let gosterilenSayi = SAYFA_BOYUTU;
+let filtrelenmisVeriler = [];
+
+function satirOlustur(d) {
+  const t = new Date(d.tarih);
+  const hspGosterim = hesapIsimleriMapGlobal[d.hesap] || d.hesap || 'Nakit';
+  const hesapMetni = d.hesap ? ` | ${hspGosterim}` : ' | Nakit';
+  const syncIcon = d.isPending ? ' ☁️' : '';
+  return `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;"><button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button></td></tr>`;
+}
+
 function tabloYenile() {
   const aramaMetin = (document.getElementById('arama-metin')?.value || '').toLowerCase().trim();
   const filtreKat = document.getElementById('filtre-kategori')?.value || '';
@@ -901,7 +913,7 @@ function tabloYenile() {
   const basTarih = filtreBas ? new Date(filtreBas).setHours(0,0,0,0) : null;
   const bitTarih = filtreBit ? new Date(filtreBit).setHours(23,59,59,999) : null;
 
-  const filtrelenmis = mevcutAyVerileri.filter(d => {
+  filtrelenmisVeriler = mevcutAyVerileri.filter(d => {
     if (aramaMetin && !d.aciklama.toLowerCase().includes(aramaMetin)) return false;
     if (filtreKat && d.kategori !== filtreKat) return false;
     if (filtreTur && d.tur !== filtreTur) return false;
@@ -910,27 +922,33 @@ function tabloYenile() {
     return true;
   });
 
+  gosterilenSayi = SAYFA_BOYUTU;
   const filtreAktif = aramaMetin || filtreKat || filtreTur || filtreBas || filtreBit;
   const bilgiEl = document.getElementById('filtre-sonuc-bilgi');
-  if (bilgiEl) bilgiEl.innerText = filtreAktif ? `${filtrelenmis.length} / ${mevcutAyVerileri.length} işlem` : '';
+  if (bilgiEl) bilgiEl.innerText = filtreAktif ? `${filtrelenmisVeriler.length} / ${mevcutAyVerileri.length} işlem` : '';
+  tabloRender();
+}
 
-  let html = "";
-  if (filtrelenmis.length === 0) {
+function tabloRender() {
+  const tablo = document.getElementById('tablo');
+  if (filtrelenmisVeriler.length === 0) {
     const bos = mevcutAyVerileri.length === 0
       ? '<tr><td colspan="3" style="text-align:center; padding:20px 0;"><div style="font-size:36px; margin-bottom:6px;">💸</div><div style="opacity:0.6; font-size:13px;">Bu ay henüz işlem yok</div><div style="opacity:0.4; font-size:11px; margin-top:3px;">Gelir veya gider ekleyerek başla!</div></td></tr>'
       : '<tr><td colspan="3" style="text-align:center; opacity:0.5; padding:10px;">Sonuç bulunamadı</td></tr>';
-    document.getElementById('tablo').innerHTML = bos;
+    tablo.innerHTML = bos;
     return;
   }
-  filtrelenmis.forEach(d => {
-    const t = new Date(d.tarih);
-    const hspGosterim = hesapIsimleriMapGlobal[d.hesap] || d.hesap || 'Nakit';
-    const hesapMetni = d.hesap ? ` | ${hspGosterim}` : ' | Nakit';
-    const syncIcon = d.isPending ? ' ☁️' : '';
-    html += `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;"><button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button></td></tr>`;
-  });
-  document.getElementById('tablo').innerHTML = html;
-} 
+  const gosterilecek = filtrelenmisVeriler.slice(0, gosterilenSayi);
+  let html = gosterilecek.map(satirOlustur).join('');
+  if (filtrelenmisVeriler.length > gosterilenSayi) {
+    const kalan = filtrelenmisVeriler.length - gosterilenSayi;
+    html += `<tr><td colspan="3" style="text-align:center; padding:8px;"><button id="daha-yukle-btn" style="background:rgba(255,255,255,0.15); font-size:11px; padding:5px 15px; border-radius:8px; width:auto;">↓ Daha fazla göster (${kalan} işlem kaldı)</button></td></tr>`;
+  }
+  tablo.innerHTML = html;
+  const dahaBtn = document.getElementById('daha-yukle-btn');
+  if (dahaBtn) dahaBtn.onclick = () => { gosterilenSayi += SAYFA_BOYUTU; tabloRender(); };
+}
+
 const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 document.getElementById('tarih').valueAsDate = new Date();
 
