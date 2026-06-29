@@ -239,6 +239,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <button id="btn-giris-yap" style="background:#10b981;">Giriş Yap</button>
 <div id="bf-kilitleme-mesaji" style="display:none; color:#ef4444; font-size:12px; text-align:center; margin-top:5px; font-weight:bold;"></div>
 <div class="link-text" id="btn-gecis-sifre-sifirla" style="color:#fbbf24;">Şifremi unuttum</div>
+<div class="link-text" id="btn-tekrar-dogrulama" style="color:#38bdf8; display:none;">📧 Doğrulama mailini tekrar gönder</div>
 <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin? Kayıt Ol</div>
 <div class="footer-apps">
 <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
@@ -817,6 +818,11 @@ const hataGoster = (err) => {
 if (!navigator.onLine) { alert("Bu işlem için internet bağlantısı gerekiyor."); return; }
 let mesaj = "Bir hata oluştu.";
 if(err.code === 'auth/invalid-credential') mesaj = "E-posta veya şifre hatalı.";
+else if(err.code === 'auth/email-already-in-use') mesaj = "⚠️ Bu e-posta adresi zaten kayıtlı.\n\nLütfen giriş yapın veya 'Şifremi unuttum' seçeneğini kullanın.";
+else if(err.code === 'auth/weak-password') mesaj = "Şifre çok zayıf. Daha güçlü bir şifre seçin.";
+else if(err.code === 'auth/invalid-email') mesaj = "Geçersiz e-posta adresi.";
+else if(err.code === 'auth/missing-fields') mesaj = "Lütfen tüm alanları doldurun.";
+else if(err.code === 'auth/too-many-requests') mesaj = "Çok fazla deneme yapıldı. Lütfen birkaç dakika bekleyin.";
 alert(mesaj);
 };
 
@@ -1119,8 +1125,10 @@ document.getElementById('btn-giris-yap').onclick = async () => {
   try {
     const uc = await signInWithEmailAndPassword(auth, email, sifre);
     if (!uc.user.emailVerified) {
+      window._dogrulanmamisKullanici = uc.user;
+      document.getElementById('btn-tekrar-dogrulama').style.display = 'block';
       await signOut(auth);
-      alert("📧 E-posta adresiniz henüz doğrulanmamış.\n\nLütfen gelen kutunuzu kontrol edin ve doğrulama linkine tıklayın.");
+      alert("📧 E-posta adresiniz henüz doğrulanmamış.\n\nLütfen gelen kutunuzu kontrol edin. Mail gelmemişse sayfadaki 'Doğrulama mailini tekrar gönder' butonuna tıklayın.");
       return;
     }
     bruteForceBasarili(email);
@@ -1176,6 +1184,20 @@ document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-s
 document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
 document.getElementById('btn-gecis-giris-2').onclick = () => ekranGoster('auth-screen');
 document.getElementById('btn-gecis-sifre-sifirla').onclick = () => ekranGoster('reset-screen');
+document.getElementById('btn-tekrar-dogrulama').onclick = async () => {
+  const user = window._dogrulanmamisKullanici;
+  if (!user) {
+    alert("Lütfen önce e-posta ve şifrenizle giriş yapmayı deneyin. Doğrulanmamış hesap algılanınca bu buton aktif olur.");
+    return;
+  }
+  try {
+    const actionCodeSettings = { url: 'https://correctisis-rgb.github.io/cuzdan/', handleCodeInApp: false };
+    await sendEmailVerification(user, actionCodeSettings);
+    alert("✅ Doğrulama maili gönderildi!\n\nLütfen gelen kutunuzu ve spam/gereksiz klasörünüzü kontrol edin.");
+  } catch(e) {
+    hataGoster(e);
+  }
+};
 document.getElementById('btn-cikis').onclick = () => { kapatPaneller(); if(auth.currentUser) { dbSet(dbRef(rtdb, 'presence/' + auth.currentUser.uid), null); } signOut(auth); };
 document.getElementById('profil-baslik').onclick = () => { kapatPaneller(); document.getElementById('profil-menu').classList.toggle('hidden'); };
 document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); };
