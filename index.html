@@ -493,7 +493,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 // YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref as dbRef, set as dbSet, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", databaseURL: "https://cuzdan-99641-default-rtdb.firebaseio.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
@@ -831,7 +831,7 @@ if (unsubDuyuru) unsubDuyuru();
 let isInitialLoad = true;
 
 unsubDuyuru = onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
-const isAdmin = auth.currentUser && auth.currentUser.email === "emre121856031@gmail.com";
+const isAdmin = auth.currentUser && auth.currentUser.uid === ADMIN_ID;
 let html = "";
 snapshot.forEach(d => {
 const data = d.data();
@@ -990,7 +990,7 @@ duyurulariDinle();
 verileriGetir(user.uid); 
 console.log("Çevrimdışı mod: Önbellek verileri kullanılıyor.");
 }
-if (user.email === "emre121856031@gmail.com") {
+if (user.uid === ADMIN_ID) {
 const adminAlan = document.getElementById('admin-alan');
 adminAlan.innerHTML = `<div id="aktif-kullanici-sayisi" style="background:rgba(16,185,129,0.2); border:1px solid #10b981; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:bold; margin-top:5px; text-align:center;">🟢 Yükleniyor...</div><button id="btn-kullanici-yonetim" style="background:#0ea5e9; margin-top:5px;">👥 KULLANICI YÖNETİMİ</button><button id="btn-duyuru-yayinla" style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
 document.getElementById('btn-duyuru-yayinla').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
@@ -1117,7 +1117,12 @@ document.getElementById('btn-giris-yap').onclick = async () => {
   }
 
   try {
-    await signInWithEmailAndPassword(auth, email, sifre);
+    const uc = await signInWithEmailAndPassword(auth, email, sifre);
+    if (!uc.user.emailVerified) {
+      await signOut(auth);
+      alert("📧 E-posta adresiniz henüz doğrulanmamış.\n\nLütfen gelen kutunuzu kontrol edin ve doğrulama linkine tıklayın.");
+      return;
+    }
     bruteForceBasarili(email);
     if (geriSayimEl) geriSayimEl.style.display = 'none';
     if (kilitGeriSayimTimer) clearInterval(kilitGeriSayimTimer);
@@ -1142,10 +1147,18 @@ document.getElementById('btn-giris-yap').onclick = async () => {
   }
 };
 
-document.getElementById('btn-kayit-ol').onclick = () => {
-const girilenSifre = document.getElementById('signup-sifre').value;
-if (!sifrePolitikasiKontrol(girilenSifre)) { alert(sifreHataMesaji); return; }
-createUserWithEmailAndPassword(auth, document.getElementById('signup-email').value, girilenSifre).catch(hataGoster);
+document.getElementById('btn-kayit-ol').onclick = async () => {
+  const girilenSifre = document.getElementById('signup-sifre').value;
+  const email = document.getElementById('signup-email').value.trim();
+  if (!sifrePolitikasiKontrol(girilenSifre)) { alert(sifreHataMesaji); return; }
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, girilenSifre);
+    const actionCodeSettings = { url: 'https://correctisis-rgb.github.io/cuzdan/', handleCodeInApp: false };
+    await sendEmailVerification(userCredential.user, actionCodeSettings);
+    await signOut(auth);
+    alert("✅ Kayıt başarılı!\n\nE-posta adresinize doğrulama maili gönderdik. Lütfen mailinizi onaylayıp giriş yapın.");
+    ekranGoster('auth-screen');
+  } catch(e) { hataGoster(e); }
 };
 
 document.getElementById('btn-sifre-onay-mail').onclick = async () => {
