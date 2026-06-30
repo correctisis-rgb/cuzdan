@@ -780,7 +780,6 @@ try {
 const text = await kucultVeOku(file);
 btn.innerText = "OKUNUYOR...";
 
-  console.log(text);
 alert(text);
   
 const regex = /(?:GENEL\s*TOPLAM|TOPLAM\s*ÖDENECEK|TOPLAM\s*TUTAR|ÖDENECEK\s*TUTAR|ÖDENECEK|TOPLAM|TUTAR)\D*([\d.]+,\d{2})/i;
@@ -1401,7 +1400,9 @@ const hesap = document.getElementById('hesap').value;
 const rawValue = document.getElementById('tutar').value;
 const tutar = parseFloat(rawValue.replace(/\./g, '').replace(',', '.'));
 const tarihVal = document.getElementById('tarih').value;
+const TUTAR_USTSINIR = 3000000;
 if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return alert("Lütfen tutarı ve açıklamayı kontrol edin!");
+if (tutar > TUTAR_USTSINIR) return alert(`Tutar en fazla ${TUTAR_USTSINIR.toLocaleString('tr-TR')} TL olabilir.`);
 const tarihObj = new Date(tarihVal);
 tarihObj.setHours(12, 0, 0, 0); 
 
@@ -1574,6 +1575,7 @@ const toplamTutar = parseFloat(rawValue.replace(/\./g, '').replace(',', '.'));
 const tarihVal = document.getElementById('tarih').value;
 
 if (!aciklama || isNaN(toplamTutar) || toplamTutar <= 0 || !tarihVal) return alert("Lütfen tutarı ve açıklamayı tam doldurun!");
+if (toplamTutar > 3000000) return alert("Tutar en fazla 3.000.000 TL olabilir.");
 
 const TAKSIT_USTSINIR = 36; // 3 yıl
 const taksitSayisiStr = prompt("Kaç taksit yapılacak? (Sadece sayı girin, en fazla " + TAKSIT_USTSINIR + ")");
