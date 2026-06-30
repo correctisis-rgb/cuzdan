@@ -254,6 +254,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <h2>KAYIT OL</h2>
 <input type="email" id="signup-email" placeholder="E-posta">
 <input type="password" id="signup-sifre" placeholder="Şifre">
+<input type="password" id="signup-sifre-tekrar" placeholder="Şifre (Tekrar)">
 <button id="btn-kayit-ol" style="background:#ff7e5f;">Hesap Oluştur</button>
 <div class="link-text" id="btn-gecis-giris">Giriş ekranına dön</div>
 </div>
@@ -578,16 +579,19 @@ function kullanicilariDinle() {
 
     let son24h = 0;
     let kullaniciListeHtml = '';
-    const kullanicilar = Object.values(usersData).sort((a, b) => b.sonGiris - a.sonGiris);
+    const kullanicilar = Object.entries(usersData).sort((a, b) => b[1].sonGiris - a[1].sonGiris);
 
-    kullanicilar.forEach(u => {
+    kullanicilar.forEach(([uid, u]) => {
       const fark = simdi - u.sonGiris;
       if (fark < yirmiDortSaat) son24h++;
       const sonGirisTarih = new Date(u.sonGiris).toLocaleString('tr-TR');
       const ilkKayitTarih = new Date(u.ilkKayit).toLocaleDateString('tr-TR');
-      kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <div style="font-weight:bold; font-size:11px;">${u.email}</div>
-        <div style="opacity:0.6; font-size:10px;">Son giriş: ${sonGirisTarih} | Kayıt: ${ilkKayitTarih}</div>
+      kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; gap:6px;">
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:bold; font-size:11px; overflow:hidden; text-overflow:ellipsis;">${u.email}</div>
+          <div style="opacity:0.6; font-size:10px;">Son giriş: ${sonGirisTarih} | Kayıt: ${ilkKayitTarih}</div>
+        </div>
+        <button onclick="window.adminMesajGonderForm('${uid}','${u.email.replace(/'/g,"\\'")}')" style="background:#3b82f6; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto; flex-shrink:0;">💬</button>
       </div>`;
     });
 
@@ -598,6 +602,15 @@ function kullanicilariDinle() {
   }, { onlyOnce: true });
   // Online liste presenceDinle tarafından canlı güncelleniyor
 }
+
+// Admin'den kullanıcıya direkt mesaj gönderme
+window.adminMesajGonderForm = (uid, email) => {
+  const mesaj = prompt(`"${email}" kullanıcısına mesaj gönder:`);
+  if (!mesaj || !mesaj.trim()) return;
+  addDoc(collection(db, "kullanici_bildirimleri"), {
+    uid: uid, mesaj: mesaj.trim(), tarih: Date.now(), okundu: false
+  }).then(() => alert("Mesaj gönderildi!")).catch(e => alert("Hata: " + e.message));
+};
 
 // --- TEMA SİSTEMİ ---
 function temaDegistir(tema) {
@@ -1124,7 +1137,20 @@ document.getElementById('btn-giris-yap').onclick = async () => {
 
   try {
     const uc = await signInWithEmailAndPassword(auth, email, sifre);
-    if (!uc.user.emailVerified) {
+
+    // Admin veya sistem güncellenmeden önce kayıt olmuş eski kullanıcı ise doğrulama zorunlu değil
+    let eskiKullaniciMi = false;
+    if (uc.user.uid !== ADMIN_ID) {
+      try {
+        const eskiKayitSnap = await new Promise((resolve) => {
+          onValue(dbRef(rtdb, 'users/' + uc.user.uid + '/ilkKayit'), (s) => resolve(s.val()), { onlyOnce: true });
+        });
+        // 2026-06-30'dan önce kayıt olmuşsa (sistem güncellemesinden önce) muaf tut
+        if (eskiKayitSnap && eskiKayitSnap < 1751241600000) eskiKullaniciMi = true;
+      } catch(e) {}
+    }
+
+    if (!uc.user.emailVerified && uc.user.uid !== ADMIN_ID && !eskiKullaniciMi) {
       window._dogrulanmamisKullanici = uc.user;
       document.getElementById('btn-tekrar-dogrulama').style.display = 'block';
       await signOut(auth);
@@ -1157,7 +1183,9 @@ document.getElementById('btn-giris-yap').onclick = async () => {
 
 document.getElementById('btn-kayit-ol').onclick = async () => {
   const girilenSifre = document.getElementById('signup-sifre').value;
+  const sifreTekrar = document.getElementById('signup-sifre-tekrar').value;
   const email = document.getElementById('signup-email').value.trim();
+  if (girilenSifre !== sifreTekrar) { alert("⚠️ Şifreler eşleşmiyor. Lütfen kontrol edin."); return; }
   if (!sifrePolitikasiKontrol(girilenSifre)) { alert(sifreHataMesaji); return; }
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, girilenSifre);
@@ -1253,7 +1281,7 @@ document.getElementById('btn-sonraki').onclick = () => { seciliTarih.setMonth(se
 
 function verileriGetir(uid) {
 document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
-onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), (snapshot) => {
+onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), { includeMetadataChanges: true }, (snapshot) => {
 let bakiye = 0, veriler = [];
 const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
 const hesapBorclari = { 'Nakit': 0, 'Garanti': 0, 'Ziraat': 0, 'Qnb': 0, 'Diğer Kredi Kartı': 0 };
@@ -1511,11 +1539,7 @@ document.getElementById('btn-taksit').innerText = "TAKSİT (💸)";
 return;
 }
 
-const taksitSayisiStr = prompt("Kaç taksit yapılacak? (Sadece sayı girin)");
-if (!taksitSayisiStr) return;
-const taksitSayisi = parseInt(taksitSayisiStr);
-if (isNaN(taksitSayisi) || taksitSayisi <= 1) return alert("Geçerli bir taksit sayısı girin.");
-
+// Form değerlerini prompt açılmadan ÖNCE sabitle (kategori/hesap kaybolmasın diye)
 const aciklama = document.getElementById('aciklama').value;
 const kategori = document.getElementById('kategori').value;
 const hesap = document.getElementById('hesap').value;
@@ -1524,6 +1548,11 @@ const toplamTutar = parseFloat(rawValue.replace(/\./g, '').replace(',', '.'));
 const tarihVal = document.getElementById('tarih').value;
 
 if (!aciklama || isNaN(toplamTutar) || toplamTutar <= 0 || !tarihVal) return alert("Lütfen tutarı ve açıklamayı tam doldurun!");
+
+const taksitSayisiStr = prompt("Kaç taksit yapılacak? (Sadece sayı girin)");
+if (!taksitSayisiStr) return;
+const taksitSayisi = parseInt(taksitSayisiStr);
+if (isNaN(taksitSayisi) || taksitSayisi <= 1) return alert("Geçerli bir taksit sayısı girin.");
 
 const aylikTutar = parseFloat((toplamTutar / taksitSayisi).toFixed(2));
 let baslangicTarihi = new Date(tarihVal);
