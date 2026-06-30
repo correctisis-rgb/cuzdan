@@ -215,25 +215,51 @@ body.masaustu-modu .container.app-container {
   padding: 24px 28px;
 }
 body.masaustu-modu .header-icons { position: absolute; top: 20px; right: 24px; }
-body.masaustu-modu h3 { font-size: 26px; margin: 0 0 8px 0; text-align: center; }
+body.masaustu-modu h3 { display: none; }
+body.masaustu-modu #gelir-gider-ozet { display: none; }
+body.masaustu-modu #masaustu-ozet-kartlari {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 18px;
+  width: 100%;
+}
+#masaustu-ozet-kartlari {
+  display: none;
+}
+body.masaustu-modu .ozet-kart {
+  flex: 1;
+  background: rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 16px 18px;
+  text-align: left;
+}
+body.masaustu-modu .ozet-kart-baslik { font-size: 12px; opacity: 0.75; margin-bottom: 6px; }
+body.masaustu-modu .ozet-kart-deger { font-size: 24px; font-weight: bold; }
+body.masaustu-modu .liste-alani { height: auto; max-height: 560px; border-top: none; }
+body.masaustu-modu .liste-alani table { font-size: 14px; }
+body.masaustu-modu .icon-btn { width: 38px; height: 38px; line-height: 38px; font-size: 16px; }
+#btn-gorunum-degistir { background: rgba(255,255,255,0.18); border: none; color: white; border-radius: 8px; font-size: 11px; padding: 6px 10px; width: 100%; margin-top: 2px; cursor: pointer; text-transform: none; }
+
+/* Mobilde wrapper'lar layout'a karışmasın - sadece masaüstünde sütun olsun */
+#masaustu-ana-alan, #masaustu-form-sutun, #masaustu-liste-sutun {
+  display: contents;
+}
 body.masaustu-modu #masaustu-ana-alan {
   display: flex;
   gap: 22px;
   align-items: flex-start;
 }
 body.masaustu-modu #masaustu-form-sutun {
-  flex: 0 0 360px;
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  flex: 0 0 360px;
 }
 body.masaustu-modu #masaustu-liste-sutun {
+  display: block;
   flex: 1;
   min-width: 0;
 }
-body.masaustu-modu .liste-alani { height: auto; max-height: 560px; border-top: none; }
-body.masaustu-modu .liste-alani table { font-size: 14px; }
-body.masaustu-modu .icon-btn { width: 38px; height: 38px; line-height: 38px; font-size: 16px; }
-#btn-gorunum-degistir { background: rgba(255,255,255,0.18); border: none; color: white; border-radius: 8px; font-size: 11px; padding: 6px 10px; width: 100%; margin-top: 2px; cursor: pointer; text-transform: none; }
 
 .belirgin-btn {
 flex: 1;
@@ -472,6 +498,21 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <span class="nav-btn" id="btn-onceki">&lt;</span>
 <h3 id="ay-baslik"></h3>
 <span class="nav-btn" id="btn-sonraki">&gt;</span>
+</div>
+
+<div id="masaustu-ozet-kartlari">
+  <div class="ozet-kart">
+    <div class="ozet-kart-baslik">Toplam Gelir</div>
+    <div class="ozet-kart-deger" id="masaustu-toplam-gelir" style="color:#00ff9d;">₺0,00</div>
+  </div>
+  <div class="ozet-kart">
+    <div class="ozet-kart-baslik">Toplam Gider</div>
+    <div class="ozet-kart-deger" id="masaustu-toplam-gider" style="color:#ff4d4d;">₺0,00</div>
+  </div>
+  <div class="ozet-kart">
+    <div class="ozet-kart-baslik">Net Bakiye</div>
+    <div class="ozet-kart-deger" id="masaustu-net-bakiye">₺0,00</div>
+  </div>
 </div>
 
 <h3>BAKİYE: <span id="bakiye" style="color: white;">0,00</span> TL</h3>
@@ -1589,6 +1630,14 @@ const ozetGelir = document.getElementById('ozet-gelir');
 const ozetGider = document.getElementById('ozet-gider');
 if (ozetGelir) ozetGelir.innerText = formatla(toplamGelir);
 if (ozetGider) ozetGider.innerText = formatla(toplamGider);
+
+// Masaüstü özet kartları
+const mGelir = document.getElementById('masaustu-toplam-gelir');
+const mGider = document.getElementById('masaustu-toplam-gider');
+const mNet = document.getElementById('masaustu-net-bakiye');
+if (mGelir) mGelir.innerText = '₺' + formatla(toplamGelir);
+if (mGider) mGider.innerText = '₺' + formatla(toplamGider);
+if (mNet) { mNet.innerText = '₺' + formatla(bakiye); mNet.style.color = bakiye < 0 ? '#ff4d4d' : '#60a5fa'; }
 
 tabloYenile();
 
