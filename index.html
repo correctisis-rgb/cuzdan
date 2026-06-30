@@ -12,7 +12,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Akıllı Cüzdan | Cloud</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 html, body { 
 height: 100dvh; 
@@ -559,7 +558,7 @@ function presenceDinle() {
         const girisTarih = new Date(p.girisTarihi).toLocaleTimeString('tr-TR');
         onlineHtml += `<div style="padding:3px 0; display:flex; align-items:center; gap:5px;">
           <span style="color:#10b981;">●</span>
-          <span style="font-size:11px;">${p.email}</span>
+          <span style="font-size:11px;">${escapeHTML(p.email)}</span>
           <span style="opacity:0.5; font-size:10px;">(${girisTarih}'den beri)</span>
         </div>`;
       });
@@ -588,7 +587,7 @@ function kullanicilariDinle() {
       const ilkKayitTarih = new Date(u.ilkKayit).toLocaleDateString('tr-TR');
       kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; gap:6px;">
         <div style="flex:1; min-width:0;">
-          <div style="font-weight:bold; font-size:11px; overflow:hidden; text-overflow:ellipsis;">${u.email}</div>
+          <div style="font-weight:bold; font-size:11px; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(u.email)}</div>
           <div style="opacity:0.6; font-size:10px;">Son giriş: ${sonGirisTarih} | Kayıt: ${ilkKayitTarih}</div>
         </div>
         <button onclick="window.adminMesajGonderForm('${uid}','${u.email.replace(/'/g,"\\'")}')" style="background:#3b82f6; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto; flex-shrink:0;">💬</button>
@@ -654,7 +653,7 @@ function adminMesajDinle() {
         if (data.tarih > sonOkunan) {
           okunmayanVar = true;
           // Popup göster
-          document.getElementById('popup-mesaj-icerik').innerHTML = `<b>${data.email}</b><br>${data.mesaj}`;
+          document.getElementById('popup-mesaj-icerik').innerHTML = `<b>${escapeHTML(data.email)}</b><br>${escapeHTML(data.mesaj)}`;
           document.getElementById('popup-cevap-input').value = '';
           document.getElementById('admin-mesaj-popup').classList.remove('hidden');
           const mesajId = change.doc.id;
@@ -729,7 +728,22 @@ document.body.removeEventListener('click', sesKilidiniAc);
 };
 document.body.addEventListener('click', sesKilidiniAc);
 
+let tesseractYukleniyor = null;
+function tesseractYukle() {
+  if (window.Tesseract) return Promise.resolve();
+  if (tesseractYukleniyor) return tesseractYukleniyor;
+  tesseractYukleniyor = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return tesseractYukleniyor;
+}
+
 async function kucultVeOku(file) {
+await tesseractYukle();
 const worker = await Tesseract.createWorker('tur');
 const bitmap = await createImageBitmap(file);
 const canvas = document.createElement('canvas');
@@ -760,10 +774,11 @@ document.getElementById('fis-kamera').onchange = async (e) => {
 const file = e.target.files[0];
 if (!file) return;
 const btn = document.getElementById('btn-fis-oku');
-btn.innerText = "OKUNUYOR...";
+btn.innerText = window.Tesseract ? "OKUNUYOR..." : "📥 HAZIRLANIYOR...";
 
 try {
 const text = await kucultVeOku(file);
+btn.innerText = "OKUNUYOR...";
 
   console.log(text);
 alert(text);
@@ -891,6 +906,17 @@ kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden
 const _ax = [73,96,108,103,110,96,107,75,121,65,72,97,26,66,105,79,109,79,99,73,26,108,18,26,75,94,80,27];
 const _ak = 42;
 const ADMIN_ID = _ax.map(b => String.fromCharCode(b ^ _ak)).join('');
+
+// XSS koruması - kullanıcı girdisi içeren her yerde kullanılmalı
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 let myChart, seciliTarih = new Date(), mevcutAyVerileri = [];
 
@@ -1041,11 +1067,11 @@ let html = "";
 snapshot.forEach((d) => {
   const data = d.data();
   const tarih = new Date(data.tarih).toLocaleString('tr-TR');
-  const cevapHtml = data.cevap ? `<div style="background:#e8f5e9; border-left:3px solid #10b981; padding:4px 6px; margin-top:4px; font-size:10px; border-radius:4px;">✓ Cevap: ${data.cevap}</div>` : '';
+  const cevapHtml = data.cevap ? `<div style="background:#e8f5e9; border-left:3px solid #10b981; padding:4px 6px; margin-top:4px; font-size:10px; border-radius:4px;">✓ Cevap: ${escapeHTML(data.cevap)}</div>` : '';
   html += `<div style="border-bottom:1px solid #eee; padding:6px 0;" data-id="${d.id}">
     <div style="font-size:10px; color:#888; margin-bottom:2px;">${tarih}</div>
-    <div style="font-size:11px;"><b>${data.email}</b></div>
-    <div style="font-size:11px; margin:2px 0;">${data.mesaj}</div>
+    <div style="font-size:11px;"><b>${escapeHTML(data.email)}</b></div>
+    <div style="font-size:11px; margin:2px 0;">${escapeHTML(data.mesaj)}</div>
     ${cevapHtml}
     <div style="display:flex; gap:4px; margin-top:4px;">
       <button onclick="window.cevapVer('${d.id}')" style="background:#10b981; color:white; border:none; border-radius:4px; font-size:10px; padding:2px 6px; cursor:pointer; width:auto;">💬 Cevap</button>
@@ -1065,7 +1091,7 @@ window.cevapVer = async (id) => {
   const snap = await getDocs(query(collection(db, "bildirimler")));
   let email = '', mesaj = '';
   snap.forEach(d => { if(d.id === id) { email = d.data().email; mesaj = d.data().mesaj; } });
-  document.getElementById('popup-mesaj-icerik').innerHTML = `<b>${email}</b><br>${mesaj}`;
+  document.getElementById('popup-mesaj-icerik').innerHTML = `<b>${escapeHTML(email)}</b><br>${escapeHTML(mesaj)}`;
   document.getElementById('popup-cevap-input').value = '';
   document.getElementById('admin-mesaj-popup').classList.remove('hidden');
   document.getElementById('popup-cevap-gonder').onclick = async () => {
@@ -1549,10 +1575,12 @@ const tarihVal = document.getElementById('tarih').value;
 
 if (!aciklama || isNaN(toplamTutar) || toplamTutar <= 0 || !tarihVal) return alert("Lütfen tutarı ve açıklamayı tam doldurun!");
 
-const taksitSayisiStr = prompt("Kaç taksit yapılacak? (Sadece sayı girin)");
+const TAKSIT_USTSINIR = 36; // 3 yıl
+const taksitSayisiStr = prompt("Kaç taksit yapılacak? (Sadece sayı girin, en fazla " + TAKSIT_USTSINIR + ")");
 if (!taksitSayisiStr) return;
 const taksitSayisi = parseInt(taksitSayisiStr);
 if (isNaN(taksitSayisi) || taksitSayisi <= 1) return alert("Geçerli bir taksit sayısı girin.");
+if (taksitSayisi > TAKSIT_USTSINIR) return alert(`En fazla ${TAKSIT_USTSINIR} taksit yapabilirsiniz.`);
 
 const aylikTutar = parseFloat((toplamTutar / taksitSayisi).toFixed(2));
 let baslangicTarihi = new Date(tarihVal);
