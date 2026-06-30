@@ -219,8 +219,8 @@ body.masaustu-modu .container.app-container {
 }
 body.masaustu-modu .header-icons { position: absolute; top: 20px; right: 24px; }
 body.masaustu-modu h3 { display: none; }
-body.masaustu-modu h3#ay-baslik { display: block !important; margin: 2px 0; font-size: 20px; }
-body.masaustu-modu .nav-container { display: flex !important; margin-bottom: 10px; }
+body.masaustu-modu #ay-baslik { display: block; }
+body.masaustu-modu .nav-container { margin-bottom: 10px; }
 body.masaustu-modu #gelir-gider-ozet { display: none; }
 body.masaustu-modu #masaustu-ozet-kartlari {
   display: flex;
@@ -1143,13 +1143,20 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
       await updateDoc(doc(db, "tekrarlayanlar", tkrDuzenlenecekId), veri);
       tkrDuzenlenecekId = null;
       document.getElementById('btn-tkr-kaydet').innerText = "+ Tekrarlayan İşlem Ekle";
+      alert("Güncellendi! Değişiklik bir sonraki otomatik eklemede geçerli olacak.");
     } else {
       veri.sonEklenenAy = null;
       await addDoc(collection(db, "tekrarlayanlar"), veri);
+      const bugunGun = new Date().getDate();
+      if (bugunGun >= gun) {
+        await tekrarlayanOtomatikEkle(auth.currentUser.uid);
+        alert(`Kural kaydedildi! ✅\n\nBu ay için "${gun}." gün zaten geçtiği/geldiği için, işlem otomatik olarak BU AY içine eklendi. "Hareketler" ve raporlarda hemen görebilirsiniz.\n\nSonraki aylarda her ayın ${gun}. günü otomatik eklenmeye devam edecek.`);
+      } else {
+        alert(`Kural kaydedildi! ✅\n\nBu işlem henüz "Hareketler" listesine eklenmedi. Her ayın ${gun}. günü geldiğinde otomatik olarak eklenecek ve raporlara dahil olacak.`);
+      }
     }
     document.getElementById('tkr-aciklama').value = '';
     document.getElementById('tkr-tutar').value = '';
-    alert("Kaydedildi!");
   } catch(e) { alert("Hata: " + e.message); }
 };
 
