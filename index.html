@@ -219,6 +219,8 @@ body.masaustu-modu .container.app-container {
 }
 body.masaustu-modu .header-icons { position: absolute; top: 20px; right: 24px; }
 body.masaustu-modu h3 { display: none; }
+body.masaustu-modu #ay-baslik { display: block; }
+body.masaustu-modu .nav-container { margin-bottom: 10px; }
 body.masaustu-modu #gelir-gider-ozet { display: none; }
 body.masaustu-modu #masaustu-ozet-kartlari {
   display: flex;
@@ -491,7 +493,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
   <textarea id="popup-cevap-input" placeholder="Cevabınızı yazın..." style="width:100%; height:60px; font-size:12px; border:1px solid #ddd; border-radius:8px; padding:6px; box-sizing:border-box; color:black; resize:none;"></textarea>
   <div style="display:flex; gap:6px; margin-top:8px;">
     <button id="popup-cevap-gonder" style="flex:1; background:#10b981; font-size:12px; padding:6px;">✓ Cevap Gönder</button>
-    <button onclick="document.getElementById('admin-mesaj-popup').classList.add('hidden')" style="flex:1; background:#6b7280; font-size:12px; padding:6px;">Şimdi Değil</button>
+    <button onclick="document.getElementById('admin-mesaj-popup').classList.add('hidden'); localStorage.setItem('son_okunan_mesaj', Date.now());" style="flex:1; background:#6b7280; font-size:12px; padding:6px;">Şimdi Değil</button>
   </div>
 </div>
 
@@ -803,6 +805,8 @@ function adminMesajDinle() {
           document.getElementById('popup-cevap-input').value = '';
           document.getElementById('admin-mesaj-popup').classList.remove('hidden');
           const mesajId = change.doc.id;
+          // Popup gösterildiği an son okunan olarak işaretle, tekrar tekrar açılmasın
+          localStorage.setItem('son_okunan_mesaj', Date.now());
           document.getElementById('popup-cevap-gonder').onclick = async () => {
             const cevap = document.getElementById('popup-cevap-input').value.trim();
             if (!cevap) return alert("Cevap boş olamaz!");
@@ -811,6 +815,7 @@ function adminMesajDinle() {
               uid: data.uid, mesaj: `Admin cevapladı: ${cevap}`, tarih: Date.now(), okundu: false
             });
             document.getElementById('admin-mesaj-popup').classList.add('hidden');
+            localStorage.setItem('son_okunan_mesaj', Date.now());
             alert("Cevap gönderildi!");
           };
         }
