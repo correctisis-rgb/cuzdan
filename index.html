@@ -198,6 +198,43 @@ td small { font-size: 10px; }
 .bakiye-asagi { animation: bakiye-asagi 0.4s ease; }
 
 .butor-group-row { display: flex; gap: 6px; margin: 3px 0; width: 100%; }
+
+/* ====== MASAÜSTÜ SİTESİ MODU ====== */
+body.masaustu-modu {
+  align-items: flex-start;
+  overflow-y: auto;
+  height: auto;
+  min-height: 100dvh;
+  padding: 30px 0;
+}
+body.masaustu-modu .container.app-container {
+  width: 92%;
+  max-width: 1100px;
+  height: auto;
+  max-height: none;
+  padding: 24px 28px;
+}
+body.masaustu-modu .header-icons { position: absolute; top: 20px; right: 24px; }
+body.masaustu-modu h3 { font-size: 26px; margin: 0 0 8px 0; text-align: center; }
+body.masaustu-modu #masaustu-ana-alan {
+  display: flex;
+  gap: 22px;
+  align-items: flex-start;
+}
+body.masaustu-modu #masaustu-form-sutun {
+  flex: 0 0 360px;
+  display: flex;
+  flex-direction: column;
+}
+body.masaustu-modu #masaustu-liste-sutun {
+  flex: 1;
+  min-width: 0;
+}
+body.masaustu-modu .liste-alani { height: auto; max-height: 560px; border-top: none; }
+body.masaustu-modu .liste-alani table { font-size: 14px; }
+body.masaustu-modu .icon-btn { width: 38px; height: 38px; line-height: 38px; font-size: 16px; }
+#btn-gorunum-degistir { background: rgba(255,255,255,0.18); border: none; color: white; border-radius: 8px; font-size: 11px; padding: 6px 10px; width: 100%; margin-top: 2px; cursor: pointer; text-transform: none; }
+
 .belirgin-btn {
 flex: 1;
 padding: 8px 4px !important;
@@ -295,6 +332,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
   </div>
 </div>
 <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
+<button id="btn-gorunum-degistir">🖥️ Masaüstü Sitesi İste</button>
 <div id="admin-alan"></div>
 </div>
 
@@ -446,6 +484,8 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 
 <input type="file" id="fis-kamera" accept="image/*" capture="environment" style="display:none;">
 
+<div id="masaustu-ana-alan">
+<div id="masaustu-form-sutun">
 <div class="butor-group-row">
 <button id="btn-fis-oku" class="belirgin-btn" style="background:#575fcf;">📷 FİŞİ OKUT</button>
 <button id="btn-sesli-komut" class="belirgin-btn" style="background:#00d2d3;">🎤 SESLİ EKLE</button>
@@ -521,9 +561,13 @@ border: 1px solid rgba(255,255,255,0.1) !important;
   </div>
   <button id="btn-filtre-temizle" style="background:rgba(255,255,255,0.15); margin-top:4px; font-size:11px; padding:4px;">✕ Filtreyi Temizle</button>
 </div>
+</div>
 
+<div id="masaustu-liste-sutun">
 <div class="liste-alani">
 <table id="tablo"></table>
+</div>
+</div>
 </div>
 
 </div>
@@ -952,6 +996,30 @@ function escapeHTML(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+// --- MASAÜSTÜ / MOBİL GÖRÜNÜM ---
+function gorunumUygula(mod) {
+  if (mod === 'masaustu') {
+    document.body.classList.add('masaustu-modu');
+    document.getElementById('btn-gorunum-degistir').innerText = '📱 Mobil Site İste';
+  } else {
+    document.body.classList.remove('masaustu-modu');
+    document.getElementById('btn-gorunum-degistir').innerText = '🖥️ Masaüstü Sitesi İste';
+  }
+}
+
+document.getElementById('btn-gorunum-degistir').onclick = () => {
+  const yeniMod = document.body.classList.contains('masaustu-modu') ? 'mobil' : 'masaustu';
+  gorunumUygula(yeniMod);
+  localStorage.setItem('gorunum_modu', yeniMod);
+};
+
+// Sayfa açılışında kayıtlı tercihi uygula
+(function gorunumYukle() {
+  const kayitli = localStorage.getItem('gorunum_modu');
+  if (kayitli === 'masaustu') gorunumUygula('masaustu');
+})();
+
 
 // --- TEKRARLAYAN İŞLEM (SABİT GİDER) SİSTEMİ ---
 (function tkrGunDoldur() {
