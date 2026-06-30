@@ -310,6 +310,42 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <div id="borc-listesi"></div>
 </div>
 
+<div id="tekrarlayan-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:left; max-height:340px; overflow-y:auto;">
+<button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
+<div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">🔁 SABİT GİDERLER / TEKRARLAYAN İŞLEMLER</div>
+
+<div id="tekrarlayan-form" style="background:rgba(255,255,255,0.08); border-radius:8px; padding:8px; margin-bottom:10px;">
+  <input type="text" id="tkr-aciklama" placeholder="Açıklama (örn: Kira)" maxlength="60" style="margin-bottom:4px;">
+  <input type="text" id="tkr-tutar" placeholder="Tutar" inputmode="decimal" style="margin-bottom:4px;">
+  <select id="tkr-kategori" style="margin-bottom:4px;">
+    <option value="Genel">Genel</option>
+    <option value="Maaş">Maaş</option>
+    <option value="Market">Market</option>
+    <option value="Fatura">Fatura</option>
+    <option value="Ulaşım">Ulaşım</option>
+    <option value="Sağlık">Sağlık</option>
+    <option value="Eğlence">Eğlence</option>
+    <option value="Diğer">Diğer</option>
+  </select>
+  <select id="tkr-hesap" style="margin-bottom:4px;">
+    <option value="Nakit">Nakit</option>
+    <option value="Garanti">Garanti BBVA</option>
+    <option value="Ziraat">Ziraat Bankası</option>
+    <option value="Qnb">QNB Finansbank</option>
+    <option value="Diğer Kredi Kartı">Diğer Kredi Kartı</option>
+  </select>
+  <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+    <span style="font-size:12px; white-space:nowrap;">Her ayın</span>
+    <select id="tkr-gun" style="margin:0;">
+    </select>
+    <span style="font-size:12px; white-space:nowrap;">günü</span>
+  </div>
+  <button id="btn-tkr-kaydet" style="background:#6366f1; width:100%;">+ Tekrarlayan İşlem Ekle</button>
+</div>
+
+<div id="tekrarlayan-liste"></div>
+</div>
+
 <div id="sifre-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <input type="password" id="mevcut-sifre" placeholder="Mevcut Şifre">
@@ -451,6 +487,8 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <button id="btn-gider" style="background:#ef4444; flex:1;">GİDER (-)</button>
 <button id="btn-taksit" style="background:#8b5cf6; flex:1;">TAKSİT (💸)</button>
 </div>
+
+<button id="btn-tekrarlayan-ac" style="background:rgba(99,102,241,0.25); border:1px solid #6366f1; margin-top:5px; font-size:12px; padding:6px;">🔁 Sabit Giderler / Tekrarlayan İşlemler</button>
 
 <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
   <button id="btn-arama-ac" style="background:rgba(255,255,255,0.2); border:none; border-radius:8px; color:white; padding:4px 10px; font-size:12px; cursor:pointer; width:auto;">🔍 Ara / Filtrele</button>
@@ -891,7 +929,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); };
 
 document.getElementById('btn-duyuru-ac').onclick = () => { 
 document.getElementById('bildirim-badge').style.display = 'none';
@@ -913,6 +951,143 @@ function escapeHTML(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+// --- TEKRARLAYAN İŞLEM (SABİT GİDER) SİSTEMİ ---
+(function tkrGunDoldur() {
+  const sel = document.getElementById('tkr-gun');
+  for (let i = 1; i <= 28; i++) {
+    const opt = document.createElement('option');
+    opt.value = i; opt.innerText = i;
+    sel.appendChild(opt);
+  }
+})();
+
+function tutarParse(str) {
+  return parseFloat(String(str).replace(/\./g, '').replace(',', '.'));
+}
+
+document.getElementById('btn-tekrarlayan-ac').onclick = () => {
+  kapatPaneller();
+  document.getElementById('tekrarlayan-panel').classList.remove('hidden');
+  tekrarlayanlariDinle();
+};
+
+document.getElementById('tkr-tutar').oninput = (e) => {
+  let val = e.target.value.replace(/[^0-9,]/g, '');
+  let parts = val.split(',');
+  let tamKisim = parts[0].replace(/\./g, '');
+  tamKisim = tamKisim.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  e.target.value = parts.length > 1 ? tamKisim + ',' + parts[1].substring(0, 2) : tamKisim;
+};
+
+let tkrDuzenlenecekId = null;
+
+document.getElementById('btn-tkr-kaydet').onclick = async () => {
+  const aciklama = document.getElementById('tkr-aciklama').value.trim();
+  const tutar = tutarParse(document.getElementById('tkr-tutar').value);
+  const kategori = document.getElementById('tkr-kategori').value;
+  const hesap = document.getElementById('tkr-hesap').value;
+  const gun = parseInt(document.getElementById('tkr-gun').value);
+
+  if (!aciklama || isNaN(tutar) || tutar <= 0) return alert("Lütfen açıklama ve tutarı doldurun!");
+  if (tutar > 3000000) return alert("Tutar en fazla 3.000.000 TL olabilir.");
+
+  const veri = { uid: auth.currentUser.uid, aciklama, tutar, kategori, hesap, gun, aktif: true };
+
+  try {
+    if (tkrDuzenlenecekId) {
+      await updateDoc(doc(db, "tekrarlayanlar", tkrDuzenlenecekId), veri);
+      tkrDuzenlenecekId = null;
+      document.getElementById('btn-tkr-kaydet').innerText = "+ Tekrarlayan İşlem Ekle";
+    } else {
+      veri.sonEklenenAy = null;
+      await addDoc(collection(db, "tekrarlayanlar"), veri);
+    }
+    document.getElementById('tkr-aciklama').value = '';
+    document.getElementById('tkr-tutar').value = '';
+    alert("Kaydedildi!");
+  } catch(e) { alert("Hata: " + e.message); }
+};
+
+function tekrarlayanlariDinle() {
+  if (!auth.currentUser) return;
+  onSnapshot(query(collection(db, "tekrarlayanlar"), where("uid", "==", auth.currentUser.uid)), (snap) => {
+    let html = '';
+    const liste = [];
+    snap.forEach(d => liste.push({ id: d.id, ...d.data() }));
+    liste.sort((a, b) => a.gun - b.gun);
+
+    if (liste.length === 0) {
+      html = '<div style="text-align:center; opacity:0.5; padding:10px; font-size:12px;">Henüz tekrarlayan işlem eklenmedi</div>';
+    }
+
+    liste.forEach(t => {
+      const hesapMap = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
+      const durumRengi = t.aktif !== false ? '#10b981' : '#6b7280';
+      const durumYazi = t.aktif !== false ? 'Aktif' : 'Durduruldu';
+      html += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:7px 0;">
+        <div style="display:flex; justify-content:space-between; align-items:start;">
+          <div style="flex:1;">
+            <div style="font-weight:bold; font-size:12px;">${escapeHTML(t.aciklama)}</div>
+            <div style="opacity:0.7; font-size:10px;">${escapeHTML(t.kategori)} | ${escapeHTML(hesapMap[t.hesap] || t.hesap)} • Her ayın ${t.gun}'i</div>
+            <div style="font-size:9px; color:${durumRengi}; font-weight:bold; margin-top:2px;">● ${durumYazi}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:bold; color:#ff4d4d; font-size:13px;">${formatla(t.tutar)} TL</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:4px; margin-top:5px;">
+          <button onclick="window.tkrDuzenle('${t.id}','${escapeHTML(t.aciklama).replace(/'/g,"\\\\'")}',${t.tutar},'${t.kategori}','${t.hesap}',${t.gun})" style="background:#3b82f6; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">✏️ Düzenle</button>
+          <button onclick="window.tkrDurumDegistir('${t.id}', ${t.aktif === false})" style="background:${t.aktif !== false ? '#f59e0b' : '#10b981'}; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">${t.aktif !== false ? '⏸ Durdur' : '▶ Etkinleştir'}</button>
+          <button onclick="window.tkrSil('${t.id}')" style="background:#ef4444; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">🗑 Sil</button>
+        </div>
+      </div>`;
+    });
+    document.getElementById('tekrarlayan-liste').innerHTML = html;
+  });
+}
+
+window.tkrDuzenle = (id, aciklama, tutar, kategori, hesap, gun) => {
+  tkrDuzenlenecekId = id;
+  document.getElementById('tkr-aciklama').value = aciklama;
+  document.getElementById('tkr-tutar').value = formatla(tutar);
+  document.getElementById('tkr-kategori').value = kategori;
+  document.getElementById('tkr-hesap').value = hesap;
+  document.getElementById('tkr-gun').value = gun;
+  document.getElementById('btn-tkr-kaydet').innerText = "✓ Güncelle (Sadece sonraki aylara uygulanır)";
+  document.getElementById('tekrarlayan-panel').scrollTop = 0;
+};
+
+window.tkrDurumDegistir = async (id, yeniDurum) => {
+  await updateDoc(doc(db, "tekrarlayanlar", id), { aktif: yeniDurum });
+};
+
+window.tkrSil = async (id) => {
+  if (!confirm("Bu tekrarlayan işlemi silmek istediğine emin misin? (Geçmiş kayıtlar silinmez, sadece otomatik ekleme durur)")) return;
+  await deleteDoc(doc(db, "tekrarlayanlar", id));
+};
+
+async function tekrarlayanOtomatikEkle(uid) {
+  try {
+    const simdi = new Date();
+    const buAyAnahtari = `${simdi.getFullYear()}-${simdi.getMonth()}`;
+    const snap = await getDocs(query(collection(db, "tekrarlayanlar"), where("uid", "==", uid), where("aktif", "==", true)));
+
+    for (const d of snap.docs) {
+      const t = d.data();
+      if (t.sonEklenenAy === buAyAnahtari) continue;
+      if (simdi.getDate() < t.gun) continue;
+
+      let islemTarihi = new Date(simdi.getFullYear(), simdi.getMonth(), t.gun, 12, 0, 0);
+
+      await addDoc(collection(db, "islemler"), {
+        uid, aciklama: t.aciklama + ' (Otomatik)', tutar: t.tutar, tur: 'gider',
+        kategori: t.kategori, hesap: t.hesap, tarih: islemTarihi.getTime()
+      });
+      await updateDoc(doc(db, "tekrarlayanlar", d.id), { sonEklenenAy: buAyAnahtari });
+    }
+  } catch(e) { console.log("Tekrarlayan otomatik ekleme hatası:", e); }
 }
 
 let myChart, seciliTarih = new Date(), mevcutAyVerileri = [];
@@ -1016,6 +1191,7 @@ loadCustomData(user); // YENİ: Cihaza kaydedilmiş kategorileri/kartları yükl
 temaYukle(user.uid);
 oturumTimerSifirla();
 ekranGoster('app-screen');
+if (navigator.onLine) tekrarlayanOtomatikEkle(user.uid);
 // Kahve hatırlatıcı - 10 saniye sonra, haftada bir
 setTimeout(() => {
   if (!sessionStorage.getItem('kahve_gosterildi')) {
