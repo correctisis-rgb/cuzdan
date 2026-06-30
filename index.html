@@ -9,7 +9,7 @@
 <link class="apple-touch-icon" href="icon-192.png">
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" id="viewport-meta" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Akıllı Cüzdan | Cloud</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -204,6 +204,7 @@ html.masaustu-modu, html.masaustu-modu body {
   height: auto;
   min-height: 100dvh;
   overflow-y: auto;
+  overflow-x: visible;
 }
 body.masaustu-modu {
   align-items: flex-start;
@@ -261,7 +262,7 @@ body.masaustu-modu #mesajlar-panel {
 body.masaustu-modu #mesajlar-panel div[style*="border-bottom:1px solid #eee"] {
   border-bottom-color: rgba(255,255,255,0.15) !important;
 }
-#btn-gorunum-degistir { background: darkred; border: none; color: white; border-radius: 8px; font-size: 11px; padding: 6px 10px; width: 100%; margin-top: 2px; cursor: pointer; text-transform: none; }
+#btn-gorunum-degistir { background: rgba(255,255,255,0.18); border: none; color: white; border-radius: 8px; font-size: 11px; padding: 6px 10px; width: 100%; margin-top: 2px; cursor: pointer; text-transform: none; }
 
 /* Mobilde wrapper'lar layout'a karışmasın - sadece masaüstünde sütun olsun */
 #masaustu-ana-alan, #masaustu-form-sutun, #masaustu-liste-sutun {
@@ -1063,14 +1064,18 @@ function escapeHTML(str) {
 
 // --- MASAÜSTÜ / MOBİL GÖRÜNÜM ---
 function gorunumUygula(mod) {
+  const viewportMeta = document.getElementById('viewport-meta');
   if (mod === 'masaustu') {
     document.body.classList.add('masaustu-modu');
     document.documentElement.classList.add('masaustu-modu');
     document.getElementById('btn-gorunum-degistir').innerText = '📱 Mobil Site İste';
+    // Telefon/tablette gerçek masaüstü genişliğini simüle et - sayfa küçülüp tamamı görünsün, zoom/kaydırma serbest
+    if (viewportMeta) viewportMeta.setAttribute('content', 'width=1100, user-scalable=yes');
   } else {
     document.body.classList.remove('masaustu-modu');
     document.documentElement.classList.remove('masaustu-modu');
     document.getElementById('btn-gorunum-degistir').innerText = '🖥️ Masaüstü Sitesi İste';
+    if (viewportMeta) viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
   }
 }
 
