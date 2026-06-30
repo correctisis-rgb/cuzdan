@@ -779,8 +779,6 @@ btn.innerText = window.Tesseract ? "OKUNUYOR..." : "📥 HAZIRLANIYOR...";
 try {
 const text = await kucultVeOku(file);
 btn.innerText = "OKUNUYOR...";
-
-alert(text);
   
 const regex = /(?:GENEL\s*TOPLAM|TOPLAM\s*ÖDENECEK|TOPLAM\s*TUTAR|ÖDENECEK\s*TUTAR|ÖDENECEK|TOPLAM|TUTAR)\D*([\d.]+,\d{2})/i;
 const eslesme = text.match(regex);
