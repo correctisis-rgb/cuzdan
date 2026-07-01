@@ -218,7 +218,8 @@ body.masaustu-modu .container.app-container {
   padding: 24px 28px;
 }
 body.masaustu-modu .header-icons { position: absolute; top: 20px; right: 24px; }
-body.masaustu-modu h3 { display: none; }
+body.masaustu-modu h3#bakiye-h3 { display: none; }
+body.masaustu-modu h3#ay-baslik { font-size: 18px; margin: 0; }
 body.masaustu-modu #ay-baslik { display: block; }
 body.masaustu-modu .nav-container { margin-bottom: 10px; }
 body.masaustu-modu #gelir-gider-ozet { display: none; }
@@ -321,6 +322,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 </div>
 
 <div class="container" id="auth-screen">
+<img src="https://correctisis-rgb.github.io/cuzdan/icon-192.png" alt="Akıllı Cüzdan" style="width:90px; height:90px; border-radius:20px; margin-bottom:6px; display:block; margin-left:auto; margin-right:auto;">
 <h2>AKILLI CÜZDAN</h2>
 <input type="email" id="email" placeholder="E-posta">
 <input type="password" id="sifre" placeholder="Şifre">
@@ -479,6 +481,24 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 </div>
 
 <!-- Kullanıcı cevap bildirimi popup -->
+<!-- Genel bilgi popup -->
+<div id="bilgi-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1e1b2e; color:white; border-radius:15px; padding:18px; width:85%; max-width:340px; z-index:10001; box-shadow:0 8px 30px rgba(0,0,0,0.6); text-align:center; border:1px solid rgba(255,255,255,0.1);">
+  <div id="bilgi-popup-ikon" style="font-size:28px; margin-bottom:8px;"></div>
+  <div id="bilgi-popup-baslik" style="font-weight:bold; font-size:14px; margin-bottom:8px;"></div>
+  <div id="bilgi-popup-metin" style="font-size:12px; opacity:0.85; line-height:1.6; margin-bottom:14px;"></div>
+  <button id="bilgi-popup-tamam" style="background:#6366f1; width:100%; border-radius:8px;">Tamam</button>
+</div>
+
+<!-- Onay popup (confirm yerine) -->
+<div id="onay-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1e1b2e; color:white; border-radius:15px; padding:18px; width:85%; max-width:340px; z-index:10001; box-shadow:0 8px 30px rgba(0,0,0,0.6); text-align:center; border:1px solid rgba(255,255,255,0.1);">
+  <div id="onay-popup-ikon" style="font-size:28px; margin-bottom:8px;"></div>
+  <div id="onay-popup-metin" style="font-size:13px; margin-bottom:16px; line-height:1.5;"></div>
+  <div style="display:flex; gap:8px;">
+    <button id="onay-popup-iptal" style="flex:1; background:rgba(255,255,255,0.15); border-radius:8px;">İptal</button>
+    <button id="onay-popup-evet" style="flex:1; background:#ef4444; border-radius:8px;">Evet, Sil</button>
+  </div>
+</div>
+
 <div id="kullanici-cevap-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5); text-align:center;">
   <div style="font-size:24px; margin-bottom:6px;">📬</div>
   <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#10b981;">Admin Cevapladı</div>
@@ -541,7 +561,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
   </div>
 </div>
 
-<h3>BAKİYE: <span id="bakiye" style="color: white;">0,00</span> TL</h3>
+<h3 id="bakiye-h3">BAKİYE: <span id="bakiye" style="color: white;">0,00</span> TL</h3>
 <div id="gelir-gider-ozet" style="display:flex; justify-content:center; gap:12px; font-size:11px; margin-top:-6px; margin-bottom:2px; opacity:0.9;">
   <span>↑ <span id="ozet-gelir" style="color:#00ff9d; font-weight:bold;">0,00</span> TL</span>
   <span style="opacity:0.4;">|</span>
@@ -1066,6 +1086,29 @@ function escapeHTML(str) {
     .replace(/'/g, '&#39;');
 }
 
+// --- CUSTOM POPUP YARDIMCILARI ---
+function bilgiGoster(ikon, baslik, metin, renk='#6366f1') {
+  document.getElementById('bilgi-popup-ikon').innerText = ikon;
+  document.getElementById('bilgi-popup-baslik').innerText = baslik;
+  document.getElementById('bilgi-popup-baslik').style.color = renk;
+  document.getElementById('bilgi-popup-metin').innerText = metin;
+  document.getElementById('bilgi-popup').classList.remove('hidden');
+  document.getElementById('bilgi-popup-tamam').onclick = () => document.getElementById('bilgi-popup').classList.add('hidden');
+}
+
+function onayGoster(ikon, metin, onEvet, evetRenk='#ef4444', evetYazi='Evet, Sil') {
+  document.getElementById('onay-popup-ikon').innerText = ikon;
+  document.getElementById('onay-popup-metin').innerText = metin;
+  document.getElementById('onay-popup-evet').innerText = evetYazi;
+  document.getElementById('onay-popup-evet').style.background = evetRenk;
+  document.getElementById('onay-popup').classList.remove('hidden');
+  document.getElementById('onay-popup-iptal').onclick = () => document.getElementById('onay-popup').classList.add('hidden');
+  document.getElementById('onay-popup-evet').onclick = () => {
+    document.getElementById('onay-popup').classList.add('hidden');
+    onEvet();
+  };
+}
+
 // --- MASAÜSTÜ / MOBİL GÖRÜNÜM ---
 function gorunumUygula(mod) {
   const viewportMeta = document.getElementById('viewport-meta');
@@ -1143,21 +1186,21 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
       await updateDoc(doc(db, "tekrarlayanlar", tkrDuzenlenecekId), veri);
       tkrDuzenlenecekId = null;
       document.getElementById('btn-tkr-kaydet').innerText = "+ Tekrarlayan İşlem Ekle";
-      alert("Güncellendi! Değişiklik bir sonraki otomatik eklemede geçerli olacak.");
+      bilgiGoster('✏️', 'Güncellendi!', 'Değişiklik bir sonraki otomatik eklemede geçerli olacak. Geçmiş kayıtlar değişmedi.', '#10b981');
     } else {
       veri.sonEklenenAy = null;
       await addDoc(collection(db, "tekrarlayanlar"), veri);
       const bugunGun = new Date().getDate();
       if (bugunGun >= gun) {
         await tekrarlayanOtomatikEkle(auth.currentUser.uid);
-        alert(`Kural kaydedildi! ✅\n\nBu ay için "${gun}." gün zaten geçtiği/geldiği için, işlem otomatik olarak BU AY içine eklendi. "Hareketler" ve raporlarda hemen görebilirsiniz.\n\nSonraki aylarda her ayın ${gun}. günü otomatik eklenmeye devam edecek.`);
+        bilgiGoster('✅', 'Kural Kaydedildi!', `Bu ay için ${gun}. gün zaten geçtiği için işlem bu aya otomatik eklendi. Sonraki aylarda her ayın ${gun}. günü otomatik eklenecek.`, '#10b981');
       } else {
-        alert(`Kural kaydedildi! ✅\n\nBu işlem henüz "Hareketler" listesine eklenmedi. Her ayın ${gun}. günü geldiğinde otomatik olarak eklenecek ve raporlara dahil olacak.`);
+        bilgiGoster('✅', 'Kural Kaydedildi!', `Her ayın ${gun}. günü geldiğinde otomatik olarak işlem listene eklenecek.`, '#6366f1');
       }
     }
     document.getElementById('tkr-aciklama').value = '';
     document.getElementById('tkr-tutar').value = '';
-  } catch(e) { alert("Hata: " + e.message); }
+  } catch(e) { bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
 };
 
 function tekrarlayanlariDinle() {
@@ -1211,11 +1254,16 @@ window.tkrDuzenle = (id, aciklama, tutar, kategori, hesap, gun) => {
 
 window.tkrDurumDegistir = async (id, yeniDurum) => {
   await updateDoc(doc(db, "tekrarlayanlar", id), { aktif: yeniDurum });
+  const mesaj = yeniDurum ? '▶ Tekrarlayan işlem etkinleştirildi' : '⏸ Tekrarlayan işlem durduruldu';
+  const renk = yeniDurum ? '#10b981' : '#f59e0b';
+  bilgiGoster(yeniDurum ? '▶' : '⏸', yeniDurum ? 'Etkinleştirildi' : 'Durduruldu', yeniDurum ? 'Tekrarlayan işlem tekrar aktif. Gelecek aylarda otomatik eklenmeye devam edecek.' : 'Tekrarlayan işlem durduruldu. İstediğinde tekrar etkinleştirebilirsin.', renk);
 };
 
-window.tkrSil = async (id) => {
-  if (!confirm("Bu tekrarlayan işlemi silmek istediğine emin misin? (Geçmiş kayıtlar silinmez, sadece otomatik ekleme durur)")) return;
-  await deleteDoc(doc(db, "tekrarlayanlar", id));
+window.tkrSil = (id) => {
+  onayGoster('🗑', 'Bu tekrarlayan işlemi silmek istediğine emin misin? Geçmiş kayıtlar silinmez, sadece otomatik ekleme durur.', async () => {
+    await deleteDoc(doc(db, "tekrarlayanlar", id));
+    bilgiGoster('✅', 'Silindi', 'Tekrarlayan işlem kaldırıldı. Geçmiş kayıtlar olduğu gibi duruyor.', '#ef4444');
+  });
 };
 
 async function tekrarlayanOtomatikEkle(uid) {
