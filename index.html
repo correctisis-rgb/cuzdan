@@ -1347,7 +1347,17 @@ function satirOlustur(d) {
   const hspGosterim = hesapIsimleriMapGlobal[d.hesap] || d.hesap || 'Nakit';
   const hesapMetni = d.hesap ? ` | ${hspGosterim}` : ' | Nakit';
   const syncIcon = d.isPending ? ' ☁️' : '';
-  return `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;"><button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button></td></tr>`;
+  const ayIsimleriKisa = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  let ekstreEtiket = '';
+  if (d.ekstreAy) {
+    const [eYil, eAy] = d.ekstreAy.split('-');
+    const gercekAy = t.getMonth() + 1;
+    // Sadece farklı bir aya atanmışsa etiketi göster
+    if (parseInt(eAy) !== gercekAy || parseInt(eYil) !== t.getFullYear()) {
+      ekstreEtiket = ` <span style="background:#f59e0b; color:#000; font-size:9px; border-radius:4px; padding:1px 4px; font-weight:bold;">${ayIsimleriKisa[parseInt(eAy)-1]} Ekstresi</span>`;
+    }
+  }
+  return `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}${ekstreEtiket}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;"><button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button></td></tr>`;
 }
 
 function tabloYenile() {
@@ -1761,12 +1771,11 @@ document.getElementById('hesap').addEventListener('change', () => {
   let hesaplananTarih;
 
   if (bugunGun < kesimGun) {
-    // Kesim olmadı, önceki aya ait
-    const oncekiAy = new Date(simdi.getFullYear(), simdi.getMonth() - 1, bugunGun);
-    hesaplananTarih = oncekiAy;
+    // Kesim henüz olmadı → önceki aya ait, ama GÜN olarak bugünü yaz
+    hesaplananTarih = new Date(simdi.getFullYear(), simdi.getMonth() - 1, bugunGun);
   } else {
-    // Kesim oldu, bu aya ait
-    hesaplananTarih = simdi;
+    // Kesim geçti → bu aya ait, bugünü yaz
+    hesaplananTarih = new Date(simdi.getFullYear(), simdi.getMonth(), bugunGun);
   }
 
   // Tarih inputunu güncelle (YYYY-MM-DD formatında)
@@ -1843,10 +1852,13 @@ const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fa
 const hesapBorclari = { 'Nakit': 0, 'Garanti': 0, 'Ziraat': 0, 'Qnb': 0, 'Diğer Kredi Kartı': 0 };
 const hesapIsimleriMap = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
 
+const seciliAyKey = `${seciliTarih.getFullYear()}-${String(seciliTarih.getMonth() + 1).padStart(2, '0')}`;
 snapshot.forEach(d => {
 const data = d.data();
+// ekstreAy varsa onu, yoksa tarih alanının ayını kullan
 const t = new Date(data.tarih);
-if (t.getMonth() === seciliTarih.getMonth() && t.getFullYear() === seciliTarih.getFullYear()) {
+const islemAyKey = data.ekstreAy || `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`;
+if (islemAyKey === seciliAyKey) {
 veriler.push({ id: d.id, ...data, isPending: d.metadata.hasPendingWrites });
 if(data.tur === 'gelir') { bakiye += data.tutar; kategoriToplamlar['Gelir'] += data.tutar; } 
 else { 
@@ -1943,17 +1955,40 @@ const TUTAR_USTSINIR = 3000000;
 if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return alert("Lütfen tutarı ve açıklamayı kontrol edin!");
 if (tutar > TUTAR_USTSINIR) return alert(`Tutar en fazla ${TUTAR_USTSINIR.toLocaleString('tr-TR')} TL olabilir.`);
 const tarihObj = new Date(tarihVal);
-tarihObj.setHours(12, 0, 0, 0); 
+tarihObj.setHours(12, 0, 0, 0);
+
+// Ekstre ayı hesapla - kart kesim tarihi varsa
+let ekstreAy = null;
+if (tur === 'gider') {
+  const kesimTarihleri = kartKesimTarihleriniGetir();
+  const kesimGun = kesimTarihleri[hesap];
+  if (kesimGun) {
+    const islemGun = tarihObj.getDate();
+    if (islemGun < kesimGun) {
+      // Önceki aya ait ekstre
+      const oncekiAy = new Date(tarihObj.getFullYear(), tarihObj.getMonth() - 1, 1);
+      ekstreAy = `${oncekiAy.getFullYear()}-${String(oncekiAy.getMonth() + 1).padStart(2, '0')}`;
+    } else {
+      // Bu aya ait ekstre
+      ekstreAy = `${tarihObj.getFullYear()}-${String(tarihObj.getMonth() + 1).padStart(2, '0')}`;
+    }
+  }
+}
+
+const veriObj = { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, hesap, tarih: tarihObj.getTime() };
+if (ekstreAy) veriObj.ekstreAy = ekstreAy;
 
 try {
 if (window.duzenlenecekId) {
-await updateDoc(doc(db, "islemler", window.duzenlenecekId), { aciklama, tutar, tur, kategori, hesap, tarih: tarihObj.getTime() });
+const guncObj = { aciklama, tutar, tur, kategori, hesap, tarih: tarihObj.getTime() };
+if (ekstreAy) guncObj.ekstreAy = ekstreAy; else guncObj.ekstreAy = null;
+await updateDoc(doc(db, "islemler", window.duzenlenecekId), guncObj);
 window.duzenlenecekId = null;
 document.getElementById('btn-gider').innerText = "GİDER (-)";
 document.getElementById('btn-gelir').innerText = "GELİR (+)";
 document.getElementById('btn-taksit').innerText = "TAKSİT (💸)";
 } else {
-await addDoc(collection(db, "islemler"), { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, hesap, tarih: tarihObj.getTime() });
+await addDoc(collection(db, "islemler"), veriObj);
 }
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
 } catch (e) { console.error("Ekleme hatası:", e); }
