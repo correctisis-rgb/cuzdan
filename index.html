@@ -375,6 +375,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <button id="btn-borclar-menu" style="background:#6366f1; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💳 Hesap Özetleri / Borçlar</button>
 <button id="btn-excel-aktar" style="background:#059669; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Excel'e Aktar</button>
 <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
+<button id="btn-kart-ayarlar" style="background:#0ea5e9; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💳 Kart Ayarları</button>
 <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
 <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
 <div style="margin:4px 0 2px 0; padding:5px; background:rgba(0,0,0,0.1); border-radius:8px;">
@@ -436,6 +437,30 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 </div>
 
 <div id="tekrarlayan-liste"></div>
+</div>
+
+<div id="kart-ayar-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.25); border-radius:10px; text-align:left;">
+<button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
+<div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">💳 KART KESİM TARİHİ AYARLARI</div>
+<div style="font-size:11px; opacity:0.75; margin-bottom:10px; line-height:1.5;">Her kartın kesim gününü girin. İşlem eklerken hesap seçilince, kesim tarihine göre işlemin hangi aya ait olduğu otomatik hesaplanacak.</div>
+<div id="kart-ayar-liste"></div>
+<div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.15); padding-top:8px;">
+  <div style="font-size:11px; font-weight:bold; margin-bottom:5px;">➕ Kesim Tarihi Ekle / Güncelle</div>
+  <select id="kart-ayar-hesap" style="margin-bottom:4px; font-size:12px;">
+    <option value="">Hesap Seçin...</option>
+    <option value="Garanti">Garanti BBVA</option>
+    <option value="Ziraat">Ziraat Bankası</option>
+    <option value="Qnb">QNB Finansbank</option>
+    <option value="Diğer Kredi Kartı">Diğer Kredi Kartı</option>
+  </select>
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+    <span style="font-size:12px; white-space:nowrap;">Her ayın</span>
+    <select id="kart-ayar-gun" style="margin:0; font-size:12px;">
+    </select>
+    <span style="font-size:12px; white-space:nowrap;">'inde kesilir</span>
+  </div>
+  <button id="btn-kart-ayar-kaydet" style="background:#0ea5e9; width:100%; font-size:12px;">💾 Kaydet</button>
+</div>
 </div>
 
 <div id="sifre-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
@@ -1062,7 +1087,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); };
 
 document.getElementById('btn-duyuru-ac').onclick = () => { 
 document.getElementById('bildirim-badge').style.display = 'none';
@@ -1630,6 +1655,140 @@ document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); do
 document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
 document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); };
 document.getElementById('btn-borclar-menu').onclick = () => { kapatPaneller(); document.getElementById('borclar-panel').classList.remove('hidden'); };
+
+// --- KART KESİM TARİHİ SİSTEMİ ---
+
+// Gün dropdown'unu 1-28 arası doldur
+(function kartAyarGunDoldur() {
+  const sel = document.getElementById('kart-ayar-gun');
+  for (let i = 1; i <= 28; i++) {
+    const opt = document.createElement('option');
+    opt.value = i; opt.innerText = i;
+    sel.appendChild(opt);
+  }
+})();
+
+// Kesim tarihlerini localStorage'dan oku
+function kartKesimTarihleriniGetir() {
+  const uid = auth.currentUser ? auth.currentUser.uid : 'default';
+  return JSON.parse(localStorage.getItem('kart_kesim_' + uid) || '{}');
+}
+
+function kartKesimTarihleriniKaydet(data) {
+  const uid = auth.currentUser ? auth.currentUser.uid : 'default';
+  localStorage.setItem('kart_kesim_' + uid, JSON.stringify(data));
+}
+
+// Kesim tarihine göre işlemin hangi aya ait olduğunu hesapla
+// Örn: Garanti kesim=7, bugün 3 Temmuz → bu harcama Haziran ekstresine gider (tarih: 3 Haziran olarak yazar)
+// Örn: Garanti kesim=7, bugün 10 Temmuz → bu harcama Temmuz ekstresine gider (tarih: bugün)
+function kartEkstreAyiHesapla(hesapAdi, gercekTarih) {
+  const tarihler = kartKesimTarihleriniGetir();
+  const kesimGun = tarihler[hesapAdi];
+  if (!kesimGun) return gercekTarih; // Kesim tarihi tanımlanmamış, olduğu gibi kullan
+
+  const tarih = new Date(gercekTarih);
+  const bugunGun = tarih.getDate();
+
+  // Eğer bugün kesim gününden önce veya kesim gününde ise → önceki aya ait
+  if (bugunGun < kesimGun) {
+    // Önceki ayın kesimGun - 1 günü olarak yaz (henüz kesilmedi, önceki döneme ait)
+    const oncekiAy = new Date(tarih.getFullYear(), tarih.getMonth() - 1, kesimGun - 1, 12, 0, 0);
+    return oncekiAy.getTime();
+  }
+  // Kesim gününden sonra → bu aya ait, tarihi olduğu gibi kullan
+  return gercekTarih;
+}
+
+// Kart ayarları panelini göster ve listele
+document.getElementById('btn-kart-ayarlar').onclick = () => {
+  kapatPaneller();
+  document.getElementById('kart-ayar-panel').classList.remove('hidden');
+  kartAyarListeGoster();
+};
+
+function kartAyarListeGoster() {
+  const tarihler = kartKesimTarihleriniGetir();
+  const hesapIsimleri = { 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
+  const el = document.getElementById('kart-ayar-liste');
+  if (Object.keys(tarihler).length === 0) {
+    el.innerHTML = '<div style="font-size:11px; opacity:0.5; text-align:center; padding:8px;">Henüz kesim tarihi eklenmedi</div>';
+    return;
+  }
+  let html = '';
+  Object.entries(tarihler).forEach(([hesap, gun]) => {
+    const isim = hesapIsimleri[hesap] || hesap;
+    html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+      <div>
+        <div style="font-weight:bold; font-size:12px;">${isim}</div>
+        <div style="font-size:10px; opacity:0.7;">Her ayın <b>${gun}</b>'inde kesilir</div>
+      </div>
+      <button onclick="window.kartAyarSil('${hesap}')" style="background:#ef4444; color:white; border:none; border-radius:6px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">Sil</button>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+document.getElementById('btn-kart-ayar-kaydet').onclick = () => {
+  const hesap = document.getElementById('kart-ayar-hesap').value;
+  const gun = parseInt(document.getElementById('kart-ayar-gun').value);
+  if (!hesap) { bilgiGoster('⚠️', 'Hesap Seçin', 'Lütfen bir hesap seçin.', '#f59e0b'); return; }
+  const tarihler = kartKesimTarihleriniGetir();
+  tarihler[hesap] = gun;
+  kartKesimTarihleriniKaydet(tarihler);
+  kartAyarListeGoster();
+  document.getElementById('kart-ayar-hesap').value = '';
+  bilgiGoster('✅', 'Kaydedildi!', `Kesim tarihi ayarlandı. Artık ${hesap === 'Garanti' ? 'Garanti BBVA' : hesap} seçildiğinde işlem tarihi otomatik hesaplanacak.`, '#0ea5e9');
+};
+
+window.kartAyarSil = (hesap) => {
+  const tarihler = kartKesimTarihleriniGetir();
+  delete tarihler[hesap];
+  kartKesimTarihleriniKaydet(tarihler);
+  kartAyarListeGoster();
+};
+
+// Hesap değiştiğinde tarih alanını otomatik güncelle
+document.getElementById('hesap').addEventListener('change', () => {
+  const hesap = document.getElementById('hesap').value;
+  const tarihInput = document.getElementById('tarih');
+  const tarihler = kartKesimTarihleriniGetir();
+  const kesimGun = tarihler[hesap];
+  if (!kesimGun) return; // Kesim tarihi yok, dokunma
+
+  const simdi = new Date();
+  const bugunGun = simdi.getDate();
+  let hesaplananTarih;
+
+  if (bugunGun < kesimGun) {
+    // Kesim olmadı, önceki aya ait
+    const oncekiAy = new Date(simdi.getFullYear(), simdi.getMonth() - 1, bugunGun);
+    hesaplananTarih = oncekiAy;
+  } else {
+    // Kesim oldu, bu aya ait
+    hesaplananTarih = simdi;
+  }
+
+  // Tarih inputunu güncelle (YYYY-MM-DD formatında)
+  const yil = hesaplananTarih.getFullYear();
+  const ay = String(hesaplananTarih.getMonth() + 1).padStart(2, '0');
+  const gun = String(hesaplananTarih.getDate()).padStart(2, '0');
+  tarihInput.value = `${yil}-${ay}-${gun}`;
+
+  // Bilgi toast'ı göster
+  if (bugunGun < kesimGun) {
+    const ayIsimleri = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    const oncekiAyAdi = ayIsimleri[new Date(simdi.getFullYear(), simdi.getMonth() - 1).getMonth()];
+    const toastEl = document.getElementById('toast');
+    const toastMesaj = document.getElementById('toast-mesaj');
+    if (toastEl && toastMesaj) {
+      toastMesaj.innerText = `💳 Kesim tarihi (${kesimGun}) henüz gelmedi → ${oncekiAyAdi} ekstresine yazılıyor`;
+      toastEl.style.display = 'flex';
+      setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
+    }
+  }
+});
+
 
 document.getElementById('btn-excel-aktar').onclick = () => {
 if (mevcutAyVerileri.length === 0) { alert("Bu aya ait aktarılacak işlem bulunamadı."); return; }
