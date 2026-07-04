@@ -1766,35 +1766,26 @@ document.getElementById('hesap').addEventListener('change', () => {
   const kesimGun = tarihler[hesap];
   if (!kesimGun) return; // Kesim tarihi yok, dokunma
 
-  const simdi = new Date();
-  const bugunGun = simdi.getDate();
-  let hesaplananTarih;
+  // Tarih inputundaki değeri oku (varsa), yoksa bugünü kullan
+  const tarihStr = tarihInput.value;
+  const baz = tarihStr ? new Date(tarihStr + 'T12:00:00') : new Date();
+  const islemGun = baz.getDate();
+  const ayIsimleri = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 
-  if (bugunGun < kesimGun) {
-    // Kesim henüz olmadı → önceki aya ait, ama GÜN olarak bugünü yaz
-    hesaplananTarih = new Date(simdi.getFullYear(), simdi.getMonth() - 1, bugunGun);
-  } else {
-    // Kesim geçti → bu aya ait, bugünü yaz
-    hesaplananTarih = new Date(simdi.getFullYear(), simdi.getMonth(), bugunGun);
-  }
-
-  // Tarih inputunu güncelle (YYYY-MM-DD formatında)
-  const yil = hesaplananTarih.getFullYear();
-  const ay = String(hesaplananTarih.getMonth() + 1).padStart(2, '0');
-  const gun = String(hesaplananTarih.getDate()).padStart(2, '0');
-  tarihInput.value = `${yil}-${ay}-${gun}`;
-
-  // Bilgi toast'ı göster
-  if (bugunGun < kesimGun) {
-    const ayIsimleri = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
-    const oncekiAyAdi = ayIsimleri[new Date(simdi.getFullYear(), simdi.getMonth() - 1).getMonth()];
-    const toastEl = document.getElementById('toast');
-    const toastMesaj = document.getElementById('toast-mesaj');
-    if (toastEl && toastMesaj) {
-      toastMesaj.innerText = `💳 Kesim tarihi (${kesimGun}) henüz gelmedi → ${oncekiAyAdi} ekstresine yazılıyor`;
-      toastEl.style.display = 'flex';
-      setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
+  // TARİHE DOKUNMA — sadece bilgi toast'ı göster
+  const toastEl = document.getElementById('toast');
+  const toastMesaj = document.getElementById('toast-mesaj');
+  if (toastEl && toastMesaj) {
+    if (islemGun < kesimGun) {
+      // Kesim henüz olmadı, önceki aya ait ekstre
+      const oncekiAyIdx = baz.getMonth() === 0 ? 11 : baz.getMonth() - 1;
+      toastMesaj.innerText = `💳 Kesim tarihi (${kesimGun}) henüz gelmedi → ${ayIsimleri[oncekiAyIdx]} ekstresine yazılacak`;
+    } else {
+      // Kesim geçti, bu aya ait
+      toastMesaj.innerText = `💳 Kesim tarihi (${kesimGun}) geçti → ${ayIsimleri[baz.getMonth()]} ekstresine yazılacak`;
     }
+    toastEl.style.display = 'flex';
+    setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
   }
 });
 
@@ -1964,13 +1955,15 @@ if (tur === 'gider') {
   const kesimGun = kesimTarihleri[hesap];
   if (kesimGun) {
     const islemGun = tarihObj.getDate();
+    const islemAy = tarihObj.getMonth(); // 0-11
+    const islemYil = tarihObj.getFullYear();
     if (islemGun < kesimGun) {
-      // Önceki aya ait ekstre
-      const oncekiAy = new Date(tarihObj.getFullYear(), tarihObj.getMonth() - 1, 1);
-      ekstreAy = `${oncekiAy.getFullYear()}-${String(oncekiAy.getMonth() + 1).padStart(2, '0')}`;
+      // Kesim henüz gelmedi → önceki aya ait ekstre
+      const oncekiAyTarih = new Date(islemYil, islemAy - 1, 1);
+      ekstreAy = `${oncekiAyTarih.getFullYear()}-${String(oncekiAyTarih.getMonth() + 1).padStart(2, '0')}`;
     } else {
-      // Bu aya ait ekstre
-      ekstreAy = `${tarihObj.getFullYear()}-${String(tarihObj.getMonth() + 1).padStart(2, '0')}`;
+      // Kesim geçti → bu aya ait ekstre
+      ekstreAy = `${islemYil}-${String(islemAy + 1).padStart(2, '0')}`;
     }
   }
 }
