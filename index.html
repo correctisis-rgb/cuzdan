@@ -686,7 +686,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <script type="module">
 // YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref as dbRef, set as dbSet, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -1420,11 +1420,11 @@ splash.style.visibility = 'hidden';
 
 onAuthStateChanged(auth, (user) => {
 if (user) {
-loadCustomData(user); // YENİ: Cihaza kaydedilmiş kategorileri/kartları yükle
+loadCustomData(user);
 temaYukle(user.uid);
 oturumTimerSifirla();
 ekranGoster('app-screen');
-if (navigator.onLine) tekrarlayanOtomatikEkle(user.uid);
+if (navigator.onLine) { tekrarlayanOtomatikEkle(user.uid); kartAyarlariYukle(); }
 // Kahve hatırlatıcı - 10 saniye sonra, haftada bir
 setTimeout(() => {
   if (!sessionStorage.getItem('kahve_gosterildi')) {
@@ -1679,34 +1679,53 @@ document.getElementById('btn-borclar-menu').onclick = () => { kapatPaneller(); d
 })();
 
 // Kesim tarihlerini localStorage'dan oku
-function kartKesimTarihleriniGetir() {
-  const uid = auth.currentUser ? auth.currentUser.uid : 'default';
-  return JSON.parse(localStorage.getItem('kart_kesim_' + uid) || '{}');
+// --- KART KESİM TARİHİ SİSTEMİ (Firestore tabanlı) ---
+let _kartAyarlariCache = {}; // Yerel cache - Firestore'dan yüklenir
+
+async function kartAyarlariYukle() {
+  if (!auth.currentUser) return;
+  try {
+    const docRef = doc(db, "kart_ayarlari", auth.currentUser.uid);
+    const snap = await getDocs(query(collection(db, "kart_ayarlari")));
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      _kartAyarlariCache = docSnap.data().tarihler || {};
+    } else {
+      // localStorage'da eski veri varsa Firestore'a taşı
+      const uid = auth.currentUser.uid;
+      const eski = JSON.parse(localStorage.getItem('kart_kesim_' + uid) || '{}');
+      if (Object.keys(eski).length > 0) {
+        _kartAyarlariCache = eski;
+        await setDoc(docRef, { tarihler: eski, uid });
+        localStorage.removeItem('kart_kesim_' + uid);
+      }
+    }
+  } catch(e) { console.log("Kart ayarları yükleme hatası:", e); }
 }
 
-function kartKesimTarihleriniKaydet(data) {
-  const uid = auth.currentUser ? auth.currentUser.uid : 'default';
-  localStorage.setItem('kart_kesim_' + uid, JSON.stringify(data));
+function kartKesimTarihleriniGetir() {
+  return _kartAyarlariCache;
+}
+
+async function kartKesimTarihleriniKaydet(data) {
+  _kartAyarlariCache = data;
+  if (!auth.currentUser) return;
+  try {
+    await setDoc(doc(db, "kart_ayarlari", auth.currentUser.uid), { tarihler: data, uid: auth.currentUser.uid });
+  } catch(e) { console.log("Kart ayarları kaydetme hatası:", e); }
 }
 
 // Kesim tarihine göre işlemin hangi aya ait olduğunu hesapla
-// Örn: Garanti kesim=7, bugün 3 Temmuz → bu harcama Haziran ekstresine gider (tarih: 3 Haziran olarak yazar)
-// Örn: Garanti kesim=7, bugün 10 Temmuz → bu harcama Temmuz ekstresine gider (tarih: bugün)
 function kartEkstreAyiHesapla(hesapAdi, gercekTarih) {
   const tarihler = kartKesimTarihleriniGetir();
   const kesimGun = tarihler[hesapAdi];
-  if (!kesimGun) return gercekTarih; // Kesim tarihi tanımlanmamış, olduğu gibi kullan
-
+  if (!kesimGun) return gercekTarih;
   const tarih = new Date(gercekTarih);
   const bugunGun = tarih.getDate();
-
-  // Eğer bugün kesim gününden önce veya kesim gününde ise → önceki aya ait
   if (bugunGun < kesimGun) {
-    // Önceki ayın kesimGun - 1 günü olarak yaz (henüz kesilmedi, önceki döneme ait)
     const oncekiAy = new Date(tarih.getFullYear(), tarih.getMonth() - 1, kesimGun - 1, 12, 0, 0);
     return oncekiAy.getTime();
   }
-  // Kesim gününden sonra → bu aya ait, tarihi olduğu gibi kullan
   return gercekTarih;
 }
 
@@ -1739,22 +1758,22 @@ function kartAyarListeGoster() {
   el.innerHTML = html;
 }
 
-document.getElementById('btn-kart-ayar-kaydet').onclick = () => {
+document.getElementById('btn-kart-ayar-kaydet').onclick = async () => {
   const hesap = document.getElementById('kart-ayar-hesap').value;
   const gun = parseInt(document.getElementById('kart-ayar-gun').value);
   if (!hesap) { bilgiGoster('⚠️', 'Hesap Seçin', 'Lütfen bir hesap seçin.', '#f59e0b'); return; }
-  const tarihler = kartKesimTarihleriniGetir();
+  const tarihler = { ...kartKesimTarihleriniGetir() };
   tarihler[hesap] = gun;
-  kartKesimTarihleriniKaydet(tarihler);
+  await kartKesimTarihleriniKaydet(tarihler);
   kartAyarListeGoster();
   document.getElementById('kart-ayar-hesap').value = '';
-  bilgiGoster('✅', 'Kaydedildi!', `Kesim tarihi ayarlandı. Artık ${hesap === 'Garanti' ? 'Garanti BBVA' : hesap} seçildiğinde işlem tarihi otomatik hesaplanacak.`, '#0ea5e9');
+  bilgiGoster('✅', 'Kaydedildi!', `Kesim tarihi buluta kaydedildi. Artık hangi cihazdan girersen gir bu ayar geçerli olacak.`, '#0ea5e9');
 };
 
-window.kartAyarSil = (hesap) => {
-  const tarihler = kartKesimTarihleriniGetir();
+window.kartAyarSil = async (hesap) => {
+  const tarihler = { ...kartKesimTarihleriniGetir() };
   delete tarihler[hesap];
-  kartKesimTarihleriniKaydet(tarihler);
+  await kartKesimTarihleriniKaydet(tarihler);
   kartAyarListeGoster();
 };
 
