@@ -1736,7 +1736,6 @@ async function kartAyarlariYukle() {
   if (!auth.currentUser) return;
   try {
     const docRef = doc(db, "kart_ayarlari", auth.currentUser.uid);
-    const snap = await getDocs(query(collection(db, "kart_ayarlari")));
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       _kartAyarlariCache = docSnap.data().tarihler || {};
