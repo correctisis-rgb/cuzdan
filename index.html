@@ -412,12 +412,18 @@ border: 1px solid rgba(255,255,255,0.1) !important;
     <div class="logo-title">💳 Akıllı Cüzdan</div>
     <div class="logo-sub">Finansal Yönetim</div>
   </div>
-  <div style="padding: 12px 0; flex:1; display:flex; flex-direction:column;">
+  <div style="padding: 12px 0; flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+    <div style="font-size:10px; color:rgba(255,255,255,0.3); padding:6px 20px 4px; letter-spacing:1px; text-transform:uppercase;">Genel</div>
     <button class="mas-nav-item aktif" id="mas-nav-panel"><span class="nav-icon">⊞</span> Panel</button>
-    <button class="mas-nav-item" id="mas-nav-islemler"><span class="nav-icon">↕</span> İşlemler</button>
-    <button class="mas-nav-item" id="mas-nav-taksitler"><span class="nav-icon">💸</span> Taksitler</button>
-    <button class="mas-nav-item" id="mas-nav-mesajlar"><span class="nav-icon">✉</span> Mesajlar</button>
-    <button class="mas-nav-item" id="mas-nav-ayarlar"><span class="nav-icon">⚙</span> Ayarlar</button>
+    <button class="mas-nav-item" id="mas-nav-raporlar"><span class="nav-icon">📊</span> Raporlar</button>
+    <button class="mas-nav-item" id="mas-nav-borclar"><span class="nav-icon">💳</span> Hesap Özetleri</button>
+    <div style="font-size:10px; color:rgba(255,255,255,0.3); padding:10px 20px 4px; letter-spacing:1px; text-transform:uppercase;">İşlemler</div>
+    <button class="mas-nav-item" id="mas-nav-taksitler"><span class="nav-icon">🔁</span> Sabit Giderler</button>
+    <button class="mas-nav-item" id="mas-nav-kart"><span class="nav-icon">⚙</span> Kart Ayarları</button>
+    <div style="font-size:10px; color:rgba(255,255,255,0.3); padding:10px 20px 4px; letter-spacing:1px; text-transform:uppercase;">Hesap</div>
+    <button class="mas-nav-item" id="mas-nav-bildirim"><span class="nav-icon">🔔</span> Bildirimler</button>
+    <button class="mas-nav-item" id="mas-nav-sifre"><span class="nav-icon">🔒</span> Şifre Değiştir</button>
+    <button class="mas-nav-item" id="mas-nav-tema" onclick="document.getElementById('btn-gorunum-degistir').click()"><span class="nav-icon">📱</span> Mobil Site</button>
   </div>
   <div id="mas-sidebar-footer">
     <div class="user-name" id="mas-user-email-sidebar">—</div>
@@ -446,23 +452,23 @@ border: 1px solid rgba(255,255,255,0.1) !important;
       <div class="ozet-kart">
         <div>
           <div class="ozet-kart-baslik">Toplam Gelir</div>
-          <div class="ozet-kart-deger" id="masaustu-toplam-gelir" style="color:#059669;">₺0,00</div>
+          <div class="ozet-kart-deger" id="masaustu-toplam-gelir-mas" style="color:#059669;">₺0,00</div>
         </div>
-        <div class="ozet-kart-ikon" style="background:#d1fae5; color:#059669;">↑</div>
+        <div class="ozet-kart-ikon" style="background:#d1fae5; color:#059669; font-size:20px;">↑</div>
       </div>
       <div class="ozet-kart">
         <div>
           <div class="ozet-kart-baslik">Toplam Gider</div>
-          <div class="ozet-kart-deger" id="masaustu-toplam-gider" style="color:#dc2626;">₺0,00</div>
+          <div class="ozet-kart-deger" id="masaustu-toplam-gider-mas" style="color:#dc2626;">₺0,00</div>
         </div>
-        <div class="ozet-kart-ikon" style="background:#fee2e2; color:#dc2626;">↓</div>
+        <div class="ozet-kart-ikon" style="background:#fee2e2; color:#dc2626; font-size:20px;">↓</div>
       </div>
       <div class="ozet-kart">
         <div>
           <div class="ozet-kart-baslik">Net Bakiye</div>
-          <div class="ozet-kart-deger" id="masaustu-net-bakiye">₺0,00</div>
+          <div class="ozet-kart-deger" id="masaustu-net-bakiye-mas">₺0,00</div>
         </div>
-        <div class="ozet-kart-ikon" style="background:#dbeafe; color:#2563eb;">₺</div>
+        <div class="ozet-kart-ikon" style="background:#dbeafe; color:#2563eb; font-size:20px;">₺</div>
       </div>
     </div>
     <!-- İki sütun -->
@@ -1289,99 +1295,173 @@ function onayGoster(ikon, metin, onEvet, evetRenk='#ef4444', evetYazi='Evet, Sil
 }
 
 // --- MASAÜSTÜ / MOBİL GÖRÜNÜM ---
+function masOvAc(panelId) {
+  let overlay = document.getElementById('mas-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'mas-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if(e.target===overlay) masOvKapat(); };
+    document.body.appendChild(overlay);
+  }
+  let box = document.getElementById('mas-overlay-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'mas-overlay-box';
+    box.style.cssText = 'background:white;border-radius:16px;width:90%;max-width:640px;max-height:85vh;overflow-y:auto;position:relative;color:#111;';
+    overlay.appendChild(box);
+  }
+  const panel = document.getElementById(panelId);
+  if (!panel) { overlay.style.display='flex'; return; }
+  // Panel iceriginini klonla ve goster
+  const title = panel.querySelector('b, strong, [style*="font-weight"]');
+  box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e5e7eb;"><span style="font-size:15px;font-weight:700;color:#111;">' + (panel.dataset.title || panelId) + '</span><button onclick="masOvKapat()" style="background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;">✕ Kapat</button></div><div id="mas-overlay-inner" style="padding:16px 20px;"></div>';
+  const inner = box.querySelector('#mas-overlay-inner');
+  // Panelin child'larini iceri tasimak yerine goster - hidden kaldirilir, fixed pozisyona alinir
+  panel.classList.remove('hidden');
+  panel.style.cssText = '';
+  // Klonla ve goster
+  inner.innerHTML = panel.innerHTML;
+  overlay.style.display = 'flex';
+}
+window.masOvKapat = function() {
+  const overlay = document.getElementById('mas-overlay');
+  if (overlay) overlay.style.display = 'none';
+};
+
 function masaUstuSidebarKur() {
-  // Kullanıcı emailini sidebar footer'a yaz
-  if (auth.currentUser) {
-    const el = document.getElementById('mas-user-email-sidebar');
-    if (el) el.innerText = auth.currentUser.email;
-  }
-  // Logout
+  if (window._sidebarKuruldu) return;
+  window._sidebarKuruldu = true;
+
+  // Email
+  const emailEl = document.getElementById('mas-user-email-sidebar');
+  if (emailEl && auth.currentUser) emailEl.innerText = auth.currentUser.email;
+
+  // Cikis
   const lBtn = document.getElementById('mas-logout-btn');
-  if (lBtn && !lBtn._bound) {
-    lBtn._bound = true;
-    lBtn.onclick = () => signOut(auth);
-  }
-  // Nav item tıklamaları - mobil panelleri göster/gizle
-  const navMap = {
-    'mas-nav-panel': null,
-    'mas-nav-islemler': null,
-    'mas-nav-taksitler': 'btn-tekrarlayan-ac',
-    'mas-nav-mesajlar': 'btn-mesajlar',
-    'mas-nav-ayarlar': 'btn-ayarlar-ac',
-  };
-  Object.keys(navMap).forEach(navId => {
-    const btn = document.getElementById(navId);
-    if (btn && !btn._bound) {
-      btn._bound = true;
-      btn.onclick = () => {
-        document.querySelectorAll('.mas-nav-item').forEach(b => b.classList.remove('aktif'));
-        btn.classList.add('aktif');
-        const topTitle = document.getElementById('mas-topbar-title');
-        if (topTitle) topTitle.innerText = btn.innerText.trim();
-        // Panele karşılık gelen mobil butona tıkla
-        if (navMap[navId]) {
-          const target = document.getElementById(navMap[navId]);
-          if (target) target.click();
-        }
-      };
-    }
-  });
-  // Ay navigasyon butonlarını masaüstü topbar'a bağla
+  if (lBtn) lBtn.onclick = () => signOut(auth);
+
+  // Ay navigasyon
   const masOnceki = document.getElementById('mas-btn-onceki');
   const masSonraki = document.getElementById('mas-btn-sonraki');
-  const ayBaslikMas = document.getElementById('ay-baslik-mas');
-  if (masOnceki && !masOnceki._bound) {
-    masOnceki._bound = true;
-    masOnceki.onclick = () => document.getElementById('btn-onceki').click();
-  }
-  if (masSonraki && !masSonraki._bound) {
-    masSonraki._bound = true;
-    masSonraki.onclick = () => document.getElementById('btn-sonraki').click();
-  }
-  // Ay başlığını senkronize et
-  const syncAyBaslik = () => {
+  if (masOnceki) masOnceki.onclick = () => document.getElementById('btn-onceki').click();
+  if (masSonraki) masSonraki.onclick = () => document.getElementById('btn-sonraki').click();
+
+  // Ay basligini sync et
+  const syncAy = () => {
     const src = document.getElementById('ay-baslik');
-    if (src && ayBaslikMas) ayBaslikMas.innerText = src.innerText;
+    const dst = document.getElementById('ay-baslik-mas');
+    if (src && dst) dst.innerText = src.innerText;
   };
-  syncAyBaslik();
-  if (!window._ayObserver) {
-    window._ayObserver = new MutationObserver(syncAyBaslik);
-    const src = document.getElementById('ay-baslik');
-    if (src) window._ayObserver.observe(src, { childList: true, subtree: true, characterData: true });
+  syncAy();
+  const aySrc = document.getElementById('ay-baslik');
+  if (aySrc) new MutationObserver(syncAy).observe(aySrc, {childList:true, subtree:true, characterData:true});
+
+  // Ozet kart degerlerini sync et
+  const syncKart = () => {
+    const pairs = [['masaustu-toplam-gelir','masaustu-toplam-gelir-mas'],['masaustu-toplam-gider','masaustu-toplam-gider-mas'],['masaustu-net-bakiye','masaustu-net-bakiye-mas']];
+    pairs.forEach(([sid,did]) => { const s=document.getElementById(sid); const d=document.getElementById(did); if(s&&d) d.innerText=s.innerText; });
+  };
+  syncKart();
+  setInterval(syncKart, 800);
+
+  // Nav butonlari
+  function navSec(btn) {
+    document.querySelectorAll('.mas-nav-item').forEach(b => b.classList.remove('aktif'));
+    btn.classList.add('aktif');
   }
-  // Form sutununu masaüstü alana taşı (klonlama değil referans)
-  const formSrc = document.getElementById('masaustu-form-sutun');
-  const formDst = document.getElementById('masaustu-form-sutun-mas');
-  if (formSrc && formDst && !formDst._filled) {
-    formDst._filled = true;
-    formDst.appendChild(formSrc);
-    formDst.style.cssText = 'flex:0 0 320px; background:white; border-radius:12px; border:1px solid #e5e7eb; padding:16px; display:flex; flex-direction:column; gap:8px;';
-  }
-  // Liste sutununu masaüstü alana taşı
-  const listeSrc = document.getElementById('masaustu-liste-sutun');
-  const listeDst = document.getElementById('masaustu-liste-sutun-mas');
-  if (listeSrc && listeDst && !listeDst._filled) {
-    listeDst._filled = true;
-    listeDst.appendChild(listeSrc);
-    listeDst.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:14px;';
-    // Liste kartı wrapper ekle
-    const listeAlani = listeSrc.querySelector('.liste-alani');
-    if (listeAlani && !listeSrc.querySelector('.mas-liste-kart')) {
-      const kart = document.createElement('div');
-      kart.className = 'mas-liste-kart';
-      const baslik = document.createElement('div');
-      baslik.className = 'mas-liste-kart-baslik';
-      baslik.innerHTML = '📋 Son İşlemler';
-      kart.appendChild(baslik);
-      listeSrc.insertBefore(kart, listeAlani);
-      kart.appendChild(listeAlani);
-    }
-  }
-  // Ana alanı düzenle
-  const anaAlanMas = document.getElementById('masaustu-ana-alan-mas');
-  if (anaAlanMas) {
-    anaAlanMas.style.cssText = 'display:flex; gap:18px; align-items:flex-start;';
-  }
+
+  // Raporlar
+  const navRaporlar = document.getElementById('mas-nav-raporlar');
+  if (navRaporlar) navRaporlar.onclick = () => {
+    navSec(navRaporlar);
+    kapatPaneller();
+    document.getElementById('btn-rapor-menu').click();
+    setTimeout(() => {
+      const p = document.getElementById('grafik-panel');
+      if (p && !p.classList.contains('hidden')) {
+        p.style.cssText = 'display:block;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2000;background:white;border-radius:16px;padding:20px;width:80%;max-width:700px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);color:#111;';
+        const kapat = document.createElement('div');
+        kapat.innerHTML = '<button onclick="kapatPaneller();this.closest('[id=grafik-panel]').style.cssText=''" style="background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;margin-bottom:12px;">✕ Kapat</button>';
+        if (!p.querySelector('[data-maskapbtn]')) { kapat.firstChild.dataset.maskapbtn='1'; p.prepend(kapat.firstChild); }
+      }
+    }, 50);
+  };
+
+  // Borclar
+  const navBorclar = document.getElementById('mas-nav-borclar');
+  if (navBorclar) navBorclar.onclick = () => {
+    navSec(navBorclar);
+    kapatPaneller();
+    document.getElementById('btn-borclar-menu').click();
+    setTimeout(() => {
+      const p = document.getElementById('borclar-panel');
+      if (p && !p.classList.contains('hidden')) {
+        p.style.cssText = 'display:block;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2000;background:white;border-radius:16px;padding:20px;width:75%;max-width:600px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);color:#111;';
+        if (!p.querySelector('[data-maskapbtn]')) { const kb = document.createElement('button'); kb.innerText='✕ Kapat'; kb.dataset.maskapbtn='1'; kb.style.cssText='background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;margin-bottom:12px;display:block;'; kb.onclick=()=>{kapatPaneller();p.style.cssText='';}; p.prepend(kb); }
+      }
+    }, 50);
+  };
+
+  // Taksitler / Tekrarlayan
+  const navTaksit = document.getElementById('mas-nav-taksitler');
+  if (navTaksit) navTaksit.onclick = () => {
+    navSec(navTaksit);
+    kapatPaneller();
+    document.getElementById('btn-tekrarlayan-ac').click();
+    setTimeout(() => {
+      const p = document.getElementById('tekrarlayan-panel');
+      if (p && !p.classList.contains('hidden')) {
+        p.style.cssText = 'display:block;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2000;background:white;border-radius:16px;padding:20px;width:75%;max-width:600px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);color:#111;';
+        if (!p.querySelector('[data-maskapbtn]')) { const kb = document.createElement('button'); kb.innerText='✕ Kapat'; kb.dataset.maskapbtn='1'; kb.style.cssText='background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;margin-bottom:12px;display:block;'; kb.onclick=()=>{kapatPaneller();p.style.cssText='';}; p.prepend(kb); }
+      }
+    }, 50);
+  };
+
+  // Kart Ayarlari
+  const navKart = document.getElementById('mas-nav-kart');
+  if (navKart) navKart.onclick = () => {
+    navSec(navKart);
+    kapatPaneller();
+    document.getElementById('btn-kart-ayarlar').click();
+    setTimeout(() => {
+      const p = document.getElementById('kart-ayar-panel');
+      if (p && !p.classList.contains('hidden')) {
+        p.style.cssText = 'display:block;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2000;background:white;border-radius:16px;padding:20px;width:60%;max-width:480px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);color:#111;';
+        if (!p.querySelector('[data-maskapbtn]')) { const kb = document.createElement('button'); kb.innerText='✕ Kapat'; kb.dataset.maskapbtn='1'; kb.style.cssText='background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;margin-bottom:12px;display:block;'; kb.onclick=()=>{kapatPaneller();p.style.cssText='';}; p.prepend(kb); }
+      }
+    }, 50);
+  };
+
+  // Sifre Degistir
+  const navSifre = document.getElementById('mas-nav-sifre');
+  if (navSifre) navSifre.onclick = () => {
+    navSec(navSifre);
+    kapatPaneller();
+    document.getElementById('btn-sifre-guncelle-menu').click();
+    setTimeout(() => {
+      const p = document.getElementById('sifre-panel');
+      if (p && !p.classList.contains('hidden')) {
+        p.style.cssText = 'display:block;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2000;background:white;border-radius:16px;padding:20px;width:55%;max-width:400px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);color:#111;';
+        if (!p.querySelector('[data-maskapbtn]')) { const kb = document.createElement('button'); kb.innerText='✕ Kapat'; kb.dataset.maskapbtn='1'; kb.style.cssText='background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;margin-bottom:12px;display:block;'; kb.onclick=()=>{kapatPaneller();p.style.cssText='';}; p.prepend(kb); }
+      }
+    }, 50);
+  };
+
+  // Bildirimler
+  const navBildirim = document.getElementById('mas-nav-bildirim');
+  if (navBildirim) navBildirim.onclick = () => {
+    navSec(navBildirim);
+    kapatPaneller();
+    document.getElementById('btn-bildir-menu').click();
+    setTimeout(() => {
+      const p = document.getElementById('bildirim-panel');
+      if (p && !p.classList.contains('hidden')) {
+        p.style.cssText = 'display:block;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2000;background:white;border-radius:16px;padding:20px;width:60%;max-width:500px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);color:#111;';
+        if (!p.querySelector('[data-maskapbtn]')) { const kb = document.createElement('button'); kb.innerText='✕ Kapat'; kb.dataset.maskapbtn='1'; kb.style.cssText='background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;margin-bottom:12px;display:block;'; kb.onclick=()=>{kapatPaneller();p.style.cssText='';}; p.prepend(kb); }
+      }
+    }, 50);
+  };
 }
 
 function gorunumUygula(mod) {
@@ -2531,4 +2611,3 @@ if (onay) { await ekle(tur); }
 </script>
 </body>
 </html>
- 
