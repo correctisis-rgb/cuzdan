@@ -805,14 +805,60 @@ window.adminMesajGonderForm = (uid, email) => {
 };
 
 // --- TEMA SİSTEMİ ---
-function temaDegistir(tema) {
+// --- KULLANICI AYARLARI (Firestore tabanlı) ---
+let _kullaniciAyarlariCache = { tema: 'mor', kategoriler: [], hesaplar: [] };
+
+async function kullaniciAyarlariYukle(uid) {
+  try {
+    const docSnap = await getDoc(doc(db, "kullanici_ayarlari", uid));
+    if (docSnap.exists()) {
+      _kullaniciAyarlariCache = { tema: 'mor', kategoriler: [], hesaplar: [], ...docSnap.data() };
+    } else {
+      // localStorage'dan eski verileri taşı
+      const eskiTema = localStorage.getItem('tema_' + uid) || 'mor';
+      const eskiCats = JSON.parse(localStorage.getItem('custom_cats_' + uid) || '[]');
+      const eskiAccs = JSON.parse(localStorage.getItem('custom_accs_' + uid) || '[]');
+      _kullaniciAyarlariCache = { tema: eskiTema, kategoriler: eskiCats, hesaplar: eskiAccs };
+      await setDoc(doc(db, "kullanici_ayarlari", uid), { ..._kullaniciAyarlariCache, uid });
+      // Eski localStorage'ı temizle
+      localStorage.removeItem('tema_' + uid);
+      localStorage.removeItem('custom_cats_' + uid);
+      localStorage.removeItem('custom_accs_' + uid);
+    }
+    // Temayı uygula
+    temaUygula(_kullaniciAyarlariCache.tema || 'mor');
+    // Kategorileri ve hesapları yükle
+    kullaniciAyarlariUIYukle(_kullaniciAyarlariCache);
+  } catch(e) { console.log("Kullanıcı ayarları yükleme hatası:", e); }
+}
+
+async function kullaniciAyarlariKaydet() {
+  if (!auth.currentUser) return;
+  try {
+    await setDoc(doc(db, "kullanici_ayarlari", auth.currentUser.uid), { ..._kullaniciAyarlariCache, uid: auth.currentUser.uid });
+  } catch(e) { console.log("Kullanıcı ayarları kaydetme hatası:", e); }
+}
+
+function kullaniciAyarlariUIYukle(ayarlar) {
+  (ayarlar.kategoriler || []).forEach(c => {
+    if(!document.querySelector(`#kategori option[value="${c}"]`)) document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+    if(!document.querySelector(`#filtre-kategori option[value="${c}"]`)) document.getElementById('filtre-kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+  });
+  (ayarlar.hesaplar || []).forEach(a => {
+    if(!document.querySelector(`#hesap option[value="${a}"]`)) document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`);
+  });
+}
+
+function temaUygula(tema) {
   document.body.classList.remove('tema-mor', 'tema-okyanus', 'tema-yesil');
   document.body.classList.add('tema-' + tema);
-  // LocalStorage'a kaydet (kullanıcı bazlı)
-  const uid = auth.currentUser ? auth.currentUser.uid : 'default';
-  localStorage.setItem('tema_' + uid, tema);
-  // Aktif butonu işaretle
   temaButonGuncelle(tema);
+}
+
+function temaDegistir(tema) {
+  temaUygula(tema);
+  _kullaniciAyarlariCache.tema = tema;
+  kullaniciAyarlariKaydet();
 }
 
 function temaButonGuncelle(tema) {
@@ -823,11 +869,8 @@ function temaButonGuncelle(tema) {
 }
 
 function temaYukle(uid) {
-  let kayitliTema = localStorage.getItem('tema_' + uid) || 'mor';
-  if (kayitliTema === 'yesil') kayitliTema = 'yesil'; // eski ad uyumu
-  document.body.classList.remove('tema-mor', 'tema-okyanus', 'tema-yesil');
-  document.body.classList.add('tema-' + kayitliTema);
-  temaButonGuncelle(kayitliTema);
+  // Artık kullanilmiyor - kullaniciAyarlariYukle hallediyor
+  // Ama giriş akışı çağırıyor, sessizce geç
 }
 
 window.temaDegistir = temaDegistir;
@@ -1420,11 +1463,18 @@ splash.style.visibility = 'hidden';
 
 onAuthStateChanged(auth, (user) => {
 if (user) {
-loadCustomData(user);
-temaYukle(user.uid);
+loadCustomData(user); // boş, uyumluluk için
 oturumTimerSifirla();
 ekranGoster('app-screen');
-if (navigator.onLine) { tekrarlayanOtomatikEkle(user.uid); kartAyarlariYukle(); }
+if (navigator.onLine) {
+  tekrarlayanOtomatikEkle(user.uid);
+  kartAyarlariYukle();
+  kullaniciAyarlariYukle(user.uid);
+} else {
+  // Çevrimdışı: localStorage'dan tema yükle (geçici)
+  const eskiTema = localStorage.getItem('tema_' + user.uid) || 'mor';
+  temaUygula(eskiTema);
+}
 // Kahve hatırlatıcı - 10 saniye sonra, haftada bir
 setTimeout(() => {
   if (!sessionStorage.getItem('kahve_gosterildi')) {
@@ -2074,14 +2124,7 @@ document.getElementById('toast-geri-al').onclick = () => {
 
 // --- YENİ: Kategori / Hesap Ekleme Yapıları ---
 function loadCustomData(user) {
-if(!user) return;
-const cats = JSON.parse(localStorage.getItem('custom_cats_' + user.uid) || '[]');
-const accs = JSON.parse(localStorage.getItem('custom_accs_' + user.uid) || '[]');
-cats.forEach(c => {
-  if(!document.querySelector(`#kategori option[value="${c}"]`)) document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
-  if(!document.querySelector(`#filtre-kategori option[value="${c}"]`)) document.getElementById('filtre-kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
-});
-accs.forEach(a => { if(!document.querySelector(`#hesap option[value="${a}"]`)) document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`); });
+  // Artık kullaniciAyarlariYukle tarafından yönetiliyor - eski uyumluluk için boş bırakıldı
 }
 
 document.getElementById('btn-ekle-kategori').onclick = () => {
@@ -2091,8 +2134,8 @@ document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option val
 document.getElementById('kategori').value = yeni;
 if(!document.querySelector(`#filtre-kategori option[value="${yeni}"]`)) document.getElementById('filtre-kategori').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
 if(auth.currentUser) {
-const cats = JSON.parse(localStorage.getItem('custom_cats_' + auth.currentUser.uid) || '[]');
-if (!cats.includes(yeni)) { cats.push(yeni); localStorage.setItem('custom_cats_' + auth.currentUser.uid, JSON.stringify(cats)); }
+const cats = _kullaniciAyarlariCache.kategoriler || [];
+if (!cats.includes(yeni)) { cats.push(yeni); _kullaniciAyarlariCache.kategoriler = cats; kullaniciAyarlariKaydet(); }
 }
 }
 };
@@ -2103,8 +2146,8 @@ if(yeni && yeni.trim() !== "") {
 document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
 document.getElementById('hesap').value = yeni;
 if(auth.currentUser) {
-const accs = JSON.parse(localStorage.getItem('custom_accs_' + auth.currentUser.uid) || '[]');
-if (!accs.includes(yeni)) { accs.push(yeni); localStorage.setItem('custom_accs_' + auth.currentUser.uid, JSON.stringify(accs)); }
+const accs = _kullaniciAyarlariCache.hesaplar || [];
+if (!accs.includes(yeni)) { accs.push(yeni); _kullaniciAyarlariCache.hesaplar = accs; kullaniciAyarlariKaydet(); }
 }
 }
 };
@@ -2120,9 +2163,9 @@ select.value = 'Genel';
 const filtreOpt = document.querySelector(`#filtre-kategori option[value="${seciliDeger}"]`);
 if (filtreOpt) filtreOpt.remove();
 if (auth.currentUser) {
-let cats = JSON.parse(localStorage.getItem('custom_cats_' + auth.currentUser.uid) || '[]');
-cats = cats.filter(c => c !== seciliDeger);
-localStorage.setItem('custom_cats_' + auth.currentUser.uid, JSON.stringify(cats));
+const cats = (_kullaniciAyarlariCache.kategoriler || []).filter(c => c !== seciliDeger);
+_kullaniciAyarlariCache.kategoriler = cats;
+kullaniciAyarlariKaydet();
 }
 };
 
@@ -2135,9 +2178,9 @@ if (!confirm(`"${seciliDeger}" hesabını silmek istediğine emin misin?`)) retu
 select.querySelector(`option[value="${seciliDeger}"]`).remove();
 select.value = 'Nakit';
 if (auth.currentUser) {
-let accs = JSON.parse(localStorage.getItem('custom_accs_' + auth.currentUser.uid) || '[]');
-accs = accs.filter(a => a !== seciliDeger);
-localStorage.setItem('custom_accs_' + auth.currentUser.uid, JSON.stringify(accs));
+const accs = (_kullaniciAyarlariCache.hesaplar || []).filter(a => a !== seciliDeger);
+_kullaniciAyarlariCache.hesaplar = accs;
+kullaniciAyarlariKaydet();
 }
 };
 
