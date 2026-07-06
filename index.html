@@ -201,71 +201,120 @@ td small { font-size: 10px; }
 
 /* ====== MASAÜSTÜ SİTESİ MODU ====== */
 html.masaustu-modu, html.masaustu-modu body {
-  height: auto;
-  min-height: 100dvh;
-  overflow-y: auto;
-  overflow-x: visible;
+  height: 100dvh; overflow: hidden;
 }
 body.masaustu-modu {
-  align-items: flex-start;
-  padding: 30px 0;
+  background: #f0f2f5 !important;
+  align-items: stretch; padding: 0;
+  justify-content: flex-start; flex-direction: row;
 }
-body.masaustu-modu .container.app-container {
-  width: 92%;
-  max-width: 1100px;
-  height: auto;
-  max-height: none;
-  padding: 24px 28px;
+#mas-sidebar { display: none; }
+body.masaustu-modu #mas-sidebar {
+  display: flex; flex-direction: column;
+  width: 210px; min-width: 210px; height: 100dvh;
+  background: #1a2238; color: white; padding: 0; z-index: 10; flex-shrink: 0;
 }
-body.masaustu-modu .header-icons { position: absolute; top: 20px; right: 24px; }
-body.masaustu-modu h3#bakiye-h3 { display: none; }
-body.masaustu-modu h3#ay-baslik { font-size: 18px; margin: 0; }
+body.masaustu-modu #mas-sidebar-logo {
+  padding: 22px 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+body.masaustu-modu #mas-sidebar-logo .logo-title {
+  font-size: 16px; font-weight: 700; color: white; letter-spacing: 0.3px;
+}
+body.masaustu-modu #mas-sidebar-logo .logo-sub {
+  font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px;
+}
+body.masaustu-modu .mas-nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 20px; font-size: 13px; font-weight: 500;
+  color: rgba(255,255,255,0.6); cursor: pointer;
+  border-radius: 0; transition: all .15s; border: none; background: none;
+  width: 100%; text-align: left; text-transform: none; margin: 0;
+}
+body.masaustu-modu .mas-nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+body.masaustu-modu .mas-nav-item.aktif { background: #2563eb; color: white; }
+body.masaustu-modu .mas-nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+body.masaustu-modu #mas-sidebar-footer {
+  margin-top: auto; padding: 16px 20px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+body.masaustu-modu #mas-sidebar-footer .user-name { font-size: 13px; font-weight: 600; color: white; }
+body.masaustu-modu #mas-sidebar-footer .user-role { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+body.masaustu-modu #mas-sidebar-footer .logout-btn {
+  display: flex; align-items: center; gap: 6px; font-size: 12px;
+  color: rgba(255,255,255,0.5); cursor: pointer; margin-top: 10px;
+  background: none; border: none; padding: 0; width: auto; font-weight: 400; text-transform: none;
+}
+body.masaustu-modu #mas-sidebar-footer .logout-btn:hover { color: #ef4444; }
+#mas-main { display: none; }
+body.masaustu-modu #mas-main {
+  display: flex; flex-direction: column; flex: 1; min-width: 0; height: 100dvh; overflow-y: auto;
+}
+body.masaustu-modu #mas-topbar {
+  background: white; border-bottom: 1px solid #e5e7eb;
+  padding: 0 28px; height: 58px; display: flex; align-items: center;
+  justify-content: space-between; flex-shrink: 0;
+}
+body.masaustu-modu #mas-topbar .topbar-title { font-size: 18px; font-weight: 700; color: #111827; }
+body.masaustu-modu #mas-topbar-actions { display: flex; align-items: center; gap: 10px; }
+body.masaustu-modu .nav-container { display: flex; align-items: center; gap: 8px; margin: 0; }
+body.masaustu-modu h3#ay-baslik { font-size: 14px; margin: 0; color: #374151; font-weight: 600; }
+body.masaustu-modu .nav-btn {
+  background: #f3f4f6; color: #374151; border-radius: 6px; padding: 2px 9px; font-size: 13px;
+}
 body.masaustu-modu #ay-baslik { display: block; }
-body.masaustu-modu .nav-container { margin-bottom: 10px; }
-body.masaustu-modu #gelir-gider-ozet { display: none; }
+#mas-content { display: none; }
+body.masaustu-modu #mas-content { display: block; padding: 24px 28px; flex: 1; }
+body.masaustu-modu .container.app-container { display: none !important; }
+#masaustu-ozet-kartlari { display: none; }
 body.masaustu-modu #masaustu-ozet-kartlari {
-  display: flex;
-  gap: 14px;
-  margin-bottom: 18px;
-  width: 100%;
-}
-#masaustu-ozet-kartlari {
-  display: none;
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 20px;
 }
 body.masaustu-modu .ozet-kart {
-  flex: 1;
-  background: rgba(255,255,255,0.12);
-  border-radius: 14px;
-  padding: 16px 18px;
-  text-align: left;
+  background: white; border-radius: 12px; padding: 18px 20px;
+  border: 1px solid #e5e7eb; display: flex; align-items: flex-start; justify-content: space-between;
 }
-body.masaustu-modu .ozet-kart-baslik { font-size: 12px; opacity: 0.75; margin-bottom: 6px; }
-body.masaustu-modu .ozet-kart-deger { font-size: 24px; font-weight: bold; }
-body.masaustu-modu .liste-alani { height: auto; max-height: 65dvh; overflow-y: auto; border-top: none; }
-body.masaustu-modu .liste-alani table { font-size: 14px; }
-body.masaustu-modu .icon-btn { width: 38px; height: 38px; line-height: 38px; font-size: 16px; }
+body.masaustu-modu .ozet-kart-baslik { font-size: 12px; color: #6b7280; margin-bottom: 6px; font-weight: 500; }
+body.masaustu-modu .ozet-kart-deger { font-size: 26px; font-weight: 700; color: #111827; }
+body.masaustu-modu .ozet-kart-ikon {
+  width: 38px; height: 38px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+#masaustu-ana-alan, #masaustu-form-sutun, #masaustu-liste-sutun { display: contents; }
+body.masaustu-modu #masaustu-ana-alan { display: flex; gap: 18px; align-items: flex-start; }
+body.masaustu-modu #masaustu-form-sutun {
+  display: flex; flex-direction: column; gap: 8px;
+  flex: 0 0 320px; background: white; border-radius: 12px;
+  border: 1px solid #e5e7eb; padding: 16px;
+}
+body.masaustu-modu #masaustu-form-sutun input,
+body.masaustu-modu #masaustu-form-sutun select {
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+  color: #111827; font-size: 13px; padding: 7px 10px;
+}
+body.masaustu-modu #masaustu-form-sutun button { font-size: 12px; padding: 7px; }
+body.masaustu-modu #masaustu-liste-sutun { display: flex; flex-direction: column; gap: 14px; flex: 1; min-width: 0; }
+body.masaustu-modu .mas-liste-kart { background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; }
+body.masaustu-modu .mas-liste-kart-baslik {
+  padding: 14px 18px; border-bottom: 1px solid #f3f4f6;
+  font-size: 14px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;
+}
+body.masaustu-modu .liste-alani { height: auto; max-height: 55dvh; overflow-y: auto; border-top: none; }
+body.masaustu-modu .liste-alani table { font-size: 13px; }
+body.masaustu-modu .liste-alani td { color: #374151; border-bottom: 1px solid #f3f4f6; padding: 7px 8px; }
+body.masaustu-modu #gelir-gider-ozet { display: none; }
+body.masaustu-modu h3#bakiye-h3 { display: none; }
+body.masaustu-modu .header-icons { display: none; }
+body.masaustu-modu .icon-btn { display: none; }
 body.masaustu-modu #profil-menu,
 body.masaustu-modu #duyuru-menu {
-  width: 320px;
-  max-height: 80dvh;
-  overflow-y: auto;
-  background: #2a2440;
-  color: white;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-  border: 1px solid rgba(255,255,255,0.1);
+  position: fixed; top: 62px; right: 20px;
+  width: 280px; max-height: 80dvh; overflow-y: auto;
+  background: white; color: #111827;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  border: 1px solid #e5e7eb; border-radius: 12px;
 }
-body.masaustu-modu #profil-menu small,
-body.masaustu-modu #profil-menu div[style*="color:black"] {
-  color: white !important;
-}
-body.masaustu-modu #mesajlar-panel {
-  background: #2a2440 !important;
-  color: white !important;
-}
-body.masaustu-modu #mesajlar-panel div[style*="border-bottom:1px solid #eee"] {
-  border-bottom-color: rgba(255,255,255,0.15) !important;
-}
-#btn-gorunum-degistir { background: darkred; border: none; color: white; border-radius: 8px; font-size: 11px; padding: 6px 10px; width: 100%; margin-top: 2px; cursor: pointer; text-transform: none; }
+body.masaustu-modu #mesajlar-panel { background: white !important; color: #111827 !important; }
+#btn-gorunum-degistir { background: #dc2626; border: none; color: white; border-radius: 8px; font-size: 11px; padding: 6px 10px; width: 100%; margin-top: 2px; cursor: pointer; text-transform: none; }
 
 /* Mobilde wrapper'lar layout'a karışmasın - sadece masaüstünde sütun olsun */
 #masaustu-ana-alan, #masaustu-form-sutun, #masaustu-liste-sutun {
@@ -354,6 +403,81 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <input type="email" id="reset-email" placeholder="Kayıtlı E-posta adresiniz">
 <button id="btn-sifre-onay-mail" style="background:#f59e0b;">Gönder</button>
 <div class="link-text" id="btn-gecis-giris-2">Giriş ekranına dön</div>
+</div>
+
+
+<!-- MASAÜSTÜ SIDEBAR -->
+<div id="mas-sidebar">
+  <div id="mas-sidebar-logo">
+    <div class="logo-title">💳 Akıllı Cüzdan</div>
+    <div class="logo-sub">Finansal Yönetim</div>
+  </div>
+  <div style="padding: 12px 0; flex:1; display:flex; flex-direction:column;">
+    <button class="mas-nav-item aktif" id="mas-nav-panel"><span class="nav-icon">⊞</span> Panel</button>
+    <button class="mas-nav-item" id="mas-nav-islemler"><span class="nav-icon">↕</span> İşlemler</button>
+    <button class="mas-nav-item" id="mas-nav-taksitler"><span class="nav-icon">💸</span> Taksitler</button>
+    <button class="mas-nav-item" id="mas-nav-mesajlar"><span class="nav-icon">✉</span> Mesajlar</button>
+    <button class="mas-nav-item" id="mas-nav-ayarlar"><span class="nav-icon">⚙</span> Ayarlar</button>
+  </div>
+  <div id="mas-sidebar-footer">
+    <div class="user-name" id="mas-user-email-sidebar">—</div>
+    <div class="user-role">Kullanıcı</div>
+    <button class="logout-btn" id="mas-logout-btn">⇠ Çıkış Yap</button>
+  </div>
+</div>
+<!-- MASAÜSTÜ ANA ALAN -->
+<div id="mas-main">
+  <div id="mas-topbar">
+    <div id="mas-topbar-left">
+      <div class="topbar-title" id="mas-topbar-title">Panel</div>
+    </div>
+    <div id="mas-topbar-actions">
+      <div class="nav-container">
+        <span class="nav-btn" id="mas-btn-onceki">&lt;</span>
+        <h3 id="ay-baslik-mas"></h3>
+        <span class="nav-btn" id="mas-btn-sonraki">&gt;</span>
+      </div>
+      <span id="mas-bildirim-btn" style="cursor:pointer; font-size:20px; position:relative;">🔔<span id="mas-badge" style="display:none; position:absolute; top:-4px; right:-4px; background:red; color:white; border-radius:50%; width:14px; height:14px; font-size:9px; line-height:14px; text-align:center;"></span></span>
+    </div>
+  </div>
+  <div id="mas-content">
+    <!-- Özet kartlar -->
+    <div id="masaustu-ozet-kartlari">
+      <div class="ozet-kart">
+        <div>
+          <div class="ozet-kart-baslik">Toplam Gelir</div>
+          <div class="ozet-kart-deger" id="masaustu-toplam-gelir" style="color:#059669;">₺0,00</div>
+        </div>
+        <div class="ozet-kart-ikon" style="background:#d1fae5; color:#059669;">↑</div>
+      </div>
+      <div class="ozet-kart">
+        <div>
+          <div class="ozet-kart-baslik">Toplam Gider</div>
+          <div class="ozet-kart-deger" id="masaustu-toplam-gider" style="color:#dc2626;">₺0,00</div>
+        </div>
+        <div class="ozet-kart-ikon" style="background:#fee2e2; color:#dc2626;">↓</div>
+      </div>
+      <div class="ozet-kart">
+        <div>
+          <div class="ozet-kart-baslik">Net Bakiye</div>
+          <div class="ozet-kart-deger" id="masaustu-net-bakiye">₺0,00</div>
+        </div>
+        <div class="ozet-kart-ikon" style="background:#dbeafe; color:#2563eb;">₺</div>
+      </div>
+    </div>
+    <!-- İki sütun -->
+    <div id="masaustu-ana-alan-mas">
+      <div id="masaustu-form-sutun-mas"></div>
+      <div id="masaustu-liste-sutun-mas">
+        <div class="mas-liste-kart">
+          <div class="mas-liste-kart-baslik">📋 Son İşlemler</div>
+          <div class="liste-alani-mas" style="max-height:55dvh; overflow-y:auto; padding:0 4px;">
+            <table id="tablo-mas" style="width:100%; border-collapse:collapse; font-size:13px;"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="container app-container hidden" id="app-screen">
@@ -571,20 +695,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 <span class="nav-btn" id="btn-sonraki">&gt;</span>
 </div>
 
-<div id="masaustu-ozet-kartlari">
-  <div class="ozet-kart">
-    <div class="ozet-kart-baslik">Toplam Gelir</div>
-    <div class="ozet-kart-deger" id="masaustu-toplam-gelir" style="color:#00ff9d;">₺0,00</div>
-  </div>
-  <div class="ozet-kart">
-    <div class="ozet-kart-baslik">Toplam Gider</div>
-    <div class="ozet-kart-deger" id="masaustu-toplam-gider" style="color:#ff4d4d;">₺0,00</div>
-  </div>
-  <div class="ozet-kart">
-    <div class="ozet-kart-baslik">Net Bakiye</div>
-    <div class="ozet-kart-deger" id="masaustu-net-bakiye">₺0,00</div>
-  </div>
-</div>
+
 
 <h3 id="bakiye-h3">BAKİYE: <span id="bakiye" style="color: white;">0,00</span> TL</h3>
 <div id="gelir-gider-ozet" style="display:flex; justify-content:center; gap:12px; font-size:11px; margin-top:-6px; margin-bottom:2px; opacity:0.9;">
@@ -1178,14 +1289,109 @@ function onayGoster(ikon, metin, onEvet, evetRenk='#ef4444', evetYazi='Evet, Sil
 }
 
 // --- MASAÜSTÜ / MOBİL GÖRÜNÜM ---
+function masaUstuSidebarKur() {
+  // Kullanıcı emailini sidebar footer'a yaz
+  if (auth.currentUser) {
+    const el = document.getElementById('mas-user-email-sidebar');
+    if (el) el.innerText = auth.currentUser.email;
+  }
+  // Logout
+  const lBtn = document.getElementById('mas-logout-btn');
+  if (lBtn && !lBtn._bound) {
+    lBtn._bound = true;
+    lBtn.onclick = () => signOut(auth);
+  }
+  // Nav item tıklamaları - mobil panelleri göster/gizle
+  const navMap = {
+    'mas-nav-panel': null,
+    'mas-nav-islemler': null,
+    'mas-nav-taksitler': 'btn-tekrarlayan-ac',
+    'mas-nav-mesajlar': 'btn-mesajlar',
+    'mas-nav-ayarlar': 'btn-ayarlar-ac',
+  };
+  Object.keys(navMap).forEach(navId => {
+    const btn = document.getElementById(navId);
+    if (btn && !btn._bound) {
+      btn._bound = true;
+      btn.onclick = () => {
+        document.querySelectorAll('.mas-nav-item').forEach(b => b.classList.remove('aktif'));
+        btn.classList.add('aktif');
+        const topTitle = document.getElementById('mas-topbar-title');
+        if (topTitle) topTitle.innerText = btn.innerText.trim();
+        // Panele karşılık gelen mobil butona tıkla
+        if (navMap[navId]) {
+          const target = document.getElementById(navMap[navId]);
+          if (target) target.click();
+        }
+      };
+    }
+  });
+  // Ay navigasyon butonlarını masaüstü topbar'a bağla
+  const masOnceki = document.getElementById('mas-btn-onceki');
+  const masSonraki = document.getElementById('mas-btn-sonraki');
+  const ayBaslikMas = document.getElementById('ay-baslik-mas');
+  if (masOnceki && !masOnceki._bound) {
+    masOnceki._bound = true;
+    masOnceki.onclick = () => document.getElementById('btn-onceki').click();
+  }
+  if (masSonraki && !masSonraki._bound) {
+    masSonraki._bound = true;
+    masSonraki.onclick = () => document.getElementById('btn-sonraki').click();
+  }
+  // Ay başlığını senkronize et
+  const syncAyBaslik = () => {
+    const src = document.getElementById('ay-baslik');
+    if (src && ayBaslikMas) ayBaslikMas.innerText = src.innerText;
+  };
+  syncAyBaslik();
+  if (!window._ayObserver) {
+    window._ayObserver = new MutationObserver(syncAyBaslik);
+    const src = document.getElementById('ay-baslik');
+    if (src) window._ayObserver.observe(src, { childList: true, subtree: true, characterData: true });
+  }
+  // Form sutununu masaüstü alana taşı (klonlama değil referans)
+  const formSrc = document.getElementById('masaustu-form-sutun');
+  const formDst = document.getElementById('masaustu-form-sutun-mas');
+  if (formSrc && formDst && !formDst._filled) {
+    formDst._filled = true;
+    formDst.appendChild(formSrc);
+    formDst.style.cssText = 'flex:0 0 320px; background:white; border-radius:12px; border:1px solid #e5e7eb; padding:16px; display:flex; flex-direction:column; gap:8px;';
+  }
+  // Liste sutununu masaüstü alana taşı
+  const listeSrc = document.getElementById('masaustu-liste-sutun');
+  const listeDst = document.getElementById('masaustu-liste-sutun-mas');
+  if (listeSrc && listeDst && !listeDst._filled) {
+    listeDst._filled = true;
+    listeDst.appendChild(listeSrc);
+    listeDst.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:14px;';
+    // Liste kartı wrapper ekle
+    const listeAlani = listeSrc.querySelector('.liste-alani');
+    if (listeAlani && !listeSrc.querySelector('.mas-liste-kart')) {
+      const kart = document.createElement('div');
+      kart.className = 'mas-liste-kart';
+      const baslik = document.createElement('div');
+      baslik.className = 'mas-liste-kart-baslik';
+      baslik.innerHTML = '📋 Son İşlemler';
+      kart.appendChild(baslik);
+      listeSrc.insertBefore(kart, listeAlani);
+      kart.appendChild(listeAlani);
+    }
+  }
+  // Ana alanı düzenle
+  const anaAlanMas = document.getElementById('masaustu-ana-alan-mas');
+  if (anaAlanMas) {
+    anaAlanMas.style.cssText = 'display:flex; gap:18px; align-items:flex-start;';
+  }
+}
+
 function gorunumUygula(mod) {
   const viewportMeta = document.getElementById('viewport-meta');
   if (mod === 'masaustu') {
     document.body.classList.add('masaustu-modu');
     document.documentElement.classList.add('masaustu-modu');
     document.getElementById('btn-gorunum-degistir').innerText = '📱 Mobil Site İste';
-    // Telefon/tablette gerçek masaüstü genişliğini simüle et - sayfa küçülüp tamamı görünsün, zoom/kaydırma serbest
     if (viewportMeta) viewportMeta.setAttribute('content', 'width=1100, user-scalable=yes');
+    setTimeout(masaUstuSidebarKur, 100);
   } else {
     document.body.classList.remove('masaustu-modu');
     document.documentElement.classList.remove('masaustu-modu');
@@ -1736,6 +1942,7 @@ async function kartAyarlariYukle() {
   if (!auth.currentUser) return;
   try {
     const docRef = doc(db, "kart_ayarlari", auth.currentUser.uid);
+    const snap = await getDocs(query(collection(db, "kart_ayarlari")));
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       _kartAyarlariCache = docSnap.data().tarihler || {};
