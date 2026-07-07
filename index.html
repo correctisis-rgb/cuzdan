@@ -145,6 +145,11 @@ overflow: hidden;
 .icon-btn { background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; font-size: 14px; position: relative; }
 .badge { position: absolute; top: -3px; right: -3px; background: red; color: white; border-radius: 50%; width: 14px; height: 14px; font-size: 8px; line-height: 14px; display: none; text-align:center; font-weight:bold; }
 #profil-menu, #duyuru-menu { position: absolute; top: calc(40px + env(safe-area-inset-top)); right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
+/* DÜZELTME: #profil-menu'nün sabit bir genişliği yoktu, içeriğe göre (shrink-to-fit) boyutlanıyordu.
+   Bu hesaplama viewport meta içeriğine (masaüstü <-> mobil geçişinde değişiyor) bağlı olduğu için,
+   geçiş anında tarayıcı henüz yeni viewport'a göre yeniden hesaplama yapmamışken menü açılırsa
+   genişliği bozuk görünüyordu. Sabit bir genişlik vererek bu bağımlılığı tamamen kaldırıyoruz. */
+#profil-menu { width: min(230px, 90vw); box-sizing: border-box; }
 /* Mobilde bu paneller normal akışta kalırsa esnek sütun tarafından ezilip küçücük görünüyordu (flex-shrink).
    Bu yüzden mobilde profil menüsü gibi ekranın üstünde kayan bir kutu haline getiriyoruz. Masaüstü modunda dokunmuyoruz. */
 body:not(.masaustu-modu) #grafik-panel,
@@ -177,6 +182,8 @@ body:not(.masaustu-modu) #mesajlar-panel {
   background: #ffffff !important;
 }
 #duyuru-menu { right: 45px; width: 220px; max-height: 250px; overflow-y: auto; }
+/* Masaüstünde duyuru-menu modal içine taşınıyor; sabit 220px genişlik orada çok dar kalıyordu. */
+body.masaustu-modu #duyuru-menu { width: 100%; max-height: none; }
 /* DÜZELTME: #masaustu-ana-alan-wrapper flex bağlamı kurmuyordu, bu yüzden .liste-alani'nin
    flex:1/min-height:0/overflow-y:auto kuralları hiç devreye girmiyor, tablo taşan kısmı
    kaydırma çubuğu olmadan kesip atıyordu. Mobilde wrapper'ı flex-column yapıp kalan alanı
@@ -359,6 +366,16 @@ body.masaustu-modu .liste-alani td { color: #374151; border-bottom: 1px solid #f
 body.masaustu-modu .nav-container { display: flex; align-items: center; gap: 8px; margin: 0; }
 body.masaustu-modu h3#ay-baslik { font-size: 14px; margin: 0; color: #374151; font-weight: 600; display: block !important; }
 body.masaustu-modu .nav-btn { background: #f3f4f6; color: #374151; border-radius: 6px; padding: 2px 9px; font-size: 13px; }
+
+/* DÜZELTME: Bu butonlar (Ara/Filtrele, Sabit Giderler, Daha Fazla Göster) mobildeki koyu/mor
+   arkaplan üzerinde görünür olsun diye yarı saydam beyaz zeminle tasarlanmıştı. Masaüstünde
+   form/liste sütunları beyaz olduğu için aynı yarı saydam beyaz renkler neredeyse tamamen
+   kayboluyordu. Masaüstüne özel katı, kontrastlı renkler veriyoruz. */
+body.masaustu-modu #btn-arama-ac { background: #eef2ff !important; color: #4338ca !important; }
+body.masaustu-modu #btn-tekrarlayan-ac { background: #eef2ff !important; color: #4338ca !important; }
+body.masaustu-modu #daha-yukle-btn { background: #f3f4f6 !important; color: #374151 !important; }
+body.masaustu-modu #arama-panel { background: #f9fafb !important; border: 1px solid #e5e7eb; }
+body.masaustu-modu #arama-panel input, body.masaustu-modu #arama-panel select { color: #111827; }
 
 /* Gizlenecekler */
 body.masaustu-modu #gelir-gider-ozet { display: none; }
@@ -1360,11 +1377,12 @@ function masaUstuSidebarKur() {
       <button class="mas-nav-item aktif" id="mas-nav-panel">⊞ &nbsp;Panel</button>
       <button class="mas-nav-item" id="mas-nav-raporlar">📊 &nbsp;Raporlar</button>
       <button class="mas-nav-item" id="mas-nav-borclar">💳 &nbsp;Hesap Özetleri</button>
+      <button class="mas-nav-item" id="mas-nav-duyurular">📢 &nbsp;Duyurular</button>
       <div class="mas-group-label">İşlemler</div>
       <button class="mas-nav-item" id="mas-nav-taksit">🔁 &nbsp;Sabit Giderler</button>
       <button class="mas-nav-item" id="mas-nav-kart">⚙ &nbsp;Kart Ayarları</button>
       <div class="mas-group-label">Hesap</div>
-      <button class="mas-nav-item" id="mas-nav-bildirim">🔔 &nbsp;Bildirimler</button>
+      <button class="mas-nav-item" id="mas-nav-bildirim">🔔 &nbsp;Sorun Bildir</button>
       <button class="mas-nav-item" id="mas-nav-sifre">🔒 &nbsp;Şifre Değiştir</button>
       <button class="mas-nav-item" id="mas-nav-kahve">☕ &nbsp;Kahve Ismarla</button>
       ${isAdmin ? `
@@ -1525,6 +1543,7 @@ function masaUstuSidebarKur() {
   document.getElementById('mas-nav-panel').onclick = () => navSec(document.getElementById('mas-nav-panel'));
   panelAc(document.getElementById('mas-nav-raporlar'), 'grafik-panel', '📊 Raporlar');
   panelAc(document.getElementById('mas-nav-borclar'), 'borclar-panel', '💳 Hesap Özetleri');
+  panelAc(document.getElementById('mas-nav-duyurular'), 'duyuru-menu', '📢 Duyurular');
   panelAc(document.getElementById('mas-nav-taksit'), 'tekrarlayan-panel', '🔁 Sabit Giderler');
   // DÜZELTME: Mobildeki karşılığı gibi, panel açılırken tekrarlayan işlemler listesini de yükle.
   document.getElementById('mas-nav-taksit').addEventListener('click', () => { if (typeof tekrarlayanlariDinle === 'function') tekrarlayanlariDinle(); }, true);
@@ -1534,7 +1553,7 @@ function masaUstuSidebarKur() {
   // kesim tarihleri masaüstünde panel açılınca hiç listelenmiyordu (veri Firestore'da
   // duruyordu, sadece ekrana hiç basılmıyordu).
   document.getElementById('mas-nav-kart').addEventListener('click', () => { if (typeof kartAyarListeGoster === 'function') kartAyarListeGoster(); }, true);
-  panelAc(document.getElementById('mas-nav-bildirim'), 'bildirim-panel', '🔔 Bildirimler');
+  panelAc(document.getElementById('mas-nav-bildirim'), 'bildirim-panel', '🔔 Sorun Bildir');
   panelAc(document.getElementById('mas-nav-sifre'), 'sifre-panel', '🔒 Şifre Değiştir');
   panelAc(document.getElementById('mas-nav-kahve'), 'kahve-panel', '☕ Kahve Ismarla');
 
