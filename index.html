@@ -1512,15 +1512,19 @@ function masaUstuSidebarKur() {
   // Tema seç sidebar
   const temaDiv = document.createElement('div');
   temaDiv.style.cssText='padding:8px 18px;';
-  temaDiv.innerHTML='<div class="mas-group-label" style="padding:0 0 6px;">Tema Seç</div><div style="display:flex;gap:8px;">'
-    +'<div class="tema-sec-btn" onclick="temaDegistir('mor')" style="background:linear-gradient(135deg,#1c2137,#764ba2);width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.3);" title="Mor"></div>'
-    +'<div class="tema-sec-btn" onclick="temaDegistir('okyanus')" style="background:linear-gradient(135deg,#0f2027,#2c5364);width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.3);" title="Okyanus"></div>'
-    +'<div class="tema-sec-btn" onclick="temaDegistir('yesil')" style="background:linear-gradient(135deg,#0a1f0a,#2d7a2d);width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.3);" title="Yeşil"></div>'
-    +'</div>';
+  temaDiv.innerHTML = '<div class="mas-group-label" style="padding:4px 0 6px;">Tema Seç</div><div style="display:flex;gap:10px;padding:2px 0;"></div>';
+  const temaRenkler = [{id:'mor',bg:'linear-gradient(135deg,#1c2137,#764ba2)'},{id:'okyanus',bg:'linear-gradient(135deg,#0f2027,#2c5364)'},{id:'yesil',bg:'linear-gradient(135deg,#0a1f0a,#2d7a2d)'}];
+  const temaDotContainer = temaDiv.querySelector('div[style*="flex"]');
+  temaRenkler.forEach(t => {
+    const dot = document.createElement('div');
+    dot.style.cssText = 'width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.3);background:'+t.bg+';';
+    dot.title = t.id;
+    dot.onclick = () => { if(typeof temaDegistir==='function') temaDegistir(t.id); };
+    temaDotContainer.appendChild(dot);
+  });
   document.getElementById('mas-sidebar-footer').appendChild(temaDiv);
 }
 
-}
 
 function gorunumUygula(mod) {
   const viewportMeta = document.getElementById('viewport-meta');
