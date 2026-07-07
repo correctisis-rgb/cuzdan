@@ -1296,7 +1296,7 @@ function masaUstuSidebarKur() {
   const sidebar = document.createElement('div');
   sidebar.id = 'mas-sidebar';
 
-  const isAdmin = auth.currentUser && auth.currentUser.uid === 'cJFMDJAaSkbK0hCeGeIc0F80atz1';
+  const isAdmin = auth.currentUser && auth.currentUser.uid === ADMIN_ID;
 
   sidebar.innerHTML = `
     <div id="mas-sidebar-logo">
@@ -1492,37 +1492,12 @@ function masaUstuSidebarKur() {
     if(ms) panelAc(ms, 'mesajlar-panel', '📩 Mesajları Gör');
   }
 
-  // Tema butonları
-  ['mor','okyanus','yesil'].forEach(t => {
-    const btn = document.getElementById('tema-'+t);
-    if(btn) {
-      const klon = btn.cloneNode(true);
-      klon.onclick = () => temaDegistir(t);
-      document.getElementById('mas-tema-'+t) && document.getElementById('mas-tema-'+t).replaceWith(klon);
-    }
-  });
-
   // Mobil site butonu sidebar footer'da
   const mobilBtn = document.createElement('button');
   mobilBtn.style.cssText='margin-top:6px;background:#374151;color:rgba(255,255,255,0.6);border:none;border-radius:8px;font-size:11px;padding:6px 10px;width:100%;cursor:pointer;text-align:left;text-transform:none;';
   mobilBtn.innerText='📱 Mobil Site İste';
   mobilBtn.onclick=()=>document.getElementById('btn-gorunum-degistir').click();
   document.getElementById('mas-sidebar-footer').appendChild(mobilBtn);
-
-  // Tema seç sidebar
-  const temaDiv = document.createElement('div');
-  temaDiv.style.cssText='padding:8px 18px;';
-  temaDiv.innerHTML = '<div class="mas-group-label" style="padding:4px 0 6px;">Tema Seç</div><div style="display:flex;gap:10px;padding:2px 0;"></div>';
-  const temaRenkler = [{id:'mor',bg:'linear-gradient(135deg,#1c2137,#764ba2)'},{id:'okyanus',bg:'linear-gradient(135deg,#0f2027,#2c5364)'},{id:'yesil',bg:'linear-gradient(135deg,#0a1f0a,#2d7a2d)'}];
-  const temaDotContainer = temaDiv.querySelector('div[style*="flex"]');
-  temaRenkler.forEach(t => {
-    const dot = document.createElement('div');
-    dot.style.cssText = 'width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.3);background:'+t.bg+';';
-    dot.title = t.id;
-    dot.onclick = () => { if(typeof temaDegistir==='function') temaDegistir(t.id); };
-    temaDotContainer.appendChild(dot);
-  });
-  document.getElementById('mas-sidebar-footer').appendChild(temaDiv);
 }
 
 
@@ -1576,11 +1551,17 @@ function gorunumUygula(mod) {
   }
 }
 
-// Sayfa açılışında kayıtlı tercihi uygula
-(function gorunumYukle() {
+document.getElementById('btn-gorunum-degistir').onclick = () => {
+  const yeniMod = document.body.classList.contains('masaustu-modu') ? 'mobil' : 'masaustu';
+  gorunumUygula(yeniMod);
+  localStorage.setItem('gorunum_modu', yeniMod);
+};
+
+// Sayfa açılışında kayıtlı tercihi uygula (auth durumu netleştikten sonra çağrılır - bkz. onAuthStateChanged)
+function gorunumYukle() {
   const kayitli = localStorage.getItem('gorunum_modu');
   if (kayitli === 'masaustu') gorunumUygula('masaustu');
-})();
+}
 
 
 // --- TEKRARLAYAN İŞLEM (SABİT GİDER) SİSTEMİ ---
@@ -1733,6 +1714,7 @@ async function tekrarlayanOtomatikEkle(uid) {
 }
 
 let myChart, seciliTarih = new Date(), mevcutAyVerileri = [];
+let unsubIslemler = null;
 
 // --- OTURUM ZAMAN AŞIMI (15 dakika) ---
 const TIMEOUT_SURE = 15 * 60 * 1000;
@@ -1887,6 +1869,7 @@ ekranGoster('auth-screen');
 if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
 }
 
+gorunumYukle();
 splashGizle();
 });
 
@@ -2282,7 +2265,8 @@ document.getElementById('btn-sonraki').onclick = () => { seciliTarih.setMonth(se
 
 function verileriGetir(uid) {
 document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
-onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), { includeMetadataChanges: true }, (snapshot) => {
+if (unsubIslemler) { unsubIslemler(); unsubIslemler = null; }
+unsubIslemler = onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), { includeMetadataChanges: true }, (snapshot) => {
 let bakiye = 0, veriler = [];
 const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
 const hesapBorclari = { 'Nakit': 0, 'Garanti': 0, 'Ziraat': 0, 'Qnb': 0, 'Diğer Kredi Kartı': 0 };
