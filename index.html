@@ -1494,7 +1494,7 @@ function masaUstuSidebarKur() {
       const eskiModal = document.getElementById('mas-modal-aktif');
       if (eskiModal) {
         const eskiPanel = document.getElementById(eskiModal.dataset.panelId);
-        if (eskiPanel) { eskiPanel.classList.add('hidden'); eskiPanel.removeAttribute('style'); eskiPanel.querySelectorAll('.close-btn').forEach(b=>b.style.display=''); document.body.appendChild(eskiPanel); }
+        if (eskiPanel) { eskiPanel.classList.add('hidden'); eskiPanel.removeAttribute('style'); eskiPanel.querySelectorAll('.close-btn').forEach(b=>b.style.display=''); (document.querySelector('.app-container')||document.body).appendChild(eskiPanel); }
         eskiModal.remove();
       }
 
@@ -1514,7 +1514,10 @@ function masaUstuSidebarKur() {
         // document.body'ye geri koymadan modal.remove() çağrılırsa panel DOM'dan tamamen
         // kopuyor ve document.getElementById bir daha onu asla bulamıyor (menü bir daha
         // hiç açılmıyor / mobile dönünce kayboluyor).
-        document.body.appendChild(panel);
+        // DÜZELTME: panel sadece document.body'nin en altına konursa, mobil moda geçince
+        // .app-container dışında, konumlandırma kısıtlarının dışında kalıp ekrana sığmayan
+        // geniş bir kutu olarak görünüyordu. Paneli her zaman .app-container içine geri koyuyoruz.
+        (document.querySelector('.app-container')||document.body).appendChild(panel);
         const mo=document.getElementById('mas-modal-aktif'); if(mo) mo.remove();
       };
 
@@ -1531,7 +1534,7 @@ function masaUstuSidebarKur() {
       const kbtn = document.createElement('button');
       kbtn.innerText='✕ Kapat';
       kbtn.style.cssText='background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;';
-      kbtn.onclick = () => { panel.classList.add('hidden'); panel.removeAttribute('style'); panel.querySelectorAll('.close-btn').forEach(b=>b.style.display=''); bd.style.display='none'; document.body.appendChild(panel); modal.remove(); };
+      kbtn.onclick = () => { panel.classList.add('hidden'); panel.removeAttribute('style'); panel.querySelectorAll('.close-btn').forEach(b=>b.style.display=''); bd.style.display='none'; (document.querySelector('.app-container')||document.body).appendChild(panel); modal.remove(); };
       hdr.appendChild(kbtn);
       modal.appendChild(hdr);
 
@@ -1693,6 +1696,13 @@ function tutarParse(str) {
 }
 
 document.getElementById('btn-tekrarlayan-ac').onclick = () => {
+  // DÜZELTME: Masaüstü modunda bu buton paneli doğrudan (modalsız) açıyordu ve düzgün görünmüyordu.
+  // Masaüstündeyken artık sol menüdeki "Sabit Giderler" ile birebir aynı modal açılış mantığını kullanıyoruz.
+  const masNavTaksit = document.getElementById('mas-nav-taksit');
+  if (document.body.classList.contains('masaustu-modu') && masNavTaksit) {
+    masNavTaksit.click();
+    return;
+  }
   kapatPaneller();
   document.getElementById('tekrarlayan-panel').classList.remove('hidden');
   tekrarlayanlariDinle();
