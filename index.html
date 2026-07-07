@@ -1314,9 +1314,11 @@ function masaUstuSidebarKur() {
       <div class="mas-group-label">Hesap</div>
       <button class="mas-nav-item" id="mas-nav-bildirim">🔔 &nbsp;Bildirimler</button>
       <button class="mas-nav-item" id="mas-nav-sifre">🔒 &nbsp;Şifre Değiştir</button>
+      <button class="mas-nav-item" id="mas-nav-kahve">☕ &nbsp;Kahve Ismarla</button>
       ${isAdmin ? `
       <div class="mas-group-label">Admin</div>
       <button class="mas-nav-item" id="mas-nav-kullanici">👥 &nbsp;Kullanıcı Yönetimi</button>
+      <button class="mas-nav-item" id="mas-nav-mesajlar">📩 &nbsp;Mesajları Gör</button>
       <button class="mas-nav-item" id="mas-nav-duyuru">📢 &nbsp;Duyuru Yayınla</button>
       ` : ''}
     </div>
@@ -1392,65 +1394,132 @@ function masaUstuSidebarKur() {
   syncAy();
   new MutationObserver(syncAy).observe(document.getElementById('ay-baslik'), {childList:true,subtree:true,characterData:true});
 
-  // Özet kart sync - mobil karttaki değerleri oku
-  const syncKartlar = () => {
-    const gelirSrc = document.getElementById('masaustu-toplam-gelir');
-    const giderSrc = document.getElementById('masaustu-toplam-gider');
-    const bakiyeSrc = document.getElementById('masaustu-net-bakiye');
-    if (gelirSrc) document.getElementById('mas-kart-gelir').innerText = gelirSrc.innerText;
-    if (giderSrc) document.getElementById('mas-kart-gider').innerText = giderSrc.innerText;
-    if (bakiyeSrc) document.getElementById('mas-kart-bakiye').innerText = bakiyeSrc.innerText;
-  };
-  syncKartlar();
-  setInterval(syncKartlar, 500);
+  // Özet kart sync
+  setInterval(() => {
+    [['masaustu-toplam-gelir','mas-kart-gelir'],['masaustu-toplam-gider','mas-kart-gider'],['masaustu-net-bakiye','mas-kart-bakiye']].forEach(([s,d])=>{
+      const se=document.getElementById(s), de=document.getElementById(d);
+      if(se&&de&&se.innerText!==de.innerText) de.innerText=se.innerText;
+    });
+  }, 500);
 
-  // Nav aktif seç
+  // Nav seç
   function navSec(btn) {
-    sidebar.querySelectorAll('.mas-nav-item').forEach(b => b.classList.remove('aktif'));
+    sidebar.querySelectorAll('.mas-nav-item').forEach(b=>b.classList.remove('aktif'));
     btn.classList.add('aktif');
-    const t = document.getElementById('mas-topbar-title');
-    if (t) t.innerText = btn.innerText.trim();
+    const t=document.getElementById('mas-topbar-title');
+    if(t) t.innerText=btn.innerText.trim();
   }
 
-  // Panel açma şablonu
-  function navPanel(btn, triggerId, panelId, baslik) {
+  // Panel modalı aç - paneli body'e taşıyarak
+  function panelAc(btn, panelId, baslik) {
     btn.onclick = () => {
       navSec(btn);
-      if (triggerId) {
-        const tb = document.getElementById(triggerId);
-        if (tb) tb.click();
+
+      // Önceki modalı kapat
+      const eskiModal = document.getElementById('mas-modal-aktif');
+      if (eskiModal) {
+        const eskiPanel = document.getElementById(eskiModal.dataset.panelId);
+        if (eskiPanel) { eskiPanel.classList.add('hidden'); eskiPanel.removeAttribute('style'); document.body.appendChild(eskiPanel); }
+        eskiModal.remove();
       }
-      setTimeout(() => masModalAc(panelId, baslik), 60);
+
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+
+      // Backdrop
+      let bd = document.getElementById('mas-backdrop');
+      if (!bd) { bd=document.createElement('div'); bd.id='mas-backdrop'; document.body.appendChild(bd); }
+      bd.style.display='block';
+      bd.onclick = () => {
+        panel.classList.add('hidden');
+        panel.removeAttribute('style');
+        bd.style.display='none';
+        const mo=document.getElementById('mas-modal-aktif'); if(mo) mo.remove();
+      };
+
+      // Modal wrapper
+      const modal = document.createElement('div');
+      modal.id = 'mas-modal-aktif';
+      modal.dataset.panelId = panelId;
+      modal.style.cssText = 'position:fixed;top:50%;left:calc(210px + (100vw - 210px)/2);transform:translate(-50%,-50%);z-index:2001;background:white;border-radius:16px;width:min(620px,calc(100vw - 240px));max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);color:#111827;';
+
+      // Header
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e5e7eb;position:sticky;top:0;background:white;z-index:1;';
+      hdr.innerHTML = '<span style="font-size:14px;font-weight:700;">'+baslik+'</span>';
+      const kbtn = document.createElement('button');
+      kbtn.innerText='✕ Kapat';
+      kbtn.style.cssText='background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;';
+      kbtn.onclick = () => { panel.classList.add('hidden'); panel.removeAttribute('style'); bd.style.display='none'; modal.remove(); };
+      hdr.appendChild(kbtn);
+      modal.appendChild(hdr);
+
+      // Panel içeriğini modal'a taşı (move, not clone)
+      panel.classList.remove('hidden');
+      panel.removeAttribute('style');
+      panel.style.cssText='padding:14px 18px;';
+      modal.appendChild(panel);
+      document.body.appendChild(modal);
     };
   }
 
   document.getElementById('mas-nav-panel').onclick = () => navSec(document.getElementById('mas-nav-panel'));
-  navPanel(document.getElementById('mas-nav-raporlar'), 'btn-rapor-menu', 'grafik-panel', '📊 Raporlar');
-  navPanel(document.getElementById('mas-nav-borclar'), 'btn-borclar-menu', 'borclar-panel', '💳 Hesap Özetleri');
-  navPanel(document.getElementById('mas-nav-taksit'), 'btn-tekrarlayan-ac', 'tekrarlayan-panel', '🔁 Sabit Giderler');
-  navPanel(document.getElementById('mas-nav-kart'), 'btn-kart-ayarlar', 'kart-ayar-panel', '⚙ Kart Ayarları');
-  navPanel(document.getElementById('mas-nav-bildirim'), 'btn-bildir-menu', 'bildirim-panel', '🔔 Bildirimler');
-  navPanel(document.getElementById('mas-nav-sifre'), 'btn-sifre-guncelle-menu', 'sifre-panel', '🔒 Şifre Değiştir');
+  panelAc(document.getElementById('mas-nav-raporlar'), 'grafik-panel', '📊 Raporlar');
+  panelAc(document.getElementById('mas-nav-borclar'), 'borclar-panel', '💳 Hesap Özetleri');
+  panelAc(document.getElementById('mas-nav-taksit'), 'tekrarlayan-panel', '🔁 Sabit Giderler');
+  panelAc(document.getElementById('mas-nav-kart'), 'kart-ayar-panel', '⚙ Kart Ayarları');
+  panelAc(document.getElementById('mas-nav-bildirim'), 'bildirim-panel', '🔔 Bildirimler');
+  panelAc(document.getElementById('mas-nav-sifre'), 'sifre-panel', '🔒 Şifre Değiştir');
+  panelAc(document.getElementById('mas-nav-kahve'), 'kahve-panel', '☕ Kahve Ismarla');
 
   if (isAdmin) {
-    const ku = document.getElementById('mas-nav-kullanici');
-    const du = document.getElementById('mas-nav-duyuru');
-    if (ku) {
-      ku.onclick = () => {
-        navSec(ku);
-        const tb = document.getElementById('btn-kullanici-yonetim');
-        if (tb) tb.click();
-        setTimeout(() => masModalAc('kullanici-panel', '👥 Kullanıcı Yönetimi'), 60);
-      };
+    const ku=document.getElementById('mas-nav-kullanici');
+    const du=document.getElementById('mas-nav-duyuru');
+    const ms=document.getElementById('mas-nav-mesajlar');
+    if(ku) {
+      panelAc(ku, 'kullanici-panel', '👥 Kullanıcı Yönetimi');
+      const origClick = ku.onclick;
+      const wrappedClick = ku.onclick;
+      ku.addEventListener('click', () => { if(typeof kullanicilariDinle==='function') kullanicilariDinle(); }, true);
     }
-    if (du) {
+    if(du) {
       du.onclick = () => {
         navSec(du);
         const mesaj = prompt('Duyuru metnini girin:');
-        if (mesaj) addDoc(collection(db, 'duyurular'), { mesaj, tarih: Date.now() });
+        if(mesaj) addDoc(collection(db,'duyurular'),{mesaj,tarih:Date.now()}).then(()=>bilgiToastGoster('✅ Duyuru yayınlandı!'));
       };
     }
+    if(ms) panelAc(ms, 'mesajlar-panel', '📩 Mesajları Gör');
   }
+
+  // Tema butonları
+  ['mor','okyanus','yesil'].forEach(t => {
+    const btn = document.getElementById('tema-'+t);
+    if(btn) {
+      const klon = btn.cloneNode(true);
+      klon.onclick = () => temaDegistir(t);
+      document.getElementById('mas-tema-'+t) && document.getElementById('mas-tema-'+t).replaceWith(klon);
+    }
+  });
+
+  // Mobil site butonu sidebar footer'da
+  const mobilBtn = document.createElement('button');
+  mobilBtn.style.cssText='margin-top:6px;background:#374151;color:rgba(255,255,255,0.6);border:none;border-radius:8px;font-size:11px;padding:6px 10px;width:100%;cursor:pointer;text-align:left;text-transform:none;';
+  mobilBtn.innerText='📱 Mobil Site İste';
+  mobilBtn.onclick=()=>document.getElementById('btn-gorunum-degistir').click();
+  document.getElementById('mas-sidebar-footer').appendChild(mobilBtn);
+
+  // Tema seç sidebar
+  const temaDiv = document.createElement('div');
+  temaDiv.style.cssText='padding:8px 18px;';
+  temaDiv.innerHTML='<div class="mas-group-label" style="padding:0 0 6px;">Tema Seç</div><div style="display:flex;gap:8px;">'
+    +'<div class="tema-sec-btn" onclick="temaDegistir('mor')" style="background:linear-gradient(135deg,#1c2137,#764ba2);width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.3);" title="Mor"></div>'
+    +'<div class="tema-sec-btn" onclick="temaDegistir('okyanus')" style="background:linear-gradient(135deg,#0f2027,#2c5364);width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.3);" title="Okyanus"></div>'
+    +'<div class="tema-sec-btn" onclick="temaDegistir('yesil')" style="background:linear-gradient(135deg,#0a1f0a,#2d7a2d);width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.3);" title="Yeşil"></div>'
+    +'</div>';
+  document.getElementById('mas-sidebar-footer').appendChild(temaDiv);
+}
+
 }
 
 function gorunumUygula(mod) {
@@ -1484,8 +1553,22 @@ function gorunumUygula(mod) {
     const anaAlan = document.getElementById('masaustu-ana-alan');
     const hedef = document.getElementById('masaustu-ana-alan-wrapper');
     if (anaAlan && hedef && !hedef.contains(anaAlan)) hedef.appendChild(anaAlan);
-    // Panel modalları temizle
-    document.querySelectorAll('.mas-panel-modal').forEach(p => masModalKapat(p));
+    // Açık modal varsa kapat, panelleri eski yerlerine taşı
+    const modal = document.getElementById('mas-modal-aktif');
+    if (modal) {
+      const panelId = modal.dataset.panelId;
+      const panel = document.getElementById(panelId);
+      if (panel) {
+        panel.classList.add('hidden');
+        panel.removeAttribute('style');
+        // Paneli orijinal parent'ına geri taşı (app-screen içindeki container)
+        const appContainer = document.querySelector('.app-container');
+        if (appContainer && !appContainer.contains(panel)) appContainer.appendChild(panel);
+      }
+      modal.remove();
+    }
+    const bd = document.getElementById('mas-backdrop');
+    if (bd) bd.style.display = 'none';
   }
 }
 
