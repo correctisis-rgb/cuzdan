@@ -169,11 +169,12 @@ box-sizing: border-box;
 h3 { margin: 2px 0; font-size: 20px; }
 input, textarea, select { width: 100%; padding: 8px; margin: 1px 0; border: none; border-radius: 10px; font-size: 13px; box-sizing: border-box; font-family: inherit; }
 .container.app-container input, .container.app-container select { padding: 6px; }
+.belirgin-btn { font-size: 13px !important; }
 button { padding: 8px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 1px; text-transform: uppercase; }
 .container.app-container button { padding: 5px; }
 .close-btn { background: #ff0000 !important; font-size: 10px; padding: 3px !important; margin-bottom: 5px; width: auto !important; }
 .link-text { font-size: 12px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 4px; margin-bottom: 4px; }
-.liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.2); height: 120px; }
+.liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.2); min-height: 160px; }
 table { width: 100%; border-collapse: collapse; }
 td { padding: 3px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 14px; }
 td small { font-size: 10px; }
@@ -1419,7 +1420,7 @@ function masaUstuSidebarKur() {
       const eskiModal = document.getElementById('mas-modal-aktif');
       if (eskiModal) {
         const eskiPanel = document.getElementById(eskiModal.dataset.panelId);
-        if (eskiPanel) { eskiPanel.classList.add('hidden'); eskiPanel.removeAttribute('style'); document.body.appendChild(eskiPanel); }
+        if (eskiPanel) { eskiPanel.classList.add('hidden'); eskiPanel.removeAttribute('style'); eskiPanel.querySelectorAll('.close-btn').forEach(b=>b.style.display=''); document.body.appendChild(eskiPanel); }
         eskiModal.remove();
       }
 
@@ -1433,6 +1434,7 @@ function masaUstuSidebarKur() {
       bd.onclick = () => {
         panel.classList.add('hidden');
         panel.removeAttribute('style');
+        panel.querySelectorAll('.close-btn').forEach(b=>b.style.display='');
         bd.style.display='none';
         const mo=document.getElementById('mas-modal-aktif'); if(mo) mo.remove();
       };
@@ -1450,14 +1452,15 @@ function masaUstuSidebarKur() {
       const kbtn = document.createElement('button');
       kbtn.innerText='✕ Kapat';
       kbtn.style.cssText='background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;';
-      kbtn.onclick = () => { panel.classList.add('hidden'); panel.removeAttribute('style'); bd.style.display='none'; modal.remove(); };
+      kbtn.onclick = () => { panel.classList.add('hidden'); panel.removeAttribute('style'); panel.querySelectorAll('.close-btn').forEach(b=>b.style.display=''); bd.style.display='none'; modal.remove(); };
       hdr.appendChild(kbtn);
       modal.appendChild(hdr);
 
-      // Panel içeriğini modal'a taşı (move, not clone)
+      // Panel içeriğini modal'a taşı (move, not clone) - panelin kendi "KAPAT X" butonu tekrar göstermesin diye gizleniyor
       panel.classList.remove('hidden');
       panel.removeAttribute('style');
       panel.style.cssText='padding:14px 18px;';
+      panel.querySelectorAll('.close-btn').forEach(b=>b.style.display='none');
       modal.appendChild(panel);
       document.body.appendChild(modal);
     };
@@ -1503,6 +1506,10 @@ function masaUstuSidebarKur() {
 
 function gorunumUygula(mod) {
   const viewportMeta = document.getElementById('viewport-meta');
+  // Bazı mobil tarayıcılar (özellikle iOS Safari) viewport içeriği değiştiğinde
+  // yeniden hesaplamayı geciktirir; bu da menülerin bir süre tepki vermemesine yol açar.
+  // Değişiklikten hemen sonra zorla reflow tetikleyerek anında uygulanmasını sağlıyoruz.
+  const zorlaReflow = () => { void document.body.offsetHeight; };
   if (mod === 'masaustu') {
     document.body.classList.add('masaustu-modu');
     document.documentElement.classList.add('masaustu-modu');
@@ -1516,6 +1523,7 @@ function gorunumUygula(mod) {
     if (sb) sb.style.display = 'flex';
     if (mn) mn.style.display = 'flex';
     if (ap) ap.style.display = 'none';
+    zorlaReflow();
   } else {
     document.body.classList.remove('masaustu-modu');
     document.documentElement.classList.remove('masaustu-modu');
@@ -1528,6 +1536,7 @@ function gorunumUygula(mod) {
     if (sb) sb.style.display = 'none';
     if (mn) mn.style.display = 'none';
     if (ap) { ap.style.display = ''; ap.classList.remove('hidden'); }
+    zorlaReflow();
     // Ana alanı geri app-screen içine taşı
     const anaAlan = document.getElementById('masaustu-ana-alan');
     const hedef = document.getElementById('masaustu-ana-alan-wrapper');
@@ -1540,6 +1549,7 @@ function gorunumUygula(mod) {
       if (panel) {
         panel.classList.add('hidden');
         panel.removeAttribute('style');
+        panel.querySelectorAll('.close-btn').forEach(b=>b.style.display='');
         // Paneli orijinal parent'ına geri taşı (app-screen içindeki container)
         const appContainer = document.querySelector('.app-container');
         if (appContainer && !appContainer.contains(panel)) appContainer.appendChild(panel);
@@ -1864,12 +1874,23 @@ if (user.uid === ADMIN_ID) {
 } else {
   kullaniciBildirimDinle(user.uid);
 }
+gorunumYukle();
 } else { 
 ekranGoster('auth-screen'); 
 if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
+// Çıkış yapıldığında masaüstü kenar çubuğunu/ana alanı tamamen gizle ki giriş ekranı düzgün ortalansın
+document.body.classList.remove('masaustu-modu');
+document.documentElement.classList.remove('masaustu-modu');
+const sbCikis = document.getElementById('mas-sidebar');
+const mnCikis = document.getElementById('mas-main');
+if (sbCikis) sbCikis.style.display = 'none';
+if (mnCikis) mnCikis.style.display = 'none';
+const bdCikis = document.getElementById('mas-backdrop');
+if (bdCikis) bdCikis.style.display = 'none';
+const modalCikis = document.getElementById('mas-modal-aktif');
+if (modalCikis) modalCikis.remove();
 }
 
-gorunumYukle();
 splashGizle();
 });
 
@@ -2095,7 +2116,6 @@ async function kartAyarlariYukle() {
   if (!auth.currentUser) return;
   try {
     const docRef = doc(db, "kart_ayarlari", auth.currentUser.uid);
-    const snap = await getDocs(query(collection(db, "kart_ayarlari")));
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       _kartAyarlariCache = docSnap.data().tarihler || {};
