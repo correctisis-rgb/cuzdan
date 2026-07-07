@@ -233,6 +233,7 @@ body.masaustu-modu .mas-nav-item {
 body.masaustu-modu .mas-nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
 body.masaustu-modu .mas-nav-item.aktif { background: #2563eb; color: white; }
 body.masaustu-modu .mas-nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+body.masaustu-modu .mas-group-label { font-size:10px; color:rgba(255,255,255,0.3); padding:8px 20px 3px; letter-spacing:1px; text-transform:uppercase; }
 body.masaustu-modu #mas-sidebar-footer {
   margin-top: auto; padding: 16px 20px;
   border-top: 1px solid rgba(255,255,255,0.08);
@@ -262,7 +263,7 @@ body.masaustu-modu .nav-btn {
   background: #f3f4f6; color: #374151; border-radius: 6px; padding: 2px 9px; font-size: 13px;
 }
 body.masaustu-modu #ay-baslik { display: block; }
-#mas-content { display: none; }
+#mas-content { display: block; }
 body.masaustu-modu #mas-content { display: block; padding: 24px 28px; flex: 1; }
 body.masaustu-modu .container.app-container { display: none !important; }
 #masaustu-ozet-kartlari { display: none; }
@@ -406,79 +407,7 @@ border: 1px solid rgba(255,255,255,0.1) !important;
 </div>
 
 
-<!-- MASAÜSTÜ SIDEBAR -->
-<div id="mas-sidebar">
-  <div id="mas-sidebar-logo">
-    <div class="logo-title">💳 Akıllı Cüzdan</div>
-    <div class="logo-sub">Finansal Yönetim</div>
-  </div>
-  <div style="padding: 12px 0; flex:1; display:flex; flex-direction:column;">
-    <button class="mas-nav-item aktif" id="mas-nav-panel"><span class="nav-icon">⊞</span> Panel</button>
-    <button class="mas-nav-item" id="mas-nav-islemler"><span class="nav-icon">↕</span> İşlemler</button>
-    <button class="mas-nav-item" id="mas-nav-taksitler"><span class="nav-icon">💸</span> Taksitler</button>
-    <button class="mas-nav-item" id="mas-nav-mesajlar"><span class="nav-icon">✉</span> Mesajlar</button>
-    <button class="mas-nav-item" id="mas-nav-ayarlar"><span class="nav-icon">⚙</span> Ayarlar</button>
-  </div>
-  <div id="mas-sidebar-footer">
-    <div class="user-name" id="mas-user-email-sidebar">—</div>
-    <div class="user-role">Kullanıcı</div>
-    <button class="logout-btn" id="mas-logout-btn">⇠ Çıkış Yap</button>
-  </div>
-</div>
-<!-- MASAÜSTÜ ANA ALAN -->
-<div id="mas-main">
-  <div id="mas-topbar">
-    <div id="mas-topbar-left">
-      <div class="topbar-title" id="mas-topbar-title">Panel</div>
-    </div>
-    <div id="mas-topbar-actions">
-      <div class="nav-container">
-        <span class="nav-btn" id="mas-btn-onceki">&lt;</span>
-        <h3 id="ay-baslik-mas"></h3>
-        <span class="nav-btn" id="mas-btn-sonraki">&gt;</span>
-      </div>
-      <span id="mas-bildirim-btn" style="cursor:pointer; font-size:20px; position:relative;">🔔<span id="mas-badge" style="display:none; position:absolute; top:-4px; right:-4px; background:red; color:white; border-radius:50%; width:14px; height:14px; font-size:9px; line-height:14px; text-align:center;"></span></span>
-    </div>
-  </div>
-  <div id="mas-content">
-    <!-- Özet kartlar -->
-    <div id="masaustu-ozet-kartlari">
-      <div class="ozet-kart">
-        <div>
-          <div class="ozet-kart-baslik">Toplam Gelir</div>
-          <div class="ozet-kart-deger" id="masaustu-toplam-gelir" style="color:#059669;">₺0,00</div>
-        </div>
-        <div class="ozet-kart-ikon" style="background:#d1fae5; color:#059669;">↑</div>
-      </div>
-      <div class="ozet-kart">
-        <div>
-          <div class="ozet-kart-baslik">Toplam Gider</div>
-          <div class="ozet-kart-deger" id="masaustu-toplam-gider" style="color:#dc2626;">₺0,00</div>
-        </div>
-        <div class="ozet-kart-ikon" style="background:#fee2e2; color:#dc2626;">↓</div>
-      </div>
-      <div class="ozet-kart">
-        <div>
-          <div class="ozet-kart-baslik">Net Bakiye</div>
-          <div class="ozet-kart-deger" id="masaustu-net-bakiye">₺0,00</div>
-        </div>
-        <div class="ozet-kart-ikon" style="background:#dbeafe; color:#2563eb;">₺</div>
-      </div>
-    </div>
-    <!-- İki sütun -->
-    <div id="masaustu-ana-alan-mas">
-      <div id="masaustu-form-sutun-mas"></div>
-      <div id="masaustu-liste-sutun-mas">
-        <div class="mas-liste-kart">
-          <div class="mas-liste-kart-baslik">📋 Son İşlemler</div>
-          <div class="liste-alani-mas" style="max-height:55dvh; overflow-y:auto; padding:0 4px;">
-            <table id="tablo-mas" style="width:100%; border-collapse:collapse; font-size:13px;"></table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+
 
 <div class="container app-container hidden" id="app-screen">
 <div class="header-icons">
@@ -1290,98 +1219,190 @@ function onayGoster(ikon, metin, onEvet, evetRenk='#ef4444', evetYazi='Evet, Sil
 
 // --- MASAÜSTÜ / MOBİL GÖRÜNÜM ---
 function masaUstuSidebarKur() {
-  // Kullanıcı emailini sidebar footer'a yaz
-  if (auth.currentUser) {
-    const el = document.getElementById('mas-user-email-sidebar');
-    if (el) el.innerText = auth.currentUser.email;
-  }
-  // Logout
-  const lBtn = document.getElementById('mas-logout-btn');
-  if (lBtn && !lBtn._bound) {
-    lBtn._bound = true;
-    lBtn.onclick = () => signOut(auth);
-  }
-  // Nav item tıklamaları - mobil panelleri göster/gizle
-  const navMap = {
-    'mas-nav-panel': null,
-    'mas-nav-islemler': null,
-    'mas-nav-taksitler': 'btn-tekrarlayan-ac',
-    'mas-nav-mesajlar': 'btn-mesajlar',
-    'mas-nav-ayarlar': 'btn-ayarlar-ac',
+  if (document.getElementById('mas-sidebar')) return; // zaten var
+
+  // Sidebar oluştur
+  const sidebar = document.createElement('div');
+  sidebar.id = 'mas-sidebar';
+  sidebar.innerHTML = `
+    <div id="mas-sidebar-logo">
+      <div class="logo-title">💳 Akıllı Cüzdan</div>
+      <div class="logo-sub">Finansal Yönetim</div>
+    </div>
+    <div style="padding:12px 0;flex:1;display:flex;flex-direction:column;overflow-y:auto;">
+      <div class="mas-group-label">Genel</div>
+      <button class="mas-nav-item aktif" data-panel="">⊞ Panel</button>
+      <button class="mas-nav-item" data-panel="grafik-panel" data-trigger="btn-rapor-menu">📊 Raporlar</button>
+      <button class="mas-nav-item" data-panel="borclar-panel" data-trigger="btn-borclar-menu">💳 Hesap Özetleri</button>
+      <div class="mas-group-label">İşlemler</div>
+      <button class="mas-nav-item" data-panel="tekrarlayan-panel" data-trigger="btn-tekrarlayan-ac">🔁 Sabit Giderler</button>
+      <button class="mas-nav-item" data-panel="kart-ayar-panel" data-trigger="btn-kart-ayarlar">⚙ Kart Ayarları</button>
+      <div class="mas-group-label">Hesap</div>
+      <button class="mas-nav-item" data-panel="bildirim-panel" data-trigger="btn-bildir-menu">🔔 Bildirimler</button>
+      <button class="mas-nav-item" data-panel="sifre-panel" data-trigger="btn-sifre-guncelle-menu">🔒 Şifre Değiştir</button>
+    </div>
+    <div id="mas-sidebar-footer">
+      <div class="user-name" id="mas-user-email-sidebar">${auth.currentUser ? auth.currentUser.email : ''}</div>
+      <div class="user-role">Kullanıcı</div>
+      <button class="logout-btn" id="mas-logout-btn">⇠ Çıkış Yap</button>
+      <button id="btn-gorunum-degistir-2" style="margin-top:8px;background:#374151;color:rgba(255,255,255,0.7);border:none;border-radius:8px;font-size:11px;padding:6px 10px;width:100%;cursor:pointer;text-align:left;">📱 Mobil Site İste</button>
+    </div>
+  `;
+
+  // Topbar oluştur
+  const topbar = document.createElement('div');
+  topbar.id = 'mas-topbar';
+  topbar.innerHTML = `
+    <div id="mas-topbar-title" style="font-size:17px;font-weight:700;color:#111827;">Panel</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="nav-btn" id="mas-btn-onceki">&lt;</span>
+      <span id="ay-baslik-mas" style="font-size:14px;font-weight:600;color:#374151;"></span>
+      <span class="nav-btn" id="mas-btn-sonraki">&gt;</span>
+    </div>
+  `;
+
+  // Özet kartlar
+  const ozetDiv = document.createElement('div');
+  ozetDiv.id = 'masaustu-ozet-kartlari';
+  ozetDiv.innerHTML = `
+    <div class="ozet-kart">
+      <div><div class="ozet-kart-baslik">Toplam Gelir</div><div class="ozet-kart-deger" id="mas-gelir" style="color:#059669;">₺0,00</div></div>
+      <div class="ozet-kart-ikon" style="background:#d1fae5;color:#059669;font-size:20px;">↑</div>
+    </div>
+    <div class="ozet-kart">
+      <div><div class="ozet-kart-baslik">Toplam Gider</div><div class="ozet-kart-deger" id="mas-gider" style="color:#dc2626;">₺0,00</div></div>
+      <div class="ozet-kart-ikon" style="background:#fee2e2;color:#dc2626;font-size:20px;">↓</div>
+    </div>
+    <div class="ozet-kart">
+      <div><div class="ozet-kart-baslik">Net Bakiye</div><div class="ozet-kart-deger" id="mas-bakiye">₺0,00</div></div>
+      <div class="ozet-kart-ikon" style="background:#dbeafe;color:#2563eb;font-size:20px;">₺</div>
+    </div>
+  `;
+
+  // Ana main wrapper
+  const main = document.createElement('div');
+  main.id = 'mas-main';
+  main.appendChild(topbar);
+  const content = document.createElement('div');
+  content.id = 'mas-content';
+  content.appendChild(ozetDiv);
+
+  // Mevcut ana form+liste alanlarını mas-content içine referansla taşı
+  const formSutun = document.getElementById('masaustu-form-sutun');
+  const listeSutun = document.getElementById('masaustu-liste-sutun');
+  const anaAlan = document.getElementById('masaustu-ana-alan');
+  if (anaAlan) content.appendChild(anaAlan);
+  main.appendChild(content);
+
+  // Body'e ekle - app-screen'in önüne
+  const appScreen = document.getElementById('app-screen');
+  appScreen.parentNode.insertBefore(sidebar, appScreen);
+  appScreen.parentNode.insertBefore(main, appScreen);
+
+  // --- Event listeners ---
+  document.getElementById('mas-logout-btn').onclick = () => signOut(auth);
+  document.getElementById('btn-gorunum-degistir-2').onclick = () => {
+    document.getElementById('btn-gorunum-degistir').click();
   };
-  Object.keys(navMap).forEach(navId => {
-    const btn = document.getElementById(navId);
-    if (btn && !btn._bound) {
-      btn._bound = true;
-      btn.onclick = () => {
-        document.querySelectorAll('.mas-nav-item').forEach(b => b.classList.remove('aktif'));
-        btn.classList.add('aktif');
-        const topTitle = document.getElementById('mas-topbar-title');
-        if (topTitle) topTitle.innerText = btn.innerText.trim();
-        // Panele karşılık gelen mobil butona tıkla
-        if (navMap[navId]) {
-          const target = document.getElementById(navMap[navId]);
-          if (target) target.click();
+  document.getElementById('mas-btn-onceki').onclick = () => document.getElementById('btn-onceki').click();
+  document.getElementById('mas-btn-sonraki').onclick = () => document.getElementById('btn-sonraki').click();
+
+  // Ay başlığı sync
+  const syncAy = () => {
+    const src = document.getElementById('ay-baslik');
+    const dst = document.getElementById('ay-baslik-mas');
+    if (src && dst) dst.innerText = src.innerText;
+  };
+  syncAy();
+  new MutationObserver(syncAy).observe(document.getElementById('ay-baslik'), {childList:true,subtree:true,characterData:true});
+
+  // Özet kart sync
+  const syncKartlar = () => {
+    const pairs = [
+      ['masaustu-toplam-gelir','mas-gelir'],
+      ['masaustu-toplam-gider','mas-gider'],
+      ['masaustu-net-bakiye','mas-bakiye']
+    ];
+    pairs.forEach(([sid,did]) => {
+      const s = document.getElementById(sid);
+      const d = document.getElementById(did);
+      if (s && d && s.innerText !== d.innerText) d.innerText = s.innerText;
+    });
+  };
+  syncKartlar();
+  setInterval(syncKartlar, 800);
+
+  // Nav buton tıklamaları
+  sidebar.querySelectorAll('.mas-nav-item').forEach(btn => {
+    btn.onclick = () => {
+      sidebar.querySelectorAll('.mas-nav-item').forEach(b => b.classList.remove('aktif'));
+      btn.classList.add('aktif');
+      const panelId = btn.dataset.panel;
+      const triggerId = btn.dataset.trigger;
+      const titleEl = document.getElementById('mas-topbar-title');
+      if (titleEl) titleEl.innerText = btn.innerText.trim();
+
+      if (!panelId) return; // Panel butonu - sadece başlık değişir
+
+      // Önce tüm panelleri kapat
+      kapatPaneller();
+
+      // Trigger butonuna tıkla (paneli doldursun)
+      if (triggerId) {
+        const trigBtn = document.getElementById(triggerId);
+        if (trigBtn) trigBtn.click();
+      }
+
+      // Paneli masaüstü modal olarak göster
+      setTimeout(() => {
+        const panel = document.getElementById(panelId);
+        if (!panel) return;
+        panel.classList.remove('hidden');
+        // Mevcut panel stilini override et - masaüstünde modal
+        panel.style.cssText = [
+          'position:fixed',
+          'top:50%',
+          'left:calc(210px + (100% - 210px)/2)',
+          'transform:translate(-50%,-50%)',
+          'z-index:3000',
+          'background:white',
+          'border-radius:16px',
+          'padding:0',
+          'width:min(640px, calc(100vw - 250px))',
+          'max-height:85vh',
+          'overflow-y:auto',
+          'box-shadow:0 20px 60px rgba(0,0,0,0.25)',
+          'color:#111827',
+          'border:1px solid #e5e7eb'
+        ].join(';');
+
+        // Backdrop
+        let bd = document.getElementById('mas-backdrop');
+        if (!bd) {
+          bd = document.createElement('div');
+          bd.id = 'mas-backdrop';
+          bd.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:2999;';
+          bd.onclick = () => { kapatPaneller(); panel.style.cssText=''; bd.style.display='none'; };
+          document.body.appendChild(bd);
         }
-      };
-    }
+        bd.style.display = 'block';
+
+        // Kapat butonu
+        if (!panel.querySelector('[data-maskapbtn]')) {
+          const kb = document.createElement('div');
+          kb.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e5e7eb;position:sticky;top:0;background:white;z-index:1;';
+          kb.innerHTML = '<span style="font-size:14px;font-weight:700;color:#111;">' + btn.innerText.trim() + '</span>';
+          const kbtn = document.createElement('button');
+          kbtn.innerText = '✕ Kapat';
+          kbtn.dataset.maskapbtn = '1';
+          kbtn.style.cssText = 'background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;';
+          kbtn.onclick = () => { kapatPaneller(); panel.style.cssText=''; document.getElementById('mas-backdrop').style.display='none'; };
+          kb.appendChild(kbtn);
+          panel.prepend(kb);
+        }
+      }, 80);
+    };
   });
-  // Ay navigasyon butonlarını masaüstü topbar'a bağla
-  const masOnceki = document.getElementById('mas-btn-onceki');
-  const masSonraki = document.getElementById('mas-btn-sonraki');
-  const ayBaslikMas = document.getElementById('ay-baslik-mas');
-  if (masOnceki && !masOnceki._bound) {
-    masOnceki._bound = true;
-    masOnceki.onclick = () => document.getElementById('btn-onceki').click();
-  }
-  if (masSonraki && !masSonraki._bound) {
-    masSonraki._bound = true;
-    masSonraki.onclick = () => document.getElementById('btn-sonraki').click();
-  }
-  // Ay başlığını senkronize et
-  const syncAyBaslik = () => {
-    const src = document.getElementById('ay-baslik');
-    if (src && ayBaslikMas) ayBaslikMas.innerText = src.innerText;
-  };
-  syncAyBaslik();
-  if (!window._ayObserver) {
-    window._ayObserver = new MutationObserver(syncAyBaslik);
-    const src = document.getElementById('ay-baslik');
-    if (src) window._ayObserver.observe(src, { childList: true, subtree: true, characterData: true });
-  }
-  // Form sutununu masaüstü alana taşı (klonlama değil referans)
-  const formSrc = document.getElementById('masaustu-form-sutun');
-  const formDst = document.getElementById('masaustu-form-sutun-mas');
-  if (formSrc && formDst && !formDst._filled) {
-    formDst._filled = true;
-    formDst.appendChild(formSrc);
-    formDst.style.cssText = 'flex:0 0 320px; background:white; border-radius:12px; border:1px solid #e5e7eb; padding:16px; display:flex; flex-direction:column; gap:8px;';
-  }
-  // Liste sutununu masaüstü alana taşı
-  const listeSrc = document.getElementById('masaustu-liste-sutun');
-  const listeDst = document.getElementById('masaustu-liste-sutun-mas');
-  if (listeSrc && listeDst && !listeDst._filled) {
-    listeDst._filled = true;
-    listeDst.appendChild(listeSrc);
-    listeDst.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:14px;';
-    // Liste kartı wrapper ekle
-    const listeAlani = listeSrc.querySelector('.liste-alani');
-    if (listeAlani && !listeSrc.querySelector('.mas-liste-kart')) {
-      const kart = document.createElement('div');
-      kart.className = 'mas-liste-kart';
-      const baslik = document.createElement('div');
-      baslik.className = 'mas-liste-kart-baslik';
-      baslik.innerHTML = '📋 Son İşlemler';
-      kart.appendChild(baslik);
-      listeSrc.insertBefore(kart, listeAlani);
-      kart.appendChild(listeAlani);
-    }
-  }
-  // Ana alanı düzenle
-  const anaAlanMas = document.getElementById('masaustu-ana-alan-mas');
-  if (anaAlanMas) {
-    anaAlanMas.style.cssText = 'display:flex; gap:18px; align-items:flex-start;';
-  }
 }
 
 function gorunumUygula(mod) {
@@ -1391,12 +1412,34 @@ function gorunumUygula(mod) {
     document.documentElement.classList.add('masaustu-modu');
     document.getElementById('btn-gorunum-degistir').innerText = '📱 Mobil Site İste';
     if (viewportMeta) viewportMeta.setAttribute('content', 'width=1100, user-scalable=yes');
-    setTimeout(masaUstuSidebarKur, 100);
+    setTimeout(() => {
+      masaUstuSidebarKur();
+      // Sidebar ve main'i göster, app-screen'i gizle
+      const sb = document.getElementById('mas-sidebar');
+      const mn = document.getElementById('mas-main');
+      const ap = document.getElementById('app-screen');
+      if (sb) sb.style.display = 'flex';
+      if (mn) mn.style.display = 'flex';
+      if (ap) ap.style.display = 'none';
+    }, 50);
   } else {
     document.body.classList.remove('masaustu-modu');
     document.documentElement.classList.remove('masaustu-modu');
     document.getElementById('btn-gorunum-degistir').innerText = '🖥️ Masaüstü Sitesi İste';
     if (viewportMeta) viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+    // Sidebar/main gizle, app-screen'i göster
+    const sb = document.getElementById('mas-sidebar');
+    const mn = document.getElementById('mas-main');
+    const ap = document.getElementById('app-screen');
+    if (sb) sb.style.display = 'none';
+    if (mn) mn.style.display = 'none';
+    if (ap) ap.classList.remove('hidden');
+    // masaustu-ana-alan'ı geri app-screen'e taşı
+    const anaAlan = document.getElementById('masaustu-ana-alan');
+    const appContainer = ap ? ap.querySelector('.app-container, .container') : null;
+    if (anaAlan && appContainer && !appContainer.contains(anaAlan)) {
+      appContainer.appendChild(anaAlan);
+    }
   }
 }
 
