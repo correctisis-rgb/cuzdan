@@ -164,8 +164,30 @@ body:not(.masaustu-modu) #kullanici-panel {
   max-height: 78dvh;
   overflow-y: auto;
   box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  /* DÜZELTME: Bu paneller normal akışta düşük opaklıkla (rgba(...,0.1-0.4)) tasarlanmıştı;
+     ekranın üstünde yüzen kutulara çevrilince o saydamlık arkadaki tüm ekranın (form, tablo,
+     diğer yazılar) görünüp yazıların birbirine karışmasına yol açıyordu. Overlay modunda
+     arkaplanı katı (opak) bir renkle eziyoruz; masaüstü modunda bu paneller ayrı bir modal
+     içine taşındığı için bu kural devreye girmiyor, orada zaten opak beyaz modal kullanılıyor. */
+  background: #232a45 !important;
+}
+/* mesajlar-panel zaten opak beyaz arkaplan + siyah yazı ile tasarlanmış, üstteki koyu
+   arkaplan kuralı onun okunabilirliğini bozar; bu yüzden burada beyaza geri döndürüyoruz. */
+body:not(.masaustu-modu) #mesajlar-panel {
+  background: #ffffff !important;
 }
 #duyuru-menu { right: 45px; width: 220px; max-height: 250px; overflow-y: auto; }
+/* DÜZELTME: #masaustu-ana-alan-wrapper flex bağlamı kurmuyordu, bu yüzden .liste-alani'nin
+   flex:1/min-height:0/overflow-y:auto kuralları hiç devreye girmiyor, tablo taşan kısmı
+   kaydırma çubuğu olmadan kesip atıyordu. Mobilde wrapper'ı flex-column yapıp kalan alanı
+   liste-alani'na bırakıyoruz ki içerik gerçekten kaydırılabilsin. */
+body:not(.masaustu-modu) #masaustu-ana-alan-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
 #popup-duyuru { 
 position: fixed; 
 top: 50%; 
@@ -1457,6 +1479,11 @@ function masaUstuSidebarKur() {
         panel.removeAttribute('style');
         panel.querySelectorAll('.close-btn').forEach(b=>b.style.display='');
         bd.style.display='none';
+        // DÜZELTME: panel modal içine taşınmıştı (aşağıda modal.appendChild(panel)); onu
+        // document.body'ye geri koymadan modal.remove() çağrılırsa panel DOM'dan tamamen
+        // kopuyor ve document.getElementById bir daha onu asla bulamıyor (menü bir daha
+        // hiç açılmıyor / mobile dönünce kayboluyor).
+        document.body.appendChild(panel);
         const mo=document.getElementById('mas-modal-aktif'); if(mo) mo.remove();
       };
 
@@ -1473,7 +1500,7 @@ function masaUstuSidebarKur() {
       const kbtn = document.createElement('button');
       kbtn.innerText='✕ Kapat';
       kbtn.style.cssText='background:#ef4444;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;width:auto;';
-      kbtn.onclick = () => { panel.classList.add('hidden'); panel.removeAttribute('style'); panel.querySelectorAll('.close-btn').forEach(b=>b.style.display=''); bd.style.display='none'; modal.remove(); };
+      kbtn.onclick = () => { panel.classList.add('hidden'); panel.removeAttribute('style'); panel.querySelectorAll('.close-btn').forEach(b=>b.style.display=''); bd.style.display='none'; document.body.appendChild(panel); modal.remove(); };
       hdr.appendChild(kbtn);
       modal.appendChild(hdr);
 
@@ -1513,7 +1540,14 @@ function masaUstuSidebarKur() {
         if(mesaj) addDoc(collection(db,'duyurular'),{mesaj,tarih:Date.now()}).then(()=>bilgiToastGoster('✅ Duyuru yayınlandı!'));
       };
     }
-    if(ms) panelAc(ms, 'mesajlar-panel', '📩 Mesajları Gör');
+    if(ms) {
+      panelAc(ms, 'mesajlar-panel', '📩 Mesajları Gör');
+      // DÜZELTME: panelAc paneli sadece görünür yapıyor, içeriği hiç doldurmuyordu.
+      // Mobildeki "MESAJLARI GÖR" butonu mesajlariGetir()'i çağırıyor ama masaüstü
+      // menüsünde bu çağrı hiç yoktu, bu yüzden panel boş açılıyordu. Kullanıcı
+      // yönetimi panelindeki aynı düzen (capture fazında veri çekme) burada da uygulanıyor.
+      ms.addEventListener('click', () => { if (typeof mesajlariGetir === 'function') mesajlariGetir(); }, true);
+    }
   }
 
   // Mobil site butonu sidebar footer'da
@@ -1538,6 +1572,16 @@ function gorunumUygula(mod) {
     if (viewportMeta) viewportMeta.setAttribute('content', 'width=1100, user-scalable=yes');
     // Sidebar kur ve göster
     masaUstuSidebarKur();
+    // DÜZELTME: masaUstuSidebarKur() sadece ilk çağrıldığında #masaustu-ana-alan'ı
+    // #mas-content içine taşıyor (fonksiyon başında "if (document.getElementById('mas-sidebar')) return;"
+    // koruması var). Mobile geçince bu alan tekrar mobil sarmalayıcıya (#masaustu-ana-alan-wrapper)
+    // taşınıyor; ama masaüstüne ikinci kez dönüldüğünde sidebar zaten kurulu olduğu için
+    // masaUstuSidebarKur() hemen çıkıyor ve işlem alanı (hareket dökümü dahil) hiç geri
+    // taşınmıyordu — bu yüzden "masaüstünde hiç hareket görünmüyor" hatası oluşuyordu.
+    // Burada modu ne olursa olsun her masaüstü geçişinde alanı doğru yere taşıyoruz.
+    const anaAlanTasi = document.getElementById('masaustu-ana-alan');
+    const icerikTasi = document.getElementById('mas-content');
+    if (anaAlanTasi && icerikTasi && !icerikTasi.contains(anaAlanTasi)) icerikTasi.appendChild(anaAlanTasi);
     const sb = document.getElementById('mas-sidebar');
     const mn = document.getElementById('mas-main');
     const ap = document.getElementById('app-screen');
