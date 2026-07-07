@@ -343,7 +343,15 @@ body.masaustu-modu #masaustu-form-sutun button { font-size: 12px; padding: 7px; 
 body.masaustu-modu #masaustu-liste-sutun {
   display: flex; flex-direction: column; gap: 12px; flex: 1; min-width: 0;
 }
-body.masaustu-modu .liste-alani { height: auto; max-height: 60dvh; overflow-y: auto; }
+/* DÜZELTME: .liste-alani'nin mobil için tasarlanmış "flex:1 1 0; min-height:0;" kuralı
+   (bkz. yukarıdaki .liste-alani tanımı) masaüstünde de geçerliliğini koruyordu. Masaüstünde
+   #masaustu-liste-sutun'un yüksekliği "align-items:flex-start" ile içeriğine göre otomatik
+   belirlendiği için, flex-basis:0 olan bu öge büyüyecek boş alan bulamıyor ve neredeyse
+   0 yüksekliğe çöküyordu; veriler DOM'a yazılıyordu ama ekranda hiç görünmüyordu
+   (özet kartları çalıştığı için bu fark edilmesi zor bir hataydı). Burada flex/min-height'ı
+   masaüstüne özgü olarak eziyoruz ki liste kendi içeriğine göre boyutlansın.
+*/
+body.masaustu-modu .liste-alani { flex: 0 0 auto; height: auto; min-height: 120px; max-height: 60dvh; overflow-y: auto; }
 body.masaustu-modu .liste-alani table { font-size: 13px; }
 body.masaustu-modu .liste-alani td { color: #374151; border-bottom: 1px solid #f3f4f6; padding: 7px 8px; }
 
@@ -1518,7 +1526,14 @@ function masaUstuSidebarKur() {
   panelAc(document.getElementById('mas-nav-raporlar'), 'grafik-panel', '📊 Raporlar');
   panelAc(document.getElementById('mas-nav-borclar'), 'borclar-panel', '💳 Hesap Özetleri');
   panelAc(document.getElementById('mas-nav-taksit'), 'tekrarlayan-panel', '🔁 Sabit Giderler');
+  // DÜZELTME: Mobildeki karşılığı gibi, panel açılırken tekrarlayan işlemler listesini de yükle.
+  document.getElementById('mas-nav-taksit').addEventListener('click', () => { if (typeof tekrarlayanlariDinle === 'function') tekrarlayanlariDinle(); }, true);
   panelAc(document.getElementById('mas-nav-kart'), 'kart-ayar-panel', '⚙ Kart Ayarları');
+  // DÜZELTME: Mobildeki "Kart Ayarları" butonu paneli açarken kartAyarListeGoster()'ı da
+  // çağırıyor, ama masaüstü menüsünde bu çağrı hiç yoktu. Bu yüzden mobilde kaydedilen
+  // kesim tarihleri masaüstünde panel açılınca hiç listelenmiyordu (veri Firestore'da
+  // duruyordu, sadece ekrana hiç basılmıyordu).
+  document.getElementById('mas-nav-kart').addEventListener('click', () => { if (typeof kartAyarListeGoster === 'function') kartAyarListeGoster(); }, true);
   panelAc(document.getElementById('mas-nav-bildirim'), 'bildirim-panel', '🔔 Bildirimler');
   panelAc(document.getElementById('mas-nav-sifre'), 'sifre-panel', '🔒 Şifre Değiştir');
   panelAc(document.getElementById('mas-nav-kahve'), 'kahve-panel', '☕ Kahve Ismarla');
