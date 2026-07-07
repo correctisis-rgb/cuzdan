@@ -139,11 +139,32 @@ height: calc(100dvh - 0.5rem - env(safe-area-inset-top) - env(safe-area-inset-bo
 max-height: 98dvh; 
 margin-top: unset;
 margin-bottom: unset;
+overflow: hidden;
 }
 .header-icons { position: absolute; top: calc(5px + env(safe-area-inset-top)); right: 10px; display: flex; gap: 5px; z-index: 20; }
 .icon-btn { background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; font-size: 14px; position: relative; }
 .badge { position: absolute; top: -3px; right: -3px; background: red; color: white; border-radius: 50%; width: 14px; height: 14px; font-size: 8px; line-height: 14px; display: none; text-align:center; font-weight:bold; }
 #profil-menu, #duyuru-menu { position: absolute; top: calc(40px + env(safe-area-inset-top)); right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
+/* Mobilde bu paneller normal akışta kalırsa esnek sütun tarafından ezilip küçücük görünüyordu (flex-shrink).
+   Bu yüzden mobilde profil menüsü gibi ekranın üstünde kayan bir kutu haline getiriyoruz. Masaüstü modunda dokunmuyoruz. */
+body:not(.masaustu-modu) #grafik-panel,
+body:not(.masaustu-modu) #borclar-panel,
+body:not(.masaustu-modu) #tekrarlayan-panel,
+body:not(.masaustu-modu) #kart-ayar-panel,
+body:not(.masaustu-modu) #sifre-panel,
+body:not(.masaustu-modu) #bildirim-panel,
+body:not(.masaustu-modu) #kahve-panel,
+body:not(.masaustu-modu) #mesajlar-panel,
+body:not(.masaustu-modu) #kullanici-panel {
+  position: absolute;
+  top: calc(40px + env(safe-area-inset-top));
+  left: 4%;
+  right: 4%;
+  z-index: 35;
+  max-height: 78dvh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
 #duyuru-menu { right: 45px; width: 220px; max-height: 250px; overflow-y: auto; }
 #popup-duyuru { 
 position: fixed; 
@@ -174,7 +195,7 @@ button { padding: 8px; border: none; border-radius: 10px; font-weight: 600; curs
 .container.app-container button { padding: 5px; }
 .close-btn { background: #ff0000 !important; font-size: 10px; padding: 3px !important; margin-bottom: 5px; width: auto !important; }
 .link-text { font-size: 12px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 4px; margin-bottom: 4px; }
-.liste-alani { flex-grow: 1; overflow-y: auto; margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.2); min-height: 160px; }
+.liste-alani { flex: 1 1 0; min-height: 0; overflow-y: auto; margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.2); }
 table { width: 100%; border-collapse: collapse; }
 td { padding: 3px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 14px; }
 td small { font-size: 10px; }
