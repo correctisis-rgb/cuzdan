@@ -2437,7 +2437,7 @@ pdfIcerik.style.cssText = 'position:fixed; top:0; left:0; z-index:-9999; width:7
 pdfIcerik.innerHTML = `
   <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #764ba2; padding-bottom:12px; margin-bottom:16px;">
     <div>
-      <div style="font-size:22px; font-weight:bold; color:#764ba2;">💰 Akıllı Cüzdan</div>
+      <div style="font-size:22px; font-weight:bold; color:#764ba2;">Akıllı Cüzdan</div>
       <div style="font-size:13px; color:#6b7280;">Aylık Finans Raporu</div>
     </div>
     <div style="text-align:right;">
@@ -2490,7 +2490,7 @@ requestAnimationFrame(() => { requestAnimationFrame(() => {
   const pdfBelge = new jsPDF('p', 'mm', 'a4');
   pdfBelge.html(pdfIcerik, {
     x: 10, y: 10, width: 190, windowWidth: 780,
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+    html2canvas: { useCORS: true, backgroundColor: '#ffffff' },
     callback: (doc) => {
       doc.save(`Akilli_Cuzdan_Rapor_${ayIsimleriPdf[seciliTarih.getMonth()]}_${seciliTarih.getFullYear()}.pdf`);
       document.body.removeChild(pdfIcerik);
