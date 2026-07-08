@@ -2377,6 +2377,31 @@ document.getElementById('hesap').addEventListener('change', () => {
 });
 
 
+document.getElementById('btn-excel-aktar').onclick = () => {
+if (mevcutAyVerileri.length === 0) { alert("Bu aya ait aktarılacak işlem bulunamadı."); return; }
+let csvContent = "\uFEFF"; 
+csvContent += "Tarih;Açıklama;Kategori;Hesap;Tür;Tutar (TL)\n";
+mevcutAyVerileri.forEach(islem => {
+const islemTarihi = new Date(islem.tarih).toLocaleDateString('tr-TR');
+const turMetni = islem.tur === 'gelir' ? 'Gelir (+)' : 'Gider (-)';
+const temizAciklama = islem.aciklama.replace(/;/g, ','); 
+const hesapAlani = islem.hesap || 'Nakit';
+csvContent += `${islemTarihi};${temizAciklama};${islem.kategori};${hesapAlani};${turMetni};${formatla(islem.tutar)}\n`;
+});
+const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+const url = URL.createObjectURL(blob);
+const link = document.createElement("a");
+const ayIsimleriExcel = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const dosyaAdi = `Akilli_Cuzdan_Rapor_${ayIsimleriExcel[seciliTarih.getMonth()]}_${seciliTarih.getFullYear()}.csv`;
+link.setAttribute("href", url);
+link.setAttribute("download", dosyaAdi);
+link.style.visibility = 'hidden';
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+kapatPaneller();
+};
+
 document.getElementById('btn-pdf-aktar').onclick = () => {
 if (mevcutAyVerileri.length === 0) { alert("Bu aya ait aktarılacak işlem bulunamadı."); return; }
 if (typeof window.jspdf === 'undefined' || typeof window.html2canvas === 'undefined') { alert("PDF motoru yüklenemedi, internet bağlantınızı kontrol edip tekrar deneyin."); return; }
@@ -2408,7 +2433,7 @@ const islemSatirlari = [...mevcutAyVerileri].sort((a,b) => b.tarih - a.tarih)
   }).join('');
 
 const pdfIcerik = document.createElement('div');
-pdfIcerik.style.cssText = 'position:fixed; left:-9999px; top:0; width:780px; background:#ffffff; color:#111827; font-family: Arial, sans-serif; padding:28px;';
+pdfIcerik.style.cssText = 'position:fixed; top:0; left:0; z-index:-9999; width:780px; background:#ffffff; color:#111827; font-family: Arial, sans-serif; padding:28px; opacity:1;';
 pdfIcerik.innerHTML = `
   <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #764ba2; padding-bottom:12px; margin-bottom:16px;">
     <div>
@@ -2458,15 +2483,20 @@ pdfIcerik.innerHTML = `
 `;
 document.body.appendChild(pdfIcerik);
 
-const { jsPDF } = window.jspdf;
-const pdfBelge = new jsPDF('p', 'mm', 'a4');
-pdfBelge.html(pdfIcerik, {
-  x: 10, y: 10, width: 190, windowWidth: 780,
-  callback: (doc) => {
-    doc.save(`Akilli_Cuzdan_Rapor_${ayIsimleriPdf[seciliTarih.getMonth()]}_${seciliTarih.getFullYear()}.pdf`);
-    document.body.removeChild(pdfIcerik);
-  }
-});
+// Küçük bir gecikme: tarayıcı içeriği yerleştirip boyayana kadar bekliyoruz,
+// aksi halde html2canvas bazen tamamen boş bir görüntü yakalayabiliyor.
+requestAnimationFrame(() => { requestAnimationFrame(() => {
+  const { jsPDF } = window.jspdf;
+  const pdfBelge = new jsPDF('p', 'mm', 'a4');
+  pdfBelge.html(pdfIcerik, {
+    x: 10, y: 10, width: 190, windowWidth: 780,
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+    callback: (doc) => {
+      doc.save(`Akilli_Cuzdan_Rapor_${ayIsimleriPdf[seciliTarih.getMonth()]}_${seciliTarih.getFullYear()}.pdf`);
+      document.body.removeChild(pdfIcerik);
+    }
+  });
+}); });
 kapatPaneller();
 };
 
