@@ -2490,7 +2490,7 @@ requestAnimationFrame(() => { requestAnimationFrame(() => {
   const pdfBelge = new jsPDF('p', 'mm', 'a4');
   pdfBelge.html(pdfIcerik, {
     x: 10, y: 10, width: 190, windowWidth: 780,
-    html2canvas: { useCORS: true, backgroundColor: '#ffffff' },
+    html2canvas: { useCORS: true, backgroundColor: '#ffffff', foreignObjectRendering: true },
     callback: (doc) => {
       doc.save(`Akilli_Cuzdan_Rapor_${ayIsimleriPdf[seciliTarih.getMonth()]}_${seciliTarih.getFullYear()}.pdf`);
       document.body.removeChild(pdfIcerik);
