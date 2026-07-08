@@ -1389,6 +1389,8 @@ function masaUstuSidebarKur() {
       <div class="mas-group-label">İşlemler</div>
       <button class="mas-nav-item" id="mas-nav-taksit">🔁 &nbsp;Sabit Giderler</button>
       <button class="mas-nav-item" id="mas-nav-kart">⚙ &nbsp;Kart Ayarları</button>
+      <button class="mas-nav-item" id="mas-nav-excel">📊 &nbsp;Excel'e Aktar</button>
+      <button class="mas-nav-item" id="mas-nav-pdf">📄 &nbsp;PDF Rapor İndir</button>
       <div class="mas-group-label">Hesap</div>
       <button class="mas-nav-item" id="mas-nav-bildirim">🔔 &nbsp;Sorun Bildir</button>
       <button class="mas-nav-item" id="mas-nav-sifre">🔒 &nbsp;Şifre Değiştir</button>
@@ -1567,6 +1569,9 @@ function masaUstuSidebarKur() {
   panelAc(document.getElementById('mas-nav-bildirim'), 'bildirim-panel', '🔔 Sorun Bildir');
   panelAc(document.getElementById('mas-nav-sifre'), 'sifre-panel', '🔒 Şifre Değiştir');
   panelAc(document.getElementById('mas-nav-kahve'), 'kahve-panel', '☕ Kahve Ismarla');
+  // Excel/PDF aktarma birer panel değil, anlık indirme işlemi — mevcut butonların click'ini tetikliyoruz.
+  document.getElementById('mas-nav-excel').onclick = () => { document.getElementById('btn-excel-aktar').click(); };
+  document.getElementById('mas-nav-pdf').onclick = () => { document.getElementById('btn-pdf-aktar').click(); };
 
   if (isAdmin) {
     const ku=document.getElementById('mas-nav-kullanici');
