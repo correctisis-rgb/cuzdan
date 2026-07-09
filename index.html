@@ -947,9 +947,27 @@ function kullanicilariDinle() {
   const simdi = Date.now();
   const yirmiDortSaat = 24 * 60 * 60 * 1000;
 
-  onValue(usersRef, (usersSnap) => {
+  onValue(usersRef, async (usersSnap) => {
     const usersData = usersSnap.val() || {};
-    const toplamKullanici = Object.keys(usersData).length;
+    let toplamKullanici = Object.keys(usersData).length;
+
+    // Firestore'daki islemler koleksiyonundan distinct uid say
+    // (RTDB'ye hiç giriş yapmamış ama işlem eklemiş kullanıcıları da say)
+    try {
+      const islemSnap = await getDocs(collection(db, 'islemler'));
+      const tumUidler = new Set(Object.keys(usersData));
+      islemSnap.forEach(d => { if(d.data().uid) tumUidler.add(d.data().uid); });
+      // bildirimler koleksiyonundan da uid topla
+      const bilSnap = await getDocs(collection(db, 'bildirimler'));
+      bilSnap.forEach(d => { if(d.data().uid) tumUidler.add(d.data().uid); });
+      // kart_ayarlari'ndan uid topla
+      const kartSnap = await getDocs(collection(db, 'kart_ayarlari'));
+      kartSnap.forEach(d => { if(d.data().uid) tumUidler.add(d.data().uid); });
+      // tekrarlayanlar'dan uid topla
+      const tkrSnap = await getDocs(collection(db, 'tekrarlayanlar'));
+      tkrSnap.forEach(d => { if(d.data().uid) tumUidler.add(d.data().uid); });
+      toplamKullanici = tumUidler.size;
+    } catch(e) {}
 
     let son24h = 0;
     let kullaniciListeHtml = '';
@@ -2329,6 +2347,12 @@ document.getElementById('btn-kayit-ol').onclick = async () => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, girilenSifre);
     const actionCodeSettings = { url: 'https://correctisis-rgb.github.io/cuzdan/', handleCodeInApp: false };
     await sendEmailVerification(userCredential.user, actionCodeSettings);
+    // Kullanıcıyı Realtime Database'e hemen kaydet (signOut öncesi)
+    await dbSet(dbRef(rtdb, 'users/' + userCredential.user.uid), {
+      email: userCredential.user.email,
+      sonGiris: Date.now(),
+      ilkKayit: Date.now()
+    });
     await signOut(auth);
     alert("✅ Kayıt başarılı!\n\nE-posta adresinize doğrulama maili gönderdik. Lütfen mailinizi onaylayıp giriş yapın.");
     ekranGoster('auth-screen');
