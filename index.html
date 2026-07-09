@@ -692,7 +692,6 @@ body.masaustu-modu .header-icons { display: none; }
   <span style="opacity:0.4;">|</span>
   <span>↓ <span id="ozet-gider" style="color:#ff4d4d; font-weight:bold;">0,00</span> TL</span>
 </div>
-<div id="toast" style="display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(30,30,30,0.95); color:white; padding:10px 16px; border-radius:12px; font-size:13px; z-index:9999; box-shadow:0 4px 15px rgba(0,0,0,0.4); align-items:center; gap:10px; min-width:220px; justify-content:space-between;"><span id="toast-mesaj"></span><button id="toast-geri-al" style="background:#f59e0b; color:black; font-size:11px; padding:3px 8px; border-radius:6px; width:auto; margin:0; font-weight:bold;">GERİ AL</button></div>
 
 <input type="file" id="fis-kamera" accept="image/*" capture="environment" style="display:none;">
 
@@ -791,6 +790,8 @@ body.masaustu-modu .header-icons { display: none; }
      görünmüyordu (ör. masaüstünde bir tekrarlayan işlemi silince/durdurunca onay/bilgi pop-up'ı
      ekrana gelmiyordu). Bu yüzden hepsini .app-container'ın DIŞINA, app-screen ile aynı seviyeye
      taşıdık; artık hem mobilde hem masaüstünde her zaman görünür oluyorlar. -->
+<!-- "Silindi / Geri Al" toast'ı da aynı sebeple .app-container içinden buraya taşındı -->
+<div id="toast" style="display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(30,30,30,0.95); color:white; padding:10px 16px; border-radius:12px; font-size:13px; z-index:9999; box-shadow:0 4px 15px rgba(0,0,0,0.4); align-items:center; gap:10px; min-width:220px; justify-content:space-between;"><span id="toast-mesaj"></span><button id="toast-geri-al" style="background:#f59e0b; color:black; font-size:11px; padding:3px 8px; border-radius:6px; width:auto; margin:0; font-weight:bold;">GERİ AL</button></div>
 <!-- Kahve hatırlatıcı popup -->
 <div id="kahve-hatirlatici" class="hidden" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#5d4037,#a1887f); color:white; border-radius:16px; padding:12px 16px; width:85%; max-width:300px; z-index:9998; box-shadow:0 4px 20px rgba(0,0,0,0.4); display:flex; align-items:center; gap:10px;">
   <div style="font-size:28px; flex-shrink:0;">☕</div>
