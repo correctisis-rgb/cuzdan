@@ -577,8 +577,13 @@ body.masaustu-modu .header-icons { display: none; }
     </select>
     <span style="font-size:12px; white-space:nowrap;">günü</span>
   </div>
+  <label style="display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size:12px; cursor:pointer; user-select:none;">
+    <input type="checkbox" id="tkr-abonelik" style="width:auto; margin:0;"> 📱 Bu bir abonelik (Netflix, Spotify vb.)
+  </label>
   <button id="btn-tkr-kaydet" style="background:#6366f1; width:100%;">+ Tekrarlayan İşlem Ekle</button>
 </div>
+
+<div id="abonelik-ozet"></div>
 
 <div id="tekrarlayan-liste"></div>
 </div>
@@ -1732,11 +1737,12 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
   const kategori = document.getElementById('tkr-kategori').value;
   const hesap = document.getElementById('tkr-hesap').value;
   const gun = parseInt(document.getElementById('tkr-gun').value);
+  const abonelik = document.getElementById('tkr-abonelik').checked;
 
   if (!aciklama || isNaN(tutar) || tutar <= 0) return alert("Lütfen açıklama ve tutarı doldurun!");
   if (tutar > 3000000) return alert("Tutar en fazla 3.000.000 TL olabilir.");
 
-  const veri = { uid: auth.currentUser.uid, aciklama, tutar, kategori, hesap, gun, aktif: true };
+  const veri = { uid: auth.currentUser.uid, aciklama, tutar, kategori, hesap, gun, abonelik, aktif: true };
 
   try {
     if (tkrDuzenlenecekId) {
@@ -1757,6 +1763,7 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
     }
     document.getElementById('tkr-aciklama').value = '';
     document.getElementById('tkr-tutar').value = '';
+    document.getElementById('tkr-abonelik').checked = false;
   } catch(e) { bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
 };
 
@@ -1772,14 +1779,28 @@ function tekrarlayanlariDinle() {
       html = '<div style="text-align:center; opacity:0.5; padding:10px; font-size:12px;">Henüz tekrarlayan işlem eklenmedi</div>';
     }
 
+    // Abonelik özeti: sadece aktif + abonelik olarak işaretlenmiş kalemlerin toplamı
+    const abonelikler = liste.filter(t => t.abonelik === true && t.aktif !== false);
+    const abonelikToplam = abonelikler.reduce((top, t) => top + t.tutar, 0);
+    const ozetEl = document.getElementById('abonelik-ozet');
+    if (ozetEl) {
+      ozetEl.innerHTML = abonelikler.length
+        ? `<div style="background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.4); border-radius:8px; padding:7px 10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+             <span>📱 <b>${abonelikler.length}</b> aktif abonelik</span>
+             <span style="font-weight:bold; color:#a5b4fc;">${formatla(abonelikToplam)} TL/ay</span>
+           </div>`
+        : '';
+    }
+
     liste.forEach(t => {
       const hesapMap = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
       const durumRengi = t.aktif !== false ? '#10b981' : '#6b7280';
       const durumYazi = t.aktif !== false ? 'Aktif' : 'Durduruldu';
+      const abonelikRozeti = t.abonelik === true ? '<span style="background:#6366f1; color:white; font-size:9px; font-weight:bold; padding:1px 6px; border-radius:10px; margin-left:5px;">📱 ABONELİK</span>' : '';
       html += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:7px 0;">
         <div style="display:flex; justify-content:space-between; align-items:start;">
           <div style="flex:1;">
-            <div style="font-weight:bold; font-size:12px;">${escapeHTML(t.aciklama)}</div>
+            <div style="font-weight:bold; font-size:12px;">${escapeHTML(t.aciklama)}${abonelikRozeti}</div>
             <div style="opacity:0.7; font-size:10px;">${escapeHTML(t.kategori)} | ${escapeHTML(hesapMap[t.hesap] || t.hesap)} • Her ayın ${t.gun}'i</div>
             <div style="font-size:9px; color:${durumRengi}; font-weight:bold; margin-top:2px;">● ${durumYazi}</div>
           </div>
@@ -1788,7 +1809,7 @@ function tekrarlayanlariDinle() {
           </div>
         </div>
         <div style="display:flex; gap:4px; margin-top:5px;">
-          <button onclick="window.tkrDuzenle('${t.id}','${escapeHTML(t.aciklama).replace(/'/g,"\\\\'")}',${t.tutar},'${t.kategori}','${t.hesap}',${t.gun})" style="background:#3b82f6; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">✏️ Düzenle</button>
+          <button onclick="window.tkrDuzenle('${t.id}','${escapeHTML(t.aciklama).replace(/'/g,"\\\\'")}',${t.tutar},'${t.kategori}','${t.hesap}',${t.gun},${t.abonelik === true})" style="background:#3b82f6; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">✏️ Düzenle</button>
           <button onclick="window.tkrDurumDegistir('${t.id}', ${t.aktif === false})" style="background:${t.aktif !== false ? '#f59e0b' : '#10b981'}; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">${t.aktif !== false ? '⏸ Durdur' : '▶ Etkinleştir'}</button>
           <button onclick="window.tkrSil('${t.id}')" style="background:#ef4444; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">🗑 Sil</button>
         </div>
@@ -1798,13 +1819,14 @@ function tekrarlayanlariDinle() {
   });
 }
 
-window.tkrDuzenle = (id, aciklama, tutar, kategori, hesap, gun) => {
+window.tkrDuzenle = (id, aciklama, tutar, kategori, hesap, gun, abonelik) => {
   tkrDuzenlenecekId = id;
   document.getElementById('tkr-aciklama').value = aciklama;
   document.getElementById('tkr-tutar').value = formatla(tutar);
   document.getElementById('tkr-kategori').value = kategori;
   document.getElementById('tkr-hesap').value = hesap;
   document.getElementById('tkr-gun').value = gun;
+  document.getElementById('tkr-abonelik').checked = !!abonelik;
   document.getElementById('btn-tkr-kaydet').innerText = "✓ Güncelle (Sadece sonraki aylara uygulanır)";
   document.getElementById('tekrarlayan-panel').scrollTop = 0;
 };
