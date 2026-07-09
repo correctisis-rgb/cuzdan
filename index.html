@@ -256,6 +256,18 @@ td small { font-size: 10px; }
 .butor-group-row { display: flex; gap: 6px; margin: 3px 0; width: 100%; }
 
 /* ====== MASAÜSTÜ SİTESİ MODU ====== */
+
+/* DÜZELTME: Raporlar grafiğinin sağındaki Chart.js lejantı beyaz yazı rengiyle sabitliydi;
+   masaüstünde panel beyaz bir modal içine taşındığı için yazılar görünmüyordu (beyaz üstüne beyaz).
+   Masaüstünde Chart.js'in kendi lejantını tamamen kapatıp (bkz. ilgili JS), yerine koyu renkli,
+   tutar + yüzde gösteren kendi lejant listemizi ve üstte gelir/gider/net özet kartlarını gösteriyoruz.
+   Mobilde hiçbir şey değişmiyor; eski görünüm aynen korunuyor. */
+body.masaustu-modu #grafik-ozet-kartlar { display: block; }
+body.masaustu-modu #grafik-icerik-wrap { display: flex; align-items: center; gap: 28px; }
+body.masaustu-modu #grafik { max-height: 240px !important; width: auto !important; flex: 0 0 240px; }
+body.masaustu-modu #grafik-legend { flex: 1; min-width: 0; max-height: 260px; overflow-y: auto; }
+body:not(.masaustu-modu) #grafik-ozet-kartlar,
+body:not(.masaustu-modu) #grafik-legend { display: none; }
 html.masaustu-modu, html.masaustu-modu body {
   height: 100dvh;
   overflow: hidden;
@@ -538,7 +550,11 @@ body.masaustu-modu .header-icons { display: none; }
 <div id="grafik-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.15); border-radius:10px;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <div style="font-weight:bold; margin-bottom:5px; font-size:13px; text-align:center;">📊 AYLIK RAPOR GRAFİĞİ</div>
+<div id="grafik-ozet-kartlar"></div>
+<div id="grafik-icerik-wrap">
 <canvas id="grafik" style="max-height: 140px; margin-top: 5px; width: 100%;"></canvas>
+<div id="grafik-legend"></div>
+</div>
 </div>
 
 <div id="borclar-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:left;">
@@ -2718,10 +2734,63 @@ document.getElementById('borc-listesi').innerHTML = borcHtml;
 
 const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
 const degerler = etiketler.map(k => kategoriToplamlar[k]);
+const renkPaleti = ['#10b981', '#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6', '#22d3ee', '#fb923c'];
+const renkler = etiketler.map((_, i) => renkPaleti[i % renkPaleti.length]);
 const ctx = document.getElementById('grafik').getContext('2d');
 if (myChart) myChart.destroy();
+
+const masaustuMu = document.body.classList.contains('masaustu-modu');
+const grafikLegendEl = document.getElementById('grafik-legend');
+const grafikOzetEl = document.getElementById('grafik-ozet-kartlar');
+const grafikToplam = degerler.reduce((a, b) => a + b, 0);
+
 if (etiketler.length > 0) {
-myChart = new Chart(ctx, { type: 'doughnut', data: { labels: etiketler, datasets: [{ data: degerler, backgroundColor: ['#10b981', '#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'] }] }, options: { plugins: { legend: { position: 'right', labels: { color: 'white', font: { size: 9 } } } } } });
+myChart = new Chart(ctx, {
+  type: 'doughnut',
+  data: { labels: etiketler, datasets: [{ data: degerler, backgroundColor: renkler, borderWidth: masaustuMu ? 2 : 1, borderColor: masaustuMu ? '#ffffff' : 'rgba(0,0,0,0.2)' }] },
+  options: {
+    // Masaüstünde kendi (koyu renkli, tutar+yüzde içeren) lejantımızı kullandığımız için Chart.js'in
+    // beyaz yazılı varsayılan lejantını burada kapatıyoruz — mobilde aynen açık kalmaya devam ediyor.
+    plugins: {
+      legend: { display: !masaustuMu, position: 'right', labels: { color: 'white', font: { size: 9 } } },
+      tooltip: { callbacks: { label: (o) => { const y = grafikToplam ? ((o.parsed / grafikToplam) * 100).toFixed(1) : '0.0'; return ` ${o.label}: ${formatla(o.parsed)} TL (%${y})`; } } }
+    },
+    cutout: masaustuMu ? '65%' : '60%'
+  }
+});
+
+if (masaustuMu && grafikLegendEl) {
+  const siraliVeri = etiketler.map((etiket, i) => ({ etiket, deger: degerler[i], renk: renkler[i] })).sort((a, b) => b.deger - a.deger);
+  grafikLegendEl.innerHTML = siraliVeri.map(v => {
+    const yuzde = grafikToplam ? ((v.deger / grafikToplam) * 100).toFixed(1) : '0.0';
+    return `<div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f1f5f9;">
+      <span style="width:10px; height:10px; border-radius:50%; background:${v.renk}; flex-shrink:0;"></span>
+      <span style="flex:1; font-size:12px; color:#374151;">${escapeHTML(v.etiket)}</span>
+      <span style="font-size:12px; font-weight:600; color:#111827; white-space:nowrap;">${formatla(v.deger)} TL</span>
+      <span style="font-size:11px; color:#9ca3af; width:38px; text-align:right;">%${yuzde}</span>
+    </div>`;
+  }).join('');
+} else if (grafikLegendEl) { grafikLegendEl.innerHTML = ''; }
+
+if (masaustuMu && grafikOzetEl) {
+  grafikOzetEl.innerHTML = `<div style="display:flex; gap:10px; margin-bottom:16px;">
+    <div style="flex:1; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 12px;">
+      <div style="font-size:11px; color:#15803d; font-weight:600;">Toplam Gelir</div>
+      <div style="font-size:16px; font-weight:700; color:#15803d;">${formatla(toplamGelir)} TL</div>
+    </div>
+    <div style="flex:1; background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:10px 12px;">
+      <div style="font-size:11px; color:#b91c1c; font-weight:600;">Toplam Gider</div>
+      <div style="font-size:16px; font-weight:700; color:#b91c1c;">${formatla(toplamGider)} TL</div>
+    </div>
+    <div style="flex:1; background:${bakiye >= 0 ? '#eff6ff' : '#fff1f2'}; border:1px solid ${bakiye >= 0 ? '#bfdbfe' : '#fecdd3'}; border-radius:10px; padding:10px 12px;">
+      <div style="font-size:11px; color:${bakiye >= 0 ? '#1d4ed8' : '#be123c'}; font-weight:600;">Net Bakiye</div>
+      <div style="font-size:16px; font-weight:700; color:${bakiye >= 0 ? '#1d4ed8' : '#be123c'};">${formatla(bakiye)} TL</div>
+    </div>
+  </div>`;
+} else if (grafikOzetEl) { grafikOzetEl.innerHTML = ''; }
+} else {
+if (grafikLegendEl) grafikLegendEl.innerHTML = '';
+if (grafikOzetEl) grafikOzetEl.innerHTML = masaustuMu ? '<div style="text-align:center; color:#6b7280; font-size:12px; padding:14px 0;">Bu ay için henüz işlem yok.</div>' : '';
 }
 });
 }
