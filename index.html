@@ -264,7 +264,13 @@ td small { font-size: 10px; }
    Mobilde hiçbir şey değişmiyor; eski görünüm aynen korunuyor. */
 body.masaustu-modu #grafik-ozet-kartlar { display: block; }
 body.masaustu-modu #grafik-icerik-wrap { display: flex; align-items: center; gap: 28px; }
-body.masaustu-modu #grafik { max-height: 240px !important; width: auto !important; flex: 0 0 240px; }
+/* DÜZELTME: Canvas'a doğrudan flex-basis vermek yetmiyordu; Chart.js'in kendi responsive/aspect-ratio
+   mantığı devreye girince canvas beklenmedik şekilde büyüyüp yanındaki lejant metnini alana sığmayarak
+   sıkıştırıyor, sonunda görünmez oluyordu. Bunun yerine canvas'ı SABİT genişlik+yükseklikte bir kutuya
+   sarıp (width/height açıkça piksel cinsinden), ilgili JS tarafında Chart.js'e maintainAspectRatio:false
+   veriyoruz — böylece grafik kutunun dışına asla taşamıyor, lejant her zaman kalan alanı korur. */
+body.masaustu-modu #grafik-canvas-wrap { position: relative; width: 220px; height: 220px; flex: 0 0 220px; }
+body.masaustu-modu #grafik-canvas-wrap canvas { max-height: none !important; width: 100% !important; height: 100% !important; }
 body.masaustu-modu #grafik-legend { flex: 1; min-width: 0; max-height: 260px; overflow-y: auto; }
 body:not(.masaustu-modu) #grafik-ozet-kartlar,
 body:not(.masaustu-modu) #grafik-legend { display: none; }
@@ -552,7 +558,9 @@ body.masaustu-modu .header-icons { display: none; }
 <div style="font-weight:bold; margin-bottom:5px; font-size:13px; text-align:center;">📊 AYLIK RAPOR GRAFİĞİ</div>
 <div id="grafik-ozet-kartlar"></div>
 <div id="grafik-icerik-wrap">
+<div id="grafik-canvas-wrap">
 <canvas id="grafik" style="max-height: 140px; margin-top: 5px; width: 100%;"></canvas>
+</div>
 <div id="grafik-legend"></div>
 </div>
 </div>
@@ -2755,6 +2763,8 @@ myChart = new Chart(ctx, {
       legend: { display: !masaustuMu, position: 'right', labels: { color: 'white', font: { size: 9 } } },
       tooltip: { callbacks: { label: (o) => { const y = grafikToplam ? ((o.parsed / grafikToplam) * 100).toFixed(1) : '0.0'; return ` ${o.label}: ${formatla(o.parsed)} TL (%${y})`; } } }
     },
+    responsive: true,
+    maintainAspectRatio: !masaustuMu,
     cutout: masaustuMu ? '65%' : '60%'
   }
 });
