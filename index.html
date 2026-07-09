@@ -1058,40 +1058,59 @@ function kullaniciListeRenderFiltered() {
 document.getElementById('kullanici-arama').addEventListener('input', kullaniciListeRenderFiltered);
 
 // Admin'den kullanıcıya direkt mesaj gönderme (uygulama içi yazışma penceresi)
-let _adminKullaniciMesajUnsub = null;
+// DÜZELTME: Kullanıcı cevapları artık "bildirimler" koleksiyonuna (kanal:'sohbet' etiketiyle)
+// yazılıyor, admin'in kendi mesajları ise "kullanici_bildirimleri"nde duruyor. Thread'i doğru
+// göstermek için iki koleksiyonu da dinleyip birleştiriyoruz.
+let _adminKullaniciMesajUnsub = [];
+let _adminMesajCache = { admin: [], kullanici: [] };
+function _adminKullaniciThreadCiz(uid) {
+  const mesajlar = [..._adminMesajCache.admin, ..._adminMesajCache.kullanici].sort((a, b) => a.tarih - b.tarih);
+  const threadEl = document.getElementById('admin-kullanici-mesaj-thread');
+  if (!threadEl) return;
+  if (!mesajlar.length) {
+    threadEl.innerHTML = '<div style="opacity:0.5; font-size:11px; text-align:center; padding:10px;">Henüz mesaj yok. İlk mesajı sen gönder.</div>';
+  } else {
+    threadEl.innerHTML = mesajlar.map(m => {
+      const benGonderdim = m._kaynak === 'admin';
+      const saat = new Date(m.tarih).toLocaleString('tr-TR');
+      const metin = (m.mesaj || '').replace('Admin cevapladı: ', '');
+      return `<div style="display:flex; ${benGonderdim ? 'justify-content:flex-end;' : 'justify-content:flex-start;'} margin-bottom:6px;">
+          <div style="max-width:80%; background:${benGonderdim ? '#3b82f6' : '#e5e7eb'}; color:${benGonderdim ? 'white' : '#111827'}; border-radius:10px; padding:6px 9px; font-size:12px;">
+            <div>${escapeHTML(metin)}</div>
+            <div style="font-size:9px; opacity:0.7; margin-top:2px;">${saat}</div>
+          </div>
+        </div>`;
+    }).join('');
+    threadEl.scrollTop = threadEl.scrollHeight;
+  }
+}
 window.adminMesajGonderForm = (uid, email) => {
   document.getElementById('admin-kullanici-mesaj-hedef').innerText = email;
   document.getElementById('admin-kullanici-mesaj-input').value = '';
   document.getElementById('admin-kullanici-mesaj-thread').innerHTML = '<div style="opacity:0.5; font-size:11px; text-align:center; padding:10px;">Yükleniyor...</div>';
   document.getElementById('admin-kullanici-mesaj-popup').classList.remove('hidden');
 
-  if (_adminKullaniciMesajUnsub) { _adminKullaniciMesajUnsub(); _adminKullaniciMesajUnsub = null; }
-  _adminKullaniciMesajUnsub = onSnapshot(query(collection(db, "kullanici_bildirimleri"), where("uid", "==", uid)), (snap) => {
-    const mesajlar = [];
-    snap.forEach(d => mesajlar.push({ id: d.id, ...d.data() }));
-    mesajlar.sort((a, b) => a.tarih - b.tarih);
+  _adminKullaniciMesajUnsub.forEach(u => u());
+  _adminKullaniciMesajUnsub = [];
+  _adminMesajCache = { admin: [], kullanici: [] };
 
-    const threadEl = document.getElementById('admin-kullanici-mesaj-thread');
-    if (!mesajlar.length) {
-      threadEl.innerHTML = '<div style="opacity:0.5; font-size:11px; text-align:center; padding:10px;">Henüz mesaj yok. İlk mesajı sen gönder.</div>';
-    } else {
-      threadEl.innerHTML = mesajlar.map(m => {
-        const benGonderdim = m.gonderen !== 'kullanici'; // eski kayıtlarda gonderen alanı yok, bunlar hep admin'den gitmişti
-        const saat = new Date(m.tarih).toLocaleString('tr-TR');
-        const metin = (m.mesaj || '').replace('Admin cevapladı: ', '');
-        return `<div style="display:flex; ${benGonderdim ? 'justify-content:flex-end;' : 'justify-content:flex-start;'} margin-bottom:6px;">
-          <div style="max-width:80%; background:${benGonderdim ? '#3b82f6' : '#e5e7eb'}; color:${benGonderdim ? 'white' : '#111827'}; border-radius:10px; padding:6px 9px; font-size:12px;">
-            <div>${escapeHTML(metin)}</div>
-            <div style="font-size:9px; opacity:0.7; margin-top:2px;">${saat}</div>
-          </div>
-        </div>`;
-      }).join('');
-      threadEl.scrollTop = threadEl.scrollHeight;
-    }
+  // Admin'in bu kullanıcıya gönderdiği mesajlar
+  _adminKullaniciMesajUnsub.push(onSnapshot(query(collection(db, "kullanici_bildirimleri"), where("uid", "==", uid)), (snap) => {
+    const arr = [];
+    snap.forEach(d => { const data = d.data(); if (data.gonderen !== 'kullanici') arr.push({ id: d.id, ...data, _kaynak: 'admin' }); });
+    _adminMesajCache.admin = arr;
+    _adminKullaniciThreadCiz(uid);
+  }));
 
-    // Kullanıcıdan gelen okunmamış cevapları admin görünce okundu işaretle
-    mesajlar.forEach(m => { if (m.gonderen === 'kullanici' && !m.okundu) updateDoc(doc(db, 'kullanici_bildirimleri', m.id), { okundu: true }); });
-  });
+  // Kullanıcının bu sohbete verdiği cevaplar (bildirimler koleksiyonunda, kanal:'sohbet')
+  _adminKullaniciMesajUnsub.push(onSnapshot(query(collection(db, "bildirimler"), where("uid", "==", uid)), (snap) => {
+    const arr = [];
+    snap.forEach(d => { const data = d.data(); if (data.kanal === 'sohbet') arr.push({ id: d.id, ...data, _kaynak: 'kullanici' }); });
+    _adminMesajCache.kullanici = arr;
+    _adminKullaniciThreadCiz(uid);
+    // Admin bu thread'i görüntülerken okunmamış kullanıcı cevaplarını okundu işaretle
+    arr.forEach(m => { if (!m.okundu) updateDoc(doc(db, 'bildirimler', m.id), { okundu: true }); });
+  }));
 
   document.getElementById('admin-kullanici-mesaj-gonder').onclick = () => {
     const mesaj = document.getElementById('admin-kullanici-mesaj-input').value.trim();
@@ -1104,16 +1123,17 @@ window.adminMesajGonderForm = (uid, email) => {
 
 window.adminKullaniciMesajKapat = () => {
   document.getElementById('admin-kullanici-mesaj-popup').classList.add('hidden');
-  if (_adminKullaniciMesajUnsub) { _adminKullaniciMesajUnsub(); _adminKullaniciMesajUnsub = null; }
+  _adminKullaniciMesajUnsub.forEach(u => u());
+  _adminKullaniciMesajUnsub = [];
 };
 
 // DÜZELTME: Admin, bir kullanıcının cevap yazdığını ancak o kullanıcının yazışma penceresini
 // tekrar açarsa görebiliyordu. "👥 KULLANICI YÖNETİMİ" butonuna, okunmamış kullanıcı cevabı
 // sayısını gösteren küçük bir kırmızı rozet ekliyoruz ki cevaplar gözden kaçmasın.
 function adminYaniMesajRozetDinle() {
-  onSnapshot(collection(db, 'kullanici_bildirimleri'), (snap) => {
+  onSnapshot(collection(db, 'bildirimler'), (snap) => {
     let sayac = 0;
-    snap.forEach(d => { const data = d.data(); if (data.gonderen === 'kullanici' && !data.okundu) sayac++; });
+    snap.forEach(d => { const data = d.data(); if (data.kanal === 'sohbet' && !data.okundu) sayac++; });
     [
       { hedefId: 'btn-kullanici-yonetim', rozetId: 'kullanici-mesaj-rozet', stil: 'background:#ef4444; color:white; border-radius:10px; padding:1px 7px; font-size:10px; margin-left:6px; display:inline-block;' },
       { hedefId: 'mas-nav-kullanici', rozetId: 'kullanici-mesaj-rozet-mas', stil: 'background:#ef4444; color:white; border-radius:10px; padding:1px 7px; font-size:10px; margin-left:6px; display:inline-block; float:right;' }
@@ -1211,6 +1231,7 @@ function adminMesajDinle() {
     snap.docChanges().forEach(change => {
       if (change.type === "added") {
         const data = change.doc.data();
+        if (data.kanal === 'sohbet') return; // DÜZELTME: sohbet cevapları admin'in Sorun Bildir popup'ını tetiklemesin
         if (data.tarih > sonOkunan) {
           okunmayanVar = true;
           // Popup göster
@@ -1239,7 +1260,7 @@ function adminMesajDinle() {
     if (badge) {
       const sonOk = parseInt(localStorage.getItem('son_okunan_mesaj') || '0');
       let okunmayan = 0;
-      snap.forEach(d => { if(d.data().tarih > sonOk) okunmayan++; });
+      snap.forEach(d => { if(d.data().tarih > sonOk && d.data().kanal !== 'sohbet') okunmayan++; });
       if (okunmayan > 0) { badge.style.display = 'block'; badge.innerText = okunmayan > 9 ? '9+' : okunmayan; }
       else badge.style.display = 'none';
     }
@@ -1273,11 +1294,14 @@ function kullaniciBildirimDinle(uid) {
             if (!cevapMetni) { alert('Lütfen bir cevap yazın.'); return; }
             if (!navigator.onLine) { alert('Cevap göndermek için internet bağlantısı gereklidir.'); return; }
             try {
-              // DÜZELTME: Cevap artık "bildirimler" (Sorun Bildir / Mesajları Gör) koleksiyonuna değil,
-              // bu doğrudan yazışmanın ait olduğu "kullanici_bildirimleri" koleksiyonuna yazılıyor.
-              // Böylece "Mesajları Gör" paneli sadece Sorun Bildir kayıtlarıyla sınırlı kalıyor.
-              await addDoc(collection(db, 'kullanici_bildirimleri'), {
-                uid: uid, email: auth.currentUser.email, mesaj: cevapMetni, tarih: Date.now(), okundu: false, gonderen: 'kullanici'
+              // DÜZELTME: "kullanici_bildirimleri" koleksiyonu Firestore güvenlik kurallarında
+              // muhtemelen sadece admin'in yazabileceği şekilde ayarlı (bu yüzden kullanıcının
+              // cevabı sessizce/hata ile reddediliyordu). Kullanıcıların zaten yazma izni olduğu
+              // "bildirimler" koleksiyonunu (Sorun Bildir'in kullandığı koleksiyon) kullanıyoruz,
+              // ama "kanal:'sohbet'" etiketiyle işaretliyoruz ki Sorun Bildir/Mesajları Gör
+              // paneline karışmasın (bkz. mesajlariGetir ve adminMesajDinle'deki filtre).
+              await addDoc(collection(db, 'bildirimler'), {
+                uid: uid, email: auth.currentUser.email, mesaj: cevapMetni, tarih: Date.now(), kanal: 'sohbet', okundu: false
               });
               await updateDoc(doc(db, 'kullanici_bildirimleri', change.doc.id), { okundu: true });
               popup.classList.add('hidden');
@@ -2343,6 +2367,7 @@ const snapshot = await getDocs(query(collection(db, "bildirimler"), orderBy("tar
 let html = "";
 snapshot.forEach((d) => {
   const data = d.data();
+  if (data.kanal === 'sohbet') return; // DÜZELTME: doğrudan sohbet cevapları Sorun Bildir listesine karışmasın
   const tarih = new Date(data.tarih).toLocaleString('tr-TR');
   const cevapHtml = data.cevap ? `<div style="background:#e8f5e9; border-left:3px solid #10b981; padding:4px 6px; margin-top:4px; font-size:10px; border-radius:4px;">✓ Cevap: ${escapeHTML(data.cevap)}</div>` : '';
   html += `<div style="border-bottom:1px solid #eee; padding:6px 0;" data-id="${d.id}">
