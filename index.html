@@ -1591,6 +1591,10 @@ function masaUstuSidebarKur() {
 
   document.getElementById('mas-nav-panel').onclick = () => navSec(document.getElementById('mas-nav-panel'));
   panelAc(document.getElementById('mas-nav-raporlar'), 'grafik-panel', '📊 Raporlar');
+  // DÜZELTME: Panel modal içine taşınıp gösterildiğinde Chart.js henüz doğru kutu boyutunu
+  // bilmiyor olabiliyordu (canvas önceden farklı bir modda/boyutta çizilmiş olabilir). Panel her
+  // açıldığında grafiği güncel moda ve modal boyutuna göre yeniden çiziyoruz.
+  document.getElementById('mas-nav-raporlar').addEventListener('click', () => { if (typeof grafikCiz === 'function') requestAnimationFrame(() => requestAnimationFrame(grafikCiz)); }, true);
   panelAc(document.getElementById('mas-nav-borclar'), 'borclar-panel', '💳 Hesap Özetleri');
   panelAc(document.getElementById('mas-nav-duyurular'), 'duyuru-menu', '📢 Duyurular');
   panelAc(document.getElementById('mas-nav-taksit'), 'tekrarlayan-panel', '🔁 Sabit Giderler');
@@ -1710,6 +1714,10 @@ function gorunumUygula(mod) {
     const bd = document.getElementById('mas-backdrop');
     if (bd) bd.style.display = 'none';
   }
+  // DÜZELTME: Mobil <-> masaüstü geçişinde Raporlar grafiği (varsa) eski moda göre çizilmiş
+  // kalıyor ve yeni moddaki kutuya sığmayıp bozuk görünüyordu. Geçiş sonrası, DOM/layout
+  // tamamen yerleşsin diye çift requestAnimationFrame ile grafiği güncel moda göre yeniden çiziyoruz.
+  if (typeof grafikCiz === 'function') requestAnimationFrame(() => requestAnimationFrame(grafikCiz));
 }
 
 document.getElementById('btn-gorunum-degistir').onclick = () => {
@@ -2361,7 +2369,7 @@ document.getElementById('profil-baslik').onclick = () => { kapatPaneller(); docu
 document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); };
 document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); };
 document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
-document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); };
+document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); if (typeof grafikCiz === 'function') requestAnimationFrame(() => requestAnimationFrame(grafikCiz)); };
 document.getElementById('btn-borclar-menu').onclick = () => { kapatPaneller(); document.getElementById('borclar-panel').classList.remove('hidden'); };
 
 // --- KART KESİM TARİHİ SİSTEMİ ---
@@ -2740,6 +2748,22 @@ borcHtml += `<div class="borc-satir"><span>${hesapIsimleriMap[key] || key}:</spa
 borcHtml += `<div class="borc-satir" style="border-top:1px solid #fff; margin-top:5px; padding-top:5px; font-weight:bold;"><span>Toplam Aylık Harcama:</span><span style="color:#ef4444;">${formatla(toplamBorcHarcama)} TL</span></div>`;
 document.getElementById('borc-listesi').innerHTML = borcHtml;
 
+sonRaporVerisi = { kategoriToplamlar, toplamGelir, toplamGider, bakiye };
+grafikCiz();
+});
+}
+
+// DÜZELTME: Grafik önceden onSnapshot callback'i içine gömülüydü ve sadece yeni veri geldiğinde
+// çiziliyordu. Kullanıcı "Masaüstü Sitesi İste" / "Mobil Site İste" ile görünüm modunu değiştirdiğinde
+// veri değişmediği için bu kod hiç yeniden çalışmıyordu; ama grafiğin boyutu, lejantı ve Chart.js'in
+// kendi iç lejantı (mobil/masaüstü için farklı ayarlanıyor) mod bazlı olduğundan, eski moda göre
+// çizilmiş grafik yeni moddaki kutuya sığdırılmaya çalışılınca bozuk/gerilmiş görünüyordu. Artık
+// grafik çizimi ayrı bir fonksiyon: hem yeni veri geldiğinde hem de mod değiştiğinde (gorunumUygula
+// içinden) aynı fonksiyon çağrılarak grafik her zaman içinde bulunulan moda göre yeniden çiziliyor.
+let sonRaporVerisi = null;
+function grafikCiz() {
+if (!sonRaporVerisi) return;
+const { kategoriToplamlar, toplamGelir, toplamGider, bakiye } = sonRaporVerisi;
 const etiketler = Object.keys(kategoriToplamlar).filter(k => kategoriToplamlar[k] > 0);
 const degerler = etiketler.map(k => kategoriToplamlar[k]);
 const renkPaleti = ['#10b981', '#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6', '#22d3ee', '#fb923c'];
@@ -2802,7 +2826,6 @@ if (masaustuMu && grafikOzetEl) {
 if (grafikLegendEl) grafikLegendEl.innerHTML = '';
 if (grafikOzetEl) grafikOzetEl.innerHTML = masaustuMu ? '<div style="text-align:center; color:#6b7280; font-size:12px; padding:14px 0;">Bu ay için henüz işlem yok.</div>' : '';
 }
-});
 }
 
 // YENİ: Düzenleme ve Ekleme Fonksiyonları Güncellendi
