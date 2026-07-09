@@ -397,6 +397,8 @@ body.masaustu-modu .nav-btn { background: #f3f4f6; color: #374151; border-radius
 body.masaustu-modu #btn-arama-ac { background: #eef2ff !important; color: #4338ca !important; }
 body.masaustu-modu #btn-tekrarlayan-ac { background: #eef2ff !important; color: #4338ca !important; }
 body.masaustu-modu #daha-yukle-btn { background: #f3f4f6 !important; color: #374151 !important; }
+body.masaustu-modu #kullanici-arama { background: #f3f4f6 !important; color: #111827 !important; border: 1px solid #e5e7eb !important; }
+body.masaustu-modu #kullanici-arama::placeholder { color: #6b7280; }
 body.masaustu-modu #arama-panel { background: #f9fafb !important; border: 1px solid #e5e7eb; }
 body.masaustu-modu #arama-panel input, body.masaustu-modu #arama-panel select { color: #111827; }
 
@@ -686,6 +688,7 @@ body.masaustu-modu .header-icons { display: none; }
 <div style="font-size:11px; font-weight:bold; margin-bottom:4px; opacity:0.7;">🟢 AKTİF KULLANICILAR</div>
 <div id="online-liste" style="font-size:11px; margin-bottom:8px;"></div>
 <div style="font-size:11px; font-weight:bold; margin-bottom:4px; opacity:0.7;">🕐 TÜM KAYITLI KULLANICILAR</div>
+<input type="text" id="kullanici-arama" placeholder="🔍 İsim / e-posta ara..." style="width:100%; box-sizing:border-box; padding:6px 8px; font-size:11px; border-radius:6px; border:none; margin-bottom:6px; background:rgba(255,255,255,0.15); color:white;">
 <div id="kullanici-liste" style="font-size:11px;"></div>
 </div>
 
@@ -851,7 +854,16 @@ body.masaustu-modu .header-icons { display: none; }
   <div style="font-size:24px; margin-bottom:6px;">📬</div>
   <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#10b981;">Admin Cevapladı</div>
   <div id="kullanici-cevap-metin" style="font-size:13px; padding:10px; background:#f5f5f5; border-radius:8px; margin-bottom:12px; text-align:left;"></div>
-  <button id="kullanici-cevap-tamam" style="background:#10b981; width:100%;">Tamam</button>
+  <!-- DÜZELTME: Kullanıcı admin'in mesajını sadece görüyordu, geri cevap verecek hiçbir alanı yoktu.
+       Buraya bir cevap kutusu ekliyoruz; gönderilen cevap admin'in zaten dinlediği "bildirimler"
+       koleksiyonuna yeni bir kayıt olarak düşüyor, böylece admin'in "Mesajları Gör" panelinde ve
+       anlık popup'ında otomatik olarak görünüyor - yeni bir altyapıya gerek kalmadan iki yönlü
+       yazışma sağlanmış oluyor. -->
+  <textarea id="kullanici-cevap-input" placeholder="Cevap yaz..." style="width:100%; box-sizing:border-box; height:50px; font-size:13px; padding:8px; border-radius:8px; border:1px solid #ddd; margin-bottom:8px; resize:none;"></textarea>
+  <div style="display:flex; gap:8px;">
+    <button id="kullanici-cevap-tamam" style="background:#e5e7eb; color:#374151; flex:1;">Kapat</button>
+    <button id="kullanici-cevap-gonder" style="background:#10b981; flex:1;">Cevap Gönder</button>
+  </div>
 </div>
 
 <!-- Admin mesaj popup -->
@@ -987,28 +999,45 @@ function kullanicilariDinle() {
     const toplamKullanici = tumUidler.size;
 
     let son24h = 0;
-    let kullaniciListeHtml = '';
     const kullanicilar = Object.entries(usersData).sort((a, b) => b[1].sonGiris - a[1].sonGiris);
+    kullanicilar.forEach(([uid, u]) => { if (simdi - u.sonGiris < yirmiDortSaat) son24h++; });
 
-    kullanicilar.forEach(([uid, u]) => {
-      const fark = simdi - u.sonGiris;
-      if (fark < yirmiDortSaat) son24h++;
-      const sonGirisTarih = new Date(u.sonGiris).toLocaleString('tr-TR');
-      const ilkKayitTarih = new Date(u.ilkKayit).toLocaleDateString('tr-TR');
-      kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; gap:6px;">
+    document.getElementById('stat-toplam').innerText = toplamKullanici;
+    document.getElementById('stat-24h').innerText = son24h;
+
+    // DÜZELTME: Kullanıcı sayısı arttıkça liste kalabalıklaşıyordu, isim/e-posta ile
+    // filtrelemek için önce ham veriyi bir önbelleğe alıyoruz, arama kutusu bu önbellek
+    // üzerinden anlık filtreleme yapıyor (Firestore'a tekrar gitmeye gerek yok).
+    window._kullaniciListeCache = kullanicilar;
+    kullaniciListeRenderFiltered();
+  });
+}
+
+function kullaniciListeRenderFiltered() {
+  const kullanicilar = window._kullaniciListeCache || [];
+  const aramaEl = document.getElementById('kullanici-arama');
+  const filtre = (aramaEl ? aramaEl.value : '').trim().toLocaleLowerCase('tr-TR');
+
+  let kullaniciListeHtml = '';
+  kullanicilar.forEach(([uid, u]) => {
+    if (filtre && !(u.email || '').toLocaleLowerCase('tr-TR').includes(filtre)) return;
+    const sonGirisTarih = new Date(u.sonGiris).toLocaleString('tr-TR');
+    const ilkKayitTarih = new Date(u.ilkKayit).toLocaleDateString('tr-TR');
+    kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; gap:6px;">
         <div style="flex:1; min-width:0;">
           <div style="font-weight:bold; font-size:11px; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(u.email)}</div>
           <div style="opacity:0.6; font-size:10px;">Son giriş: ${sonGirisTarih} | Kayıt: ${ilkKayitTarih}</div>
         </div>
         <button onclick="window.adminMesajGonderForm('${uid}','${u.email.replace(/'/g,"\\'")}')" style="background:#3b82f6; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto; flex-shrink:0;">💬</button>
       </div>`;
-    });
-
-    document.getElementById('stat-toplam').innerText = toplamKullanici;
-    document.getElementById('stat-24h').innerText = son24h;
-    document.getElementById('kullanici-liste').innerHTML = kullaniciListeHtml || '<div style="opacity:0.5; font-size:11px; padding:8px;">Henüz giriş yapmış kullanıcı yok.<br>Kullanıcılar uygulamaya giriş yaptıkça burada görünecek.</div>';
   });
+
+  const bosMesaj = filtre
+    ? '<div style="opacity:0.5; font-size:11px; padding:8px;">Aramanla eşleşen kullanıcı bulunamadı.</div>'
+    : '<div style="opacity:0.5; font-size:11px; padding:8px;">Henüz giriş yapmış kullanıcı yok.<br>Kullanıcılar uygulamaya giriş yaptıkça burada görünecek.</div>';
+  document.getElementById('kullanici-liste').innerHTML = kullaniciListeHtml || bosMesaj;
 }
+document.getElementById('kullanici-arama').addEventListener('input', kullaniciListeRenderFiltered);
 
 // Admin'den kullanıcıya direkt mesaj gönderme
 window.adminMesajGonderForm = (uid, email) => {
@@ -1148,10 +1177,24 @@ function kullaniciBildirimDinle(uid) {
         setTimeout(() => {
           const popup = document.getElementById('kullanici-cevap-popup');
           document.getElementById('kullanici-cevap-metin').innerText = data.mesaj.replace('Admin cevapladı: ', '');
+          document.getElementById('kullanici-cevap-input').value = '';
           popup.classList.remove('hidden');
           document.getElementById('kullanici-cevap-tamam').onclick = () => {
             popup.classList.add('hidden');
-            updateDoc(doc(db, "kullanici_bildirimleri", change.doc.id), { okundu: true });
+            updateDoc(doc(db, 'kullanici_bildirimleri', change.doc.id), { okundu: true });
+          };
+          document.getElementById('kullanici-cevap-gonder').onclick = async () => {
+            const cevapMetni = document.getElementById('kullanici-cevap-input').value.trim();
+            if (!cevapMetni) { alert('Lütfen bir cevap yazın.'); return; }
+            if (!navigator.onLine) { alert('Cevap göndermek için internet bağlantısı gereklidir.'); return; }
+            try {
+              await addDoc(collection(db, 'bildirimler'), {
+                uid: uid, email: auth.currentUser.email, mesaj: cevapMetni, tarih: Date.now()
+              });
+              await updateDoc(doc(db, 'kullanici_bildirimleri', change.doc.id), { okundu: true });
+              popup.classList.add('hidden');
+              alert('Cevabınız gönderildi!');
+            } catch (e) { alert('Hata: ' + e.message); }
           };
         }, 500);
       }
