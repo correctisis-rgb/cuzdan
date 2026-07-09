@@ -887,13 +887,38 @@ const bildirimSesi = new Audio('bildirim.mp3');
 function presenceBaslat(user) {
   const userPresenceRef = dbRef(rtdb, 'presence/' + user.uid);
   const connectedRef = dbRef(rtdb, '.info/connected');
-  onValue(connectedRef, (snap) => {
+
+  onValue(connectedRef, async (snap) => {
     if (snap.val() === true) {
+      // Önce onDisconnect'i register et, sonra yaz - sıra önemli
+      await onDisconnect(userPresenceRef).remove();
+      dbSet(userPresenceRef, { email: user.email, girisTarihi: Date.now() });
+    } else {
+      // Bağlantı kesildi - presence'ı temizle (backup)
+      // Bu kısım Firebase offline'da çalışmaz ama online'a döndüğünde temizler
+    }
+  });
+
+  // Sayfa kapanınca / gizlenince presence'ı temizle (ek güvence)
+  const temizle = () => {
+    if (navigator.sendBeacon) {
+      // sendBeacon ile senkron temizleme yapılamaz, dbSet dene
+    }
+    dbSet(userPresenceRef, null).catch(() => {});
+  };
+
+  window.addEventListener('beforeunload', temizle);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      // Sayfa gizlenince presence'ı kaldır, geri gelince tekrar ekle
+      dbSet(userPresenceRef, null).catch(() => {});
+    } else if (document.visibilityState === 'visible' && auth.currentUser) {
       onDisconnect(userPresenceRef).remove();
       dbSet(userPresenceRef, { email: user.email, girisTarihi: Date.now() });
     }
   });
-  // Kullanıcı bilgilerini kaydet (sessiz, arka planda)
+
+  // Kullanıcı bilgilerini kaydet
   userKaydet(user);
 }
 
@@ -947,27 +972,19 @@ function kullanicilariDinle() {
   const simdi = Date.now();
   const yirmiDortSaat = 24 * 60 * 60 * 1000;
 
+  // onlyOnce:true yerine canlı dinle
   onValue(usersRef, async (usersSnap) => {
     const usersData = usersSnap.val() || {};
-    let toplamKullanici = Object.keys(usersData).length;
 
-    // Firestore'daki islemler koleksiyonundan distinct uid say
-    // (RTDB'ye hiç giriş yapmamış ama işlem eklemiş kullanıcıları da say)
+    // Tüm Firestore koleksiyonlarından distinct uid topla
+    const tumUidler = new Set(Object.keys(usersData));
     try {
-      const islemSnap = await getDocs(collection(db, 'islemler'));
-      const tumUidler = new Set(Object.keys(usersData));
-      islemSnap.forEach(d => { if(d.data().uid) tumUidler.add(d.data().uid); });
-      // bildirimler koleksiyonundan da uid topla
-      const bilSnap = await getDocs(collection(db, 'bildirimler'));
-      bilSnap.forEach(d => { if(d.data().uid) tumUidler.add(d.data().uid); });
-      // kart_ayarlari'ndan uid topla
-      const kartSnap = await getDocs(collection(db, 'kart_ayarlari'));
-      kartSnap.forEach(d => { if(d.data().uid) tumUidler.add(d.data().uid); });
-      // tekrarlayanlar'dan uid topla
-      const tkrSnap = await getDocs(collection(db, 'tekrarlayanlar'));
-      tkrSnap.forEach(d => { if(d.data().uid) tumUidler.add(d.data().uid); });
-      toplamKullanici = tumUidler.size;
+      for (const koleksiyon of ['islemler', 'bildirimler', 'kart_ayarlari', 'tekrarlayanlar']) {
+        const snap = await getDocs(collection(db, koleksiyon));
+        snap.forEach(d => { if (d.data().uid) tumUidler.add(d.data().uid); });
+      }
     } catch(e) {}
+    const toplamKullanici = tumUidler.size;
 
     let son24h = 0;
     let kullaniciListeHtml = '';
@@ -989,10 +1006,8 @@ function kullanicilariDinle() {
 
     document.getElementById('stat-toplam').innerText = toplamKullanici;
     document.getElementById('stat-24h').innerText = son24h;
-    document.getElementById('kullanici-liste').innerHTML = kullaniciListeHtml || '<div style="opacity:0.5;">Henüz kayıt yok</div>';
-
-  }, { onlyOnce: true });
-  // Online liste presenceDinle tarafından canlı güncelleniyor
+    document.getElementById('kullanici-liste').innerHTML = kullaniciListeHtml || '<div style="opacity:0.5; font-size:11px; padding:8px;">Henüz giriş yapmış kullanıcı yok.<br>Kullanıcılar uygulamaya giriş yaptıkça burada görünecek.</div>';
+  });
 }
 
 // Admin'den kullanıcıya direkt mesaj gönderme
@@ -2347,12 +2362,6 @@ document.getElementById('btn-kayit-ol').onclick = async () => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, girilenSifre);
     const actionCodeSettings = { url: 'https://correctisis-rgb.github.io/cuzdan/', handleCodeInApp: false };
     await sendEmailVerification(userCredential.user, actionCodeSettings);
-    // Kullanıcıyı Realtime Database'e hemen kaydet (signOut öncesi)
-    await dbSet(dbRef(rtdb, 'users/' + userCredential.user.uid), {
-      email: userCredential.user.email,
-      sonGiris: Date.now(),
-      ilkKayit: Date.now()
-    });
     await signOut(auth);
     alert("✅ Kayıt başarılı!\n\nE-posta adresinize doğrulama maili gönderdik. Lütfen mailinizi onaylayıp giriş yapın.");
     ekranGoster('auth-screen');
