@@ -1759,6 +1759,7 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
       bilgiGoster('✏️', 'Güncellendi!', 'Değişiklik bir sonraki otomatik eklemede geçerli olacak. Geçmiş kayıtlar değişmedi.', '#10b981');
     } else {
       veri.sonEklenenAy = null;
+      veri.olusturmaTarihi = Date.now();
       await addDoc(collection(db, "tekrarlayanlar"), veri);
       const bugunGun = new Date().getDate();
       if (bugunGun >= gun) {
@@ -1773,6 +1774,14 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
     document.getElementById('tkr-abonelik').checked = false;
   } catch(e) { bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
 };
+
+function ayFarki(ts) {
+  if (!ts) return null;
+  const simdi = new Date();
+  const eski = new Date(ts);
+  const fark = (simdi.getFullYear() - eski.getFullYear()) * 12 + (simdi.getMonth() - eski.getMonth());
+  return fark < 0 ? 0 : fark;
+}
 
 function tekrarlayanlariDinle() {
   if (!auth.currentUser) return;
@@ -1789,14 +1798,30 @@ function tekrarlayanlariDinle() {
     // Abonelik özeti: sadece aktif + abonelik olarak işaretlenmiş kalemlerin toplamı
     const abonelikler = liste.filter(t => t.abonelik === true && t.aktif !== false);
     const abonelikToplam = abonelikler.reduce((top, t) => top + t.tutar, 0);
+    const abonelikYillikToplam = abonelikToplam * 12;
+    const uzunSureliAbonelikler = abonelikler.filter(t => { const ay = ayFarki(t.olusturmaTarihi); return ay !== null && ay >= 3; });
     const ozetEl = document.getElementById('abonelik-ozet');
     if (ozetEl) {
-      ozetEl.innerHTML = abonelikler.length
-        ? `<div style="background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.4); border-radius:8px; padding:7px 10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; font-size:12px;">
-             <span>📱 <b>${abonelikler.length}</b> aktif abonelik</span>
-             <span style="font-weight:bold; color:#a5b4fc;">${formatla(abonelikToplam)} TL/ay</span>
-           </div>`
-        : '';
+      if (abonelikler.length) {
+        let ozetHtml = `<div style="background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.4); border-radius:8px; padding:7px 10px; margin-bottom:6px; font-size:12px;">
+             <div style="display:flex; justify-content:space-between; align-items:center;">
+               <span>📱 <b>${abonelikler.length}</b> aktif abonelik</span>
+               <span style="font-weight:bold; color:#a5b4fc;">${formatla(abonelikToplam)} TL/ay</span>
+             </div>
+             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15); opacity:0.9;">
+               <span>📅 Yıllık toplam</span>
+               <span style="font-weight:bold; color:#fbbf24;">${formatla(abonelikYillikToplam)} TL/yıl</span>
+             </div>
+           </div>`;
+        if (uzunSureliAbonelikler.length) {
+          ozetHtml += `<div style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); border-radius:8px; padding:7px 10px; margin-bottom:8px; font-size:11px; line-height:1.4;">
+            💡 <b>${uzunSureliAbonelikler.map(t => escapeHTML(t.aciklama)).join(', ')}</b> aboneli${uzunSureliAbonelikler.length > 1 ? 'kleri' : 'ği'} 3+ aydır aktif. Hâlâ kullanıyor musun, gözden geçirmek ister misin? 🤔
+          </div>`;
+        }
+        ozetEl.innerHTML = ozetHtml;
+      } else {
+        ozetEl.innerHTML = '';
+      }
     }
 
     liste.forEach(t => {
@@ -1804,12 +1829,21 @@ function tekrarlayanlariDinle() {
       const durumRengi = t.aktif !== false ? '#10b981' : '#6b7280';
       const durumYazi = t.aktif !== false ? 'Aktif' : 'Durduruldu';
       const abonelikRozeti = t.abonelik === true ? '<span style="background:#6366f1; color:white; font-size:9px; font-weight:bold; padding:1px 6px; border-radius:10px; margin-left:5px;">📱 ABONELİK</span>' : '';
+      let ayBilgisiHtml = '';
+      if (t.abonelik === true) {
+        const ay = ayFarki(t.olusturmaTarihi);
+        if (ay !== null) {
+          const uzunSure = ay >= 3;
+          ayBilgisiHtml = `<div style="font-size:9px; margin-top:2px; color:${uzunSure ? '#fbbf24' : 'inherit'}; opacity:${uzunSure ? '1' : '0.7'};">${ay === 0 ? '🕐 Bu ay eklendi' : `🕐 ${ay} aydır aktif`}${uzunSure ? ' — kullanmıyorsan iptali düşün' : ''}</div>`;
+        }
+      }
       html += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:7px 0;">
         <div style="display:flex; justify-content:space-between; align-items:start;">
           <div style="flex:1;">
             <div style="font-weight:bold; font-size:12px;">${escapeHTML(t.aciklama)}${abonelikRozeti}</div>
             <div style="opacity:0.7; font-size:10px;">${escapeHTML(t.kategori)} | ${escapeHTML(hesapMap[t.hesap] || t.hesap)} • Her ayın ${t.gun}'i</div>
             <div style="font-size:9px; color:${durumRengi}; font-weight:bold; margin-top:2px;">● ${durumYazi}</div>
+            ${ayBilgisiHtml}
           </div>
           <div style="text-align:right;">
             <div style="font-weight:bold; color:#ff4d4d; font-size:13px;">${formatla(t.tutar)} TL</div>
@@ -1873,6 +1907,43 @@ async function tekrarlayanOtomatikEkle(uid) {
     }
   } catch(e) { console.log("Tekrarlayan otomatik ekleme hatası:", e); }
 }
+
+// --- KLAVYE KISAYOLLARI (Masaüstü): Enter ile kaydet, Esc ile paneli kapat ---
+function enterIleKaydet(girisIdListesi, butonId) {
+  girisIdListesi.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.shiftKey) return;
+      e.preventDefault();
+      const btn = document.getElementById(butonId);
+      if (btn && !btn.disabled) btn.click();
+    });
+  });
+}
+
+enterIleKaydet(['email', 'sifre'], 'btn-giris-yap');
+enterIleKaydet(['signup-email', 'signup-sifre', 'signup-sifre-tekrar'], 'btn-kayit-ol');
+enterIleKaydet(['reset-email'], 'btn-sifre-onay-mail');
+enterIleKaydet(['tkr-aciklama', 'tkr-tutar'], 'btn-tkr-kaydet');
+enterIleKaydet(['kart-ayar-hesap', 'kart-ayar-gun'], 'btn-kart-ayar-kaydet');
+enterIleKaydet(['mevcut-sifre', 'yeni-sifre', 'yeni-sifre-tekrar'], 'btn-sifre-onayla');
+// Not: "bildirim-metni" bir textarea olduğu için Enter tuşu normal satır atlama davranışında bırakıldı.
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' && e.key !== 'Esc') return;
+
+  const duyuruPopup = document.getElementById('popup-duyuru');
+  if (duyuruPopup && !duyuruPopup.classList.contains('hidden')) {
+    duyuruPopup.classList.add('hidden');
+    return;
+  }
+  const aramaPanel = document.getElementById('arama-panel');
+  if (aramaPanel && !aramaPanel.classList.contains('hidden')) {
+    aramaPanel.classList.add('hidden');
+  }
+  kapatPaneller();
+});
 
 let myChart, seciliTarih = new Date(), mevcutAyVerileri = [];
 let unsubIslemler = null;
