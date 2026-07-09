@@ -877,6 +877,24 @@ body.masaustu-modu .header-icons { display: none; }
   </div>
 </div>
 
+<!-- DÜZELTME: Admin'in kullanıcıya doğrudan mesaj atma butonu (💬) tarayıcının yerleşik prompt()
+     penceresini açıyordu; bu hem uygulamanın dışında/stilsiz görünüyor hem de karşı tarafın cevabını
+     görmenin bir yolu yoktu. Bunun yerine tam bir yazışma penceresi (thread) açıyoruz: admin'in bu
+     kullanıcıyla olan tüm mesajlaşması burada listeleniyor, alttaki kutudan yeni mesaj yazılabiliyor.
+     Bu yazışma, "Sorun Bildir" akışından (bildirimler koleksiyonu / Mesajları Gör paneli) tamamen
+     ayrı bir koleksiyonda (kullanici_bildirimleri) tutuluyor; ikisi birbirine karışmıyor. -->
+<div id="admin-kullanici-mesaj-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:14px; width:90%; max-width:400px; max-height:80vh; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5); display:flex; flex-direction:column;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-shrink:0;">
+    <div style="font-weight:bold; font-size:13px;">💬 <span id="admin-kullanici-mesaj-hedef"></span></div>
+    <button onclick="window.adminKullaniciMesajKapat()" style="background:#6b7280; font-size:11px; padding:4px 10px; width:auto;">Kapat</button>
+  </div>
+  <div id="admin-kullanici-mesaj-thread" style="flex:1; overflow-y:auto; background:#f5f5f5; border-radius:8px; padding:8px; margin-bottom:8px; min-height:120px; max-height:45vh;"></div>
+  <div style="display:flex; gap:6px; flex-shrink:0;">
+    <textarea id="admin-kullanici-mesaj-input" placeholder="Mesaj yaz..." style="flex:1; height:40px; font-size:12px; border:1px solid #ddd; border-radius:8px; padding:6px; box-sizing:border-box; color:black; resize:none;"></textarea>
+    <button id="admin-kullanici-mesaj-gonder" style="background:#3b82f6; width:auto; padding:0 14px; flex-shrink:0;">Gönder</button>
+  </div>
+</div>
+
 <script type="module">
 // YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1039,14 +1057,77 @@ function kullaniciListeRenderFiltered() {
 }
 document.getElementById('kullanici-arama').addEventListener('input', kullaniciListeRenderFiltered);
 
-// Admin'den kullanıcıya direkt mesaj gönderme
+// Admin'den kullanıcıya direkt mesaj gönderme (uygulama içi yazışma penceresi)
+let _adminKullaniciMesajUnsub = null;
 window.adminMesajGonderForm = (uid, email) => {
-  const mesaj = prompt(`"${email}" kullanıcısına mesaj gönder:`);
-  if (!mesaj || !mesaj.trim()) return;
-  addDoc(collection(db, "kullanici_bildirimleri"), {
-    uid: uid, mesaj: mesaj.trim(), tarih: Date.now(), okundu: false
-  }).then(() => alert("Mesaj gönderildi!")).catch(e => alert("Hata: " + e.message));
+  document.getElementById('admin-kullanici-mesaj-hedef').innerText = email;
+  document.getElementById('admin-kullanici-mesaj-input').value = '';
+  document.getElementById('admin-kullanici-mesaj-thread').innerHTML = '<div style="opacity:0.5; font-size:11px; text-align:center; padding:10px;">Yükleniyor...</div>';
+  document.getElementById('admin-kullanici-mesaj-popup').classList.remove('hidden');
+
+  if (_adminKullaniciMesajUnsub) { _adminKullaniciMesajUnsub(); _adminKullaniciMesajUnsub = null; }
+  _adminKullaniciMesajUnsub = onSnapshot(query(collection(db, "kullanici_bildirimleri"), where("uid", "==", uid)), (snap) => {
+    const mesajlar = [];
+    snap.forEach(d => mesajlar.push({ id: d.id, ...d.data() }));
+    mesajlar.sort((a, b) => a.tarih - b.tarih);
+
+    const threadEl = document.getElementById('admin-kullanici-mesaj-thread');
+    if (!mesajlar.length) {
+      threadEl.innerHTML = '<div style="opacity:0.5; font-size:11px; text-align:center; padding:10px;">Henüz mesaj yok. İlk mesajı sen gönder.</div>';
+    } else {
+      threadEl.innerHTML = mesajlar.map(m => {
+        const benGonderdim = m.gonderen !== 'kullanici'; // eski kayıtlarda gonderen alanı yok, bunlar hep admin'den gitmişti
+        const saat = new Date(m.tarih).toLocaleString('tr-TR');
+        const metin = (m.mesaj || '').replace('Admin cevapladı: ', '');
+        return `<div style="display:flex; ${benGonderdim ? 'justify-content:flex-end;' : 'justify-content:flex-start;'} margin-bottom:6px;">
+          <div style="max-width:80%; background:${benGonderdim ? '#3b82f6' : '#e5e7eb'}; color:${benGonderdim ? 'white' : '#111827'}; border-radius:10px; padding:6px 9px; font-size:12px;">
+            <div>${escapeHTML(metin)}</div>
+            <div style="font-size:9px; opacity:0.7; margin-top:2px;">${saat}</div>
+          </div>
+        </div>`;
+      }).join('');
+      threadEl.scrollTop = threadEl.scrollHeight;
+    }
+
+    // Kullanıcıdan gelen okunmamış cevapları admin görünce okundu işaretle
+    mesajlar.forEach(m => { if (m.gonderen === 'kullanici' && !m.okundu) updateDoc(doc(db, 'kullanici_bildirimleri', m.id), { okundu: true }); });
+  });
+
+  document.getElementById('admin-kullanici-mesaj-gonder').onclick = () => {
+    const mesaj = document.getElementById('admin-kullanici-mesaj-input').value.trim();
+    if (!mesaj) return;
+    addDoc(collection(db, "kullanici_bildirimleri"), {
+      uid: uid, mesaj: mesaj, tarih: Date.now(), okundu: false, gonderen: 'admin'
+    }).then(() => { document.getElementById('admin-kullanici-mesaj-input').value = ''; }).catch(e => alert("Hata: " + e.message));
+  };
 };
+
+window.adminKullaniciMesajKapat = () => {
+  document.getElementById('admin-kullanici-mesaj-popup').classList.add('hidden');
+  if (_adminKullaniciMesajUnsub) { _adminKullaniciMesajUnsub(); _adminKullaniciMesajUnsub = null; }
+};
+
+// DÜZELTME: Admin, bir kullanıcının cevap yazdığını ancak o kullanıcının yazışma penceresini
+// tekrar açarsa görebiliyordu. "👥 KULLANICI YÖNETİMİ" butonuna, okunmamış kullanıcı cevabı
+// sayısını gösteren küçük bir kırmızı rozet ekliyoruz ki cevaplar gözden kaçmasın.
+function adminYaniMesajRozetDinle() {
+  onSnapshot(collection(db, 'kullanici_bildirimleri'), (snap) => {
+    let sayac = 0;
+    snap.forEach(d => { const data = d.data(); if (data.gonderen === 'kullanici' && !data.okundu) sayac++; });
+    [
+      { hedefId: 'btn-kullanici-yonetim', rozetId: 'kullanici-mesaj-rozet', stil: 'background:#ef4444; color:white; border-radius:10px; padding:1px 7px; font-size:10px; margin-left:6px; display:inline-block;' },
+      { hedefId: 'mas-nav-kullanici', rozetId: 'kullanici-mesaj-rozet-mas', stil: 'background:#ef4444; color:white; border-radius:10px; padding:1px 7px; font-size:10px; margin-left:6px; display:inline-block; float:right;' }
+    ].forEach(({ hedefId, rozetId, stil }) => {
+      const btn = document.getElementById(hedefId);
+      if (!btn) return;
+      let rozet = document.getElementById(rozetId);
+      if (sayac > 0) {
+        if (!rozet) { rozet = document.createElement('span'); rozet.id = rozetId; rozet.style.cssText = stil; btn.appendChild(rozet); }
+        rozet.innerText = sayac > 9 ? '9+' : sayac;
+      } else if (rozet) { rozet.remove(); }
+    });
+  });
+}
 
 // --- TEMA SİSTEMİ ---
 // --- KULLANICI AYARLARI (Firestore tabanlı) ---
@@ -1144,7 +1225,7 @@ function adminMesajDinle() {
             if (!cevap) return alert("Cevap boş olamaz!");
             await updateDoc(doc(db, "bildirimler", mesajId), { cevap, cevapTarih: Date.now() });
             await addDoc(collection(db, "kullanici_bildirimleri"), {
-              uid: data.uid, mesaj: `Admin cevapladı: ${cevap}`, tarih: Date.now(), okundu: false
+              uid: data.uid, mesaj: `Admin cevapladı: ${cevap}`, tarih: Date.now(), okundu: false, gonderen: 'admin'
             });
             document.getElementById('admin-mesaj-popup').classList.add('hidden');
             localStorage.setItem('son_okunan_mesaj', Date.now());
@@ -1165,12 +1246,16 @@ function adminMesajDinle() {
   });
 }
 
-// --- KULLANICI: Admin cevaplarını dinle ---
+// --- KULLANICI: Admin cevaplarını / doğrudan mesajlarını dinle ---
 function kullaniciBildirimDinle(uid) {
   onSnapshot(query(collection(db, "kullanici_bildirimleri"), where("uid","==",uid)), (snap) => {
     snap.docChanges().forEach(async change => {
       if (change.type === "added") {
         const data = change.doc.data();
+        // DÜZELTME: Kullanıcının kendi gönderdiği cevaplar da bu koleksiyona yazılıyor (aynı uid ile);
+        // bunlar için popup açılmamalı, yoksa kullanıcı kendi az önce yazdığı mesajı bir bildirim gibi
+        // tekrar önünde görür.
+        if (data.gonderen === 'kullanici') return;
         if (data.okundu) return; // okunmuşsa atla
         const badge = document.getElementById('bildirim-badge');
         if (badge) { badge.style.display = 'block'; }
@@ -1188,8 +1273,11 @@ function kullaniciBildirimDinle(uid) {
             if (!cevapMetni) { alert('Lütfen bir cevap yazın.'); return; }
             if (!navigator.onLine) { alert('Cevap göndermek için internet bağlantısı gereklidir.'); return; }
             try {
-              await addDoc(collection(db, 'bildirimler'), {
-                uid: uid, email: auth.currentUser.email, mesaj: cevapMetni, tarih: Date.now()
+              // DÜZELTME: Cevap artık "bildirimler" (Sorun Bildir / Mesajları Gör) koleksiyonuna değil,
+              // bu doğrudan yazışmanın ait olduğu "kullanici_bildirimleri" koleksiyonuna yazılıyor.
+              // Böylece "Mesajları Gör" paneli sadece Sorun Bildir kayıtlarıyla sınırlı kalıyor.
+              await addDoc(collection(db, 'kullanici_bildirimleri'), {
+                uid: uid, email: auth.currentUser.email, mesaj: cevapMetni, tarih: Date.now(), okundu: false, gonderen: 'kullanici'
               });
               await updateDoc(doc(db, 'kullanici_bildirimleri', change.doc.id), { okundu: true });
               popup.classList.add('hidden');
@@ -2217,6 +2305,7 @@ document.getElementById('btn-duyuru-yayinla').onclick = () => { const mesaj = pr
 document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
 document.getElementById('btn-kullanici-yonetim').onclick = () => { kapatPaneller(); document.getElementById('kullanici-panel').classList.remove('hidden'); kullanicilariDinle(); };
 presenceDinle();
+adminYaniMesajRozetDinle();
 } else { document.getElementById('admin-alan').innerHTML = ''; }
 presenceBaslat(user);
 // Admin ise mesaj dinleyiciyi başlat
@@ -2290,7 +2379,7 @@ window.cevapVer = async (id) => {
     const mesajDoc = await getDocs(query(collection(db, "bildirimler")));
     mesajDoc.forEach(d => { if(d.id === id) {
       addDoc(collection(db, "kullanici_bildirimleri"), {
-        uid: d.data().uid, mesaj: `Admin cevapladı: ${cevap}`, tarih: Date.now(), okundu: false
+        uid: d.data().uid, mesaj: `Admin cevapladı: ${cevap}`, tarih: Date.now(), okundu: false, gonderen: 'admin'
       });
     }});
     document.getElementById('admin-mesaj-popup').classList.add('hidden');
