@@ -642,56 +642,6 @@ body.masaustu-modu .header-icons { display: none; }
 <div id="mesaj-listesi"></div>
 </div>
 
-<!-- Kahve hatırlatıcı popup -->
-<div id="kahve-hatirlatici" class="hidden" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#5d4037,#a1887f); color:white; border-radius:16px; padding:12px 16px; width:85%; max-width:300px; z-index:9998; box-shadow:0 4px 20px rgba(0,0,0,0.4); display:flex; align-items:center; gap:10px;">
-  <div style="font-size:28px; flex-shrink:0;">☕</div>
-  <div style="flex:1;">
-    <div style="font-weight:bold; font-size:13px; margin-bottom:2px;">Bir kahve ısmarlar mısın?</div>
-    <div style="font-size:11px; opacity:0.85;">Uygulamayı beğendiysen destek olabilirsin 🙏</div>
-    <a href="https://www.shopier.com/bikahveismarlaa/48099937" target="_blank" style="text-decoration:none;">
-      <button style="background:white; color:#5d4037; font-size:11px; padding:4px 10px; border-radius:8px; margin-top:5px; width:auto; font-weight:bold;">☕ Ismarla</button>
-    </a>
-  </div>
-  <button onclick="document.getElementById('kahve-hatirlatici').classList.add('hidden'); sessionStorage.setItem('kahve_gosterildi', '1');" style="background:rgba(255,255,255,0.2); color:white; width:24px; height:24px; border-radius:50%; font-size:14px; padding:0; line-height:24px; flex-shrink:0;">✕</button>
-</div>
-
-<!-- Kullanıcı cevap bildirimi popup -->
-<!-- Genel bilgi popup -->
-<div id="bilgi-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1e1b2e; color:white; border-radius:15px; padding:18px; width:85%; max-width:340px; z-index:10001; box-shadow:0 8px 30px rgba(0,0,0,0.6); text-align:center; border:1px solid rgba(255,255,255,0.1);">
-  <div id="bilgi-popup-ikon" style="font-size:28px; margin-bottom:8px;"></div>
-  <div id="bilgi-popup-baslik" style="font-weight:bold; font-size:14px; margin-bottom:8px;"></div>
-  <div id="bilgi-popup-metin" style="font-size:12px; opacity:0.85; line-height:1.6; margin-bottom:14px;"></div>
-  <button id="bilgi-popup-tamam" style="background:#6366f1; width:100%; border-radius:8px;">Tamam</button>
-</div>
-
-<!-- Onay popup (confirm yerine) -->
-<div id="onay-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1e1b2e; color:white; border-radius:15px; padding:18px; width:85%; max-width:340px; z-index:10001; box-shadow:0 8px 30px rgba(0,0,0,0.6); text-align:center; border:1px solid rgba(255,255,255,0.1);">
-  <div id="onay-popup-ikon" style="font-size:28px; margin-bottom:8px;"></div>
-  <div id="onay-popup-metin" style="font-size:13px; margin-bottom:16px; line-height:1.5;"></div>
-  <div style="display:flex; gap:8px;">
-    <button id="onay-popup-iptal" style="flex:1; background:rgba(255,255,255,0.15); border-radius:8px;">İptal</button>
-    <button id="onay-popup-evet" style="flex:1; background:#ef4444; border-radius:8px;">Evet, Sil</button>
-  </div>
-</div>
-
-<div id="kullanici-cevap-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5); text-align:center;">
-  <div style="font-size:24px; margin-bottom:6px;">📬</div>
-  <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#10b981;">Admin Cevapladı</div>
-  <div id="kullanici-cevap-metin" style="font-size:13px; padding:10px; background:#f5f5f5; border-radius:8px; margin-bottom:12px; text-align:left;"></div>
-  <button id="kullanici-cevap-tamam" style="background:#10b981; width:100%;">Tamam</button>
-</div>
-
-<!-- Admin mesaj popup -->
-<div id="admin-mesaj-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5);">
-  <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#ef4444;">📩 Yeni Mesaj!</div>
-  <div id="popup-mesaj-icerik" style="font-size:12px; margin-bottom:10px; padding:8px; background:#f5f5f5; border-radius:8px;"></div>
-  <textarea id="popup-cevap-input" placeholder="Cevabınızı yazın..." style="width:100%; height:60px; font-size:12px; border:1px solid #ddd; border-radius:8px; padding:6px; box-sizing:border-box; color:black; resize:none;"></textarea>
-  <div style="display:flex; gap:6px; margin-top:8px;">
-    <button id="popup-cevap-gonder" style="flex:1; background:#10b981; font-size:12px; padding:6px;">✓ Cevap Gönder</button>
-    <button onclick="document.getElementById('admin-mesaj-popup').classList.add('hidden'); localStorage.setItem('son_okunan_mesaj', Date.now());" style="flex:1; background:#6b7280; font-size:12px; padding:6px;">Şimdi Değil</button>
-  </div>
-</div>
-
 <div id="kullanici-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.4); border-radius:10px; text-align:left; max-height:300px; overflow-y:auto; z-index:1001;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">👥 KULLANICI YÖNETİMİ</div>
@@ -832,6 +782,62 @@ body.masaustu-modu .header-icons { display: none; }
 </div>
 </div><!-- masaustu-ana-alan-wrapper -->
 
+</div>
+
+<!-- DÜZELTME: Aşağıdaki genel/kayan pop-up'lar (kahve hatırlatıcı, bilgi/onay pop-up'ları, admin
+     mesaj bildirimleri) daha önce .app-container'ın İÇİNDEYDİ. Masaüstü modunda
+     "body.masaustu-modu .container.app-container { display:none !important; }" kuralı devreye
+     girince, bu pop-up'lar 'hidden' class'ı kaldırılsa bile gizli ebeveynleri yüzünden hiç
+     görünmüyordu (ör. masaüstünde bir tekrarlayan işlemi silince/durdurunca onay/bilgi pop-up'ı
+     ekrana gelmiyordu). Bu yüzden hepsini .app-container'ın DIŞINA, app-screen ile aynı seviyeye
+     taşıdık; artık hem mobilde hem masaüstünde her zaman görünür oluyorlar. -->
+<!-- Kahve hatırlatıcı popup -->
+<div id="kahve-hatirlatici" class="hidden" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#5d4037,#a1887f); color:white; border-radius:16px; padding:12px 16px; width:85%; max-width:300px; z-index:9998; box-shadow:0 4px 20px rgba(0,0,0,0.4); display:flex; align-items:center; gap:10px;">
+  <div style="font-size:28px; flex-shrink:0;">☕</div>
+  <div style="flex:1;">
+    <div style="font-weight:bold; font-size:13px; margin-bottom:2px;">Bir kahve ısmarlar mısın?</div>
+    <div style="font-size:11px; opacity:0.85;">Uygulamayı beğendiysen destek olabilirsin 🙏</div>
+    <a href="https://www.shopier.com/bikahveismarlaa/48099937" target="_blank" style="text-decoration:none;">
+      <button style="background:white; color:#5d4037; font-size:11px; padding:4px 10px; border-radius:8px; margin-top:5px; width:auto; font-weight:bold;">☕ Ismarla</button>
+    </a>
+  </div>
+  <button onclick="document.getElementById('kahve-hatirlatici').classList.add('hidden'); sessionStorage.setItem('kahve_gosterildi', '1');" style="background:rgba(255,255,255,0.2); color:white; width:24px; height:24px; border-radius:50%; font-size:14px; padding:0; line-height:24px; flex-shrink:0;">✕</button>
+</div>
+
+<!-- Genel bilgi popup -->
+<div id="bilgi-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1e1b2e; color:white; border-radius:15px; padding:18px; width:85%; max-width:340px; z-index:10001; box-shadow:0 8px 30px rgba(0,0,0,0.6); text-align:center; border:1px solid rgba(255,255,255,0.1);">
+  <div id="bilgi-popup-ikon" style="font-size:28px; margin-bottom:8px;"></div>
+  <div id="bilgi-popup-baslik" style="font-weight:bold; font-size:14px; margin-bottom:8px;"></div>
+  <div id="bilgi-popup-metin" style="font-size:12px; opacity:0.85; line-height:1.6; margin-bottom:14px;"></div>
+  <button id="bilgi-popup-tamam" style="background:#6366f1; width:100%; border-radius:8px;">Tamam</button>
+</div>
+
+<!-- Onay popup (confirm yerine) -->
+<div id="onay-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1e1b2e; color:white; border-radius:15px; padding:18px; width:85%; max-width:340px; z-index:10001; box-shadow:0 8px 30px rgba(0,0,0,0.6); text-align:center; border:1px solid rgba(255,255,255,0.1);">
+  <div id="onay-popup-ikon" style="font-size:28px; margin-bottom:8px;"></div>
+  <div id="onay-popup-metin" style="font-size:13px; margin-bottom:16px; line-height:1.5;"></div>
+  <div style="display:flex; gap:8px;">
+    <button id="onay-popup-iptal" style="flex:1; background:rgba(255,255,255,0.15); border-radius:8px;">İptal</button>
+    <button id="onay-popup-evet" style="flex:1; background:#ef4444; border-radius:8px;">Evet, Sil</button>
+  </div>
+</div>
+
+<div id="kullanici-cevap-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5); text-align:center;">
+  <div style="font-size:24px; margin-bottom:6px;">📬</div>
+  <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#10b981;">Admin Cevapladı</div>
+  <div id="kullanici-cevap-metin" style="font-size:13px; padding:10px; background:#f5f5f5; border-radius:8px; margin-bottom:12px; text-align:left;"></div>
+  <button id="kullanici-cevap-tamam" style="background:#10b981; width:100%;">Tamam</button>
+</div>
+
+<!-- Admin mesaj popup -->
+<div id="admin-mesaj-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+  <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#ef4444;">📩 Yeni Mesaj!</div>
+  <div id="popup-mesaj-icerik" style="font-size:12px; margin-bottom:10px; padding:8px; background:#f5f5f5; border-radius:8px;"></div>
+  <textarea id="popup-cevap-input" placeholder="Cevabınızı yazın..." style="width:100%; height:60px; font-size:12px; border:1px solid #ddd; border-radius:8px; padding:6px; box-sizing:border-box; color:black; resize:none;"></textarea>
+  <div style="display:flex; gap:6px; margin-top:8px;">
+    <button id="popup-cevap-gonder" style="flex:1; background:#10b981; font-size:12px; padding:6px;">✓ Cevap Gönder</button>
+    <button onclick="document.getElementById('admin-mesaj-popup').classList.add('hidden'); localStorage.setItem('son_okunan_mesaj', Date.now());" style="flex:1; background:#6b7280; font-size:12px; padding:6px;">Şimdi Değil</button>
+  </div>
 </div>
 
 <script type="module">
