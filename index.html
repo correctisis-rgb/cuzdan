@@ -3163,8 +3163,11 @@ document.getElementById('yeni-sifre-tekrar').value = '';
 } catch (e) { hataGoster(e); }
 };
 
-document.getElementById('btn-onceki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() - 1); verileriGetir(auth.currentUser.uid); };
-document.getElementById('btn-sonraki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() + 1); verileriGetir(auth.currentUser.uid); };
+// DÜZELTME: TV modunda auth.currentUser.uid, TV'nin kendi anonim kimliğidir — gerçek hesap
+// sahibinin verisiyle eşleşmez. Ay değiştirirken bu yüzden hiç işlem gelmiyordu. TV modundaysa
+// EFEKTIF_UID (gerçek hesap sahibi), değilse normal giriş yapan kullanıcının uid'i kullanılıyor.
+document.getElementById('btn-onceki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() - 1); verileriGetir(TV_MODU ? EFEKTIF_UID : auth.currentUser.uid); };
+document.getElementById('btn-sonraki').onclick = () => { seciliTarih.setMonth(seciliTarih.getMonth() + 1); verileriGetir(TV_MODU ? EFEKTIF_UID : auth.currentUser.uid); };
 
 function verileriGetir(uid) {
 document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
