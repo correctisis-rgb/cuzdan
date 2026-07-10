@@ -1822,7 +1822,7 @@ function masaUstuSidebarKur() {
       ` : ''}
     </div>
     <div id="mas-sidebar-footer">
-      <div class="user-name">${auth.currentUser ? auth.currentUser.email : ''}</div>
+      <div class="user-name">${TV_MODU ? (EFEKTIF_EMAIL || 'Hesap Sahibi') : (auth.currentUser && auth.currentUser.email ? auth.currentUser.email : '')}</div>
       <div class="user-role">${isAdmin ? 'Admin' : 'Kullanıcı'}</div>
       <button class="mas-logout-btn" id="mas-logout-btn">⇠ &nbsp;Çıkış Yap</button>
     </div>
@@ -2735,20 +2735,29 @@ async function kodOnayla(kod) {
 }
 
 // ---- Telefon tarafı: Bağlı Cihazlar paneli ----
+// DÜZELTME: Panel farklı yerlerden (mobil menü, masaüstü kenar çubuğu) art arda hızlıca
+// açılıp kapanırsa, ESKİ bir çağrının geç gelen zaman aşımı/sonucu, YENİ bir çağrının az önce
+// başarıyla gösterdiği listenin üzerine yazıp onu tekrar "Yükleniyor..." veya "zaman aşımı"
+// durumuna döndürebiliyordu. Her çağrıya bir sıra numarası veriyoruz; sadece EN GÜNCEL çağrı
+// ekranı güncelleyebiliyor.
+let _bagliCihazIstekNo = 0;
 async function bagliCihazlarGoster() {
+  const buIstek = ++_bagliCihazIstekNo;
   const kutu = document.getElementById('bagli-cihazlar-listesi');
   kutu.innerHTML = 'Yükleniyor...';
-  // DÜZELTME: Herhangi bir sebeple (ağ sorunu, beklenmedik gecikme) sorgu hiç sonuçlanmazsa
-  // "Yükleniyor..." sonsuza kadar ekranda kalmasın diye 10 saniyelik bir zaman aşımı ekledik.
+  // Herhangi bir sebeple (ağ sorunu, beklenmedik gecikme) sorgu hiç sonuçlanmazsa
+  // "Yükleniyor..." sonsuza kadar ekranda kalmasın diye 8 saniyelik bir zaman aşımı ekledik.
   let zamanAsimiOldu = false;
   const zamanAsimiId = setTimeout(() => {
+    if (buIstek !== _bagliCihazIstekNo) return; // daha yeni bir çağrı var, bu eskisi artık geçersiz
     zamanAsimiOldu = true;
     kutu.innerHTML = '<div style="opacity:0.8; padding:8px;">⏱️ Yükleme zaman aşımına uğradı.<br><button id="btn-bagli-cihaz-yeniden-dene" style="background:#6366f1; margin-top:6px; width:auto; padding:5px 12px;">🔄 Yeniden Dene</button></div>';
     const tekrarBtn = document.getElementById('btn-bagli-cihaz-yeniden-dene');
     if (tekrarBtn) tekrarBtn.onclick = bagliCihazlarGoster;
-  }, 10000);
+  }, 8000);
   try {
     const snap = await getDocs(query(collection(db, 'yetkili_cihazlar'), where('sahipUid', '==', auth.currentUser.uid)));
+    if (buIstek !== _bagliCihazIstekNo) return; // daha yeni bir çağrı var, bu sonucu yok say
     clearTimeout(zamanAsimiId);
     if (zamanAsimiOldu) return; // zaten zaman aşımı ekranı gösterildi, üzerine yazma
     let html = '';
@@ -2763,6 +2772,7 @@ async function bagliCihazlarGoster() {
     });
     kutu.innerHTML = html || '<div style="opacity:0.6; padding:8px;">Bağlı cihaz yok. TV\'de "TV / Bilgisayarda QR ile Aç" seçip QR kodu buradan okutabilirsin.</div>';
   } catch (e) {
+    if (buIstek !== _bagliCihazIstekNo) return; // daha yeni bir çağrı var, bu hatayı yok say
     clearTimeout(zamanAsimiId);
     if (zamanAsimiOldu) return;
     kutu.innerHTML = `<div style="opacity:0.8; padding:8px;">Hata: ${escapeHTML(e.message)}<br><button id="btn-bagli-cihaz-yeniden-dene" style="background:#6366f1; margin-top:6px; width:auto; padding:5px 12px;">🔄 Yeniden Dene</button></div>`;
