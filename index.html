@@ -1694,7 +1694,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); if (_bagliCihazUnsub) { _bagliCihazUnsub(); _bagliCihazUnsub = null; } };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
 
 document.getElementById('btn-duyuru-ac').onclick = () => { 
 document.getElementById('bildirim-badge').style.display = 'none';
@@ -2537,12 +2537,16 @@ async function tvKodUret() {
   document.getElementById('tv-qr-render').innerHTML = '';
   document.getElementById('tv-qr-kod-metin').innerText = '';
   try {
-    let anonUid = localStorage.getItem('tv_anon_uid_bekleyen');
-    if (!auth.currentUser || !auth.currentUser.isAnonymous) {
+    // Kalıcı cihaz UID'si - her seferinde aynı kalır, aynı Firestore dokümanını kullanır
+    let anonUid = localStorage.getItem('tv_cihaz_uid');
+    if (!anonUid) {
       const cred = await signInAnonymously(auth);
       anonUid = cred.user.uid;
-    } else {
-      anonUid = auth.currentUser.uid;
+      localStorage.setItem('tv_cihaz_uid', anonUid);
+    } else if (!auth.currentUser || !auth.currentUser.isAnonymous) {
+      const cred = await signInAnonymously(auth);
+      // Eski uid'yi koru, yeni anonymous uid farklı olabilir ama biz eski dokümanı kullanacağız
+      // Firestore dokümanı tv_cihaz_uid ile eşleşiyor, auth uid ile değil
     }
     const kod = _tvRastgeleKod();
     const simdi = Date.now();
@@ -2556,6 +2560,7 @@ async function tvKodUret() {
       new QRCode(document.getElementById('tv-qr-render'), { text: kod, width: 190, height: 190, colorDark: '#1c2137', colorLight: '#ffffff' });
     }
     _tvKodDinle(kod, anonUid);
+    _tvYetkiIzle(anonUid);
   } catch (e) {
     document.getElementById('tv-qr-durum').innerText = 'Hata: ' + e.message;
   } finally {
@@ -2590,11 +2595,9 @@ function _tvYetkiIzle(anonUid) {
       if (TV_MODU) { alert('Bu cihazın erişimi sonlandırıldı.'); tvOturumuTemizle(); ekranGoster('auth-screen'); return; }
       return;
     }
+    if (TV_MODU) return; // zaten aktif, tekrar başlatma
     const data = snap.data();
     EFEKTIF_UID = data.sahipUid;
-    // DÜZELTME: sahipEmail alanı (çok eski/elle oluşturulmuş test kayıtlarında) boşsa
-    // ekranda literal "null (TV görüntüleme)" yazıyordu. Artık böyle bir durumda anlamlı bir
-    // yedek metin gösteriliyor.
     EFEKTIF_EMAIL = data.sahipEmail || null;
     TV_MODU = true;
     tvModuUygula();
@@ -2609,14 +2612,17 @@ function tvModuUygula() {
   document.getElementById('admin-alan').innerHTML = '';
   ekranGoster('app-screen');
   document.getElementById('user-email').innerText = (EFEKTIF_EMAIL || 'Hesap Sahibi') + ' (TV görüntüleme)';
-  gorunumUygula('masaustu'); // TV geniş ekranlı olduğu için otomatik masaüstü düzeni uygulanır
-  // Masaüstü kenar çubuğundaki yazma işlemi yapan menüleri TV modunda gizle (sadece görüntüleme kalsın)
+  gorunumUygula('masaustu');
   ['mas-nav-taksit', 'mas-nav-kart', 'mas-nav-bildirim', 'mas-nav-sifre', 'mas-nav-kahve', 'mas-nav-kullanici'].forEach(id => {
     const el = document.getElementById(id); if (el) el.style.display = 'none';
   });
-  kartAyarlariYukle(EFEKTIF_UID);
-  kullaniciAyarlariYukle(EFEKTIF_UID);
-  verileriGetir(EFEKTIF_UID);
+  // Üç veri yüklemesini paralel başlat
+  Promise.all([
+    kartAyarlariYukle(EFEKTIF_UID),
+    kullaniciAyarlariYukle(EFEKTIF_UID),
+  ]).then(() => {
+    verileriGetir(EFEKTIF_UID);
+  });
   duyurulariDinle();
   splashGizle();
 }
@@ -2634,12 +2640,11 @@ function tvOturumuTemizle() {
 }
 
 document.getElementById('btn-tv-modu-cikis').onclick = async () => {
-  const anonUid = auth.currentUser ? auth.currentUser.uid : null;
-  // DÜZELTME: Bu güncelleme daha önce Firestore kurallarına takılıp sessizce başarısız oluyordu
-  // (sadece hesap sahibi güncelleyebiliyordu, TV'nin kendisi değil) — TV "çıkış yaptım" görünse de
-  // veritabanındaki kayıt hep "aktif" kalıyordu. Kural artık TV'nin sadece kendi kaydını pasife
-  // çekmesine izin veriyor (bkz. güncellenmiş firestore.rules). Hata olursa artık konsola logluyoruz.
-  if (anonUid) { try { await updateDoc(doc(db, 'yetkili_cihazlar', anonUid), { aktif: false }); } catch (e) { console.log('TV kendi çıkışını Firestore\'a yazamadı:', e.message); } }
+  const anonUid = localStorage.getItem('tv_cihaz_uid');
+  if (anonUid) {
+    try { await updateDoc(doc(db, 'yetkili_cihazlar', anonUid), { aktif: false }); }
+    catch (e) { console.log('TV çıkış yazma hatası:', e.message); }
+  }
   tvOturumuTemizle();
   ekranGoster('auth-screen');
 };
@@ -2726,10 +2731,13 @@ async function kodOnayla(kod) {
     const data = snap.data();
     if (data.durum !== 'bekliyor') { bilgiGoster('⚠️', 'Kod Kullanılmış', 'Bu kod zaten kullanılmış.', '#f59e0b'); return; }
     if (Date.now() > data.sonGecerlilik) { bilgiGoster('⏱️', 'Kodun Süresi Dolmuş', 'TV ekranından yeni kod üretin.', '#f59e0b'); return; }
-    await setDoc(doc(db, 'yetkili_cihazlar', data.tvUid), {
-      sahipUid: auth.currentUser.uid, sahipEmail: auth.currentUser.email, tarih: Date.now(), aktif: true, cihazAdi: 'TV / Ekran'
-    });
-    await updateDoc(ref, { durum: 'onaylandi', sahipUid: auth.currentUser.uid, sahipEmail: auth.currentUser.email });
+    // İki yazma işlemini paralel yap - sıralı await yerine Promise.all
+    await Promise.all([
+      setDoc(doc(db, 'yetkili_cihazlar', data.tvUid), {
+        sahipUid: auth.currentUser.uid, sahipEmail: auth.currentUser.email, tarih: Date.now(), aktif: true, cihazAdi: 'TV / Ekran'
+      }),
+      updateDoc(ref, { durum: 'onaylandi', sahipUid: auth.currentUser.uid, sahipEmail: auth.currentUser.email })
+    ]);
     bilgiGoster('✅', 'Bağlantı Kuruldu', 'TV ekranında oturum açıldı!', '#10b981');
   } catch (e) { bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
 }
@@ -2741,34 +2749,44 @@ async function kodOnayla(kod) {
 // durumuna döndürebiliyordu. Her çağrıya bir sıra numarası veriyoruz; sadece EN GÜNCEL çağrı
 // ekranı güncelleyebiliyor.
 let _bagliCihazIstekNo = 0;
-let _bagliCihazUnsub = null;
-
-function bagliCihazlarGoster() {
+async function bagliCihazlarGoster() {
+  const buIstek = ++_bagliCihazIstekNo;
   const kutu = document.getElementById('bagli-cihazlar-listesi');
-  if (!kutu) return;
-
-  // Önceki listener'ı durdur
-  if (_bagliCihazUnsub) { _bagliCihazUnsub(); _bagliCihazUnsub = null; }
-
-  kutu.innerHTML = '<div style="opacity:0.6;padding:6px;">⏳ Yükleniyor...</div>';
-
-  const q = query(collection(db, 'yetkili_cihazlar'), where('sahipUid', '==', auth.currentUser.uid));
-
-  _bagliCihazUnsub = onSnapshot(q, (snap) => {
+  kutu.innerHTML = 'Yükleniyor...';
+  // Herhangi bir sebeple (ağ sorunu, beklenmedik gecikme) sorgu hiç sonuçlanmazsa
+  // "Yükleniyor..." sonsuza kadar ekranda kalmasın diye 8 saniyelik bir zaman aşımı ekledik.
+  let zamanAsimiOldu = false;
+  const zamanAsimiId = setTimeout(() => {
+    if (buIstek !== _bagliCihazIstekNo) return; // daha yeni bir çağrı var, bu eskisi artık geçersiz
+    zamanAsimiOldu = true;
+    kutu.innerHTML = '<div style="opacity:0.8; padding:8px;">⏱️ Yükleme zaman aşımına uğradı.<br><button id="btn-bagli-cihaz-yeniden-dene" style="background:#6366f1; margin-top:6px; width:auto; padding:5px 12px;">🔄 Yeniden Dene</button></div>';
+    const tekrarBtn = document.getElementById('btn-bagli-cihaz-yeniden-dene');
+    if (tekrarBtn) tekrarBtn.onclick = bagliCihazlarGoster;
+  }, 8000);
+  try {
+    const snap = await getDocs(query(collection(db, 'yetkili_cihazlar'), where('sahipUid', '==', auth.currentUser.uid)));
+    if (buIstek !== _bagliCihazIstekNo) return; // daha yeni bir çağrı var, bu sonucu yok say
+    clearTimeout(zamanAsimiId);
+    if (zamanAsimiOldu) return; // zaten zaman aşımı ekranı gösterildi, üzerine yazma
     let html = '';
     snap.forEach(d => {
       const data = d.data();
       if (!data.aktif) return;
       const tarih = new Date(data.tarih).toLocaleString('tr-TR');
-      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.15);">
-        <div><div style="font-weight:bold;">🖥️ ${escapeHTML(data.cihazAdi || 'Bilinmeyen Cihaz')}</div><div style="opacity:0.6;font-size:10px;">Bağlanma: ${tarih}</div></div>
-        <button onclick="window.cihazCikisYaptir('${d.id}')" style="background:#ef4444;width:auto;padding:4px 10px;font-size:11px;">Çıkış Yaptır</button>
+      html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.15);">
+        <div><div style="font-weight:bold;">🖥️ ${escapeHTML(data.cihazAdi || 'Bilinmeyen Cihaz')}</div><div style="opacity:0.6; font-size:10px;">Bağlanma: ${tarih}</div></div>
+        <button onclick="window.cihazCikisYaptir('${d.id}')" style="background:#ef4444; width:auto; padding:4px 10px; font-size:11px;">Çıkış Yaptır</button>
       </div>`;
     });
-    kutu.innerHTML = html || '<div style="opacity:0.6;padding:8px;">Bağlı cihaz yok.<br><span style="font-size:10px;">TV\'de "TV / Bilgisayarda QR ile Aç" seçip kodu okut.</span></div>';
-  }, (e) => {
-    kutu.innerHTML = `<div style="opacity:0.8;padding:8px;">❌ Hata: ${escapeHTML(e.message)}<br><button onclick="bagliCihazlarGoster()" style="background:#6366f1;margin-top:6px;width:auto;padding:5px 12px;">🔄 Yeniden Dene</button></div>`;
-  });
+    kutu.innerHTML = html || '<div style="opacity:0.6; padding:8px;">Bağlı cihaz yok. TV\'de "TV / Bilgisayarda QR ile Aç" seçip QR kodu buradan okutabilirsin.</div>';
+  } catch (e) {
+    if (buIstek !== _bagliCihazIstekNo) return; // daha yeni bir çağrı var, bu hatayı yok say
+    clearTimeout(zamanAsimiId);
+    if (zamanAsimiOldu) return;
+    kutu.innerHTML = `<div style="opacity:0.8; padding:8px;">Hata: ${escapeHTML(e.message)}<br><button id="btn-bagli-cihaz-yeniden-dene" style="background:#6366f1; margin-top:6px; width:auto; padding:5px 12px;">🔄 Yeniden Dene</button></div>`;
+    const tekrarBtn = document.getElementById('btn-bagli-cihaz-yeniden-dene');
+    if (tekrarBtn) tekrarBtn.onclick = bagliCihazlarGoster;
+  }
 }
 window.cihazCikisYaptir = async (anonUid) => {
   onayGoster('🔌', 'Bu cihazın erişimini sonlandırmak istediğine emin misin? Cihaz anında dışarı atılacak.', async () => {
