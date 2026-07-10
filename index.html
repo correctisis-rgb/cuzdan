@@ -1053,7 +1053,16 @@ async function userKaydet(user) {
       email: user.email,
       sonGiris: Date.now(),
       ilkKayit: ilkKayit
+    }).catch(e => {
+      // DÜZELTME: Bu yazma daha önce hatasız/sessizce başarısız olabiliyordu (ör. Realtime
+      // Database güvenlik kuralları izin vermiyorsa) — hiçbir uyarı olmadığı için admin panelindeki
+      // "Kullanıcı Yönetimi" listesi sadece yazma işlemi BAŞARILI olan kullanıcıları gösteriyordu,
+      // diğerleri hiç görünmüyordu. Artık böyle bir hata olursa konsola açıkça logluyoruz ki
+      // Realtime Database kurallarında "users/$uid" yoluna yazma izni eksikse fark edilebilsin.
+      console.error('userKaydet: Realtime Database\'e yazılamadı (users/' + user.uid + '):', e.message);
     });
+  }, (e) => {
+    console.error('userKaydet: Realtime Database okunamadı (users/' + user.uid + '):', e.message);
   }, { onlyOnce: true });
 }
 
@@ -1685,7 +1694,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
 
 document.getElementById('btn-duyuru-ac').onclick = () => { 
 document.getElementById('bildirim-badge').style.display = 'none';
@@ -1801,6 +1810,7 @@ function masaUstuSidebarKur() {
       <button class="mas-nav-item" id="mas-nav-excel">📊 &nbsp;Excel'e Aktar</button>
       <button class="mas-nav-item" id="mas-nav-pdf">📄 &nbsp;PDF Rapor İndir</button>
       <div class="mas-group-label">Hesap</div>
+      <button class="mas-nav-item" id="mas-nav-bagli-cihazlar">🖥️ &nbsp;Bağlı Cihazlar</button>
       <button class="mas-nav-item" id="mas-nav-bildirim">🔔 &nbsp;Sorun Bildir</button>
       <button class="mas-nav-item" id="mas-nav-sifre">🔒 &nbsp;Şifre Değiştir</button>
       <button class="mas-nav-item" id="mas-nav-kahve">☕ &nbsp;Kahve Ismarla</button>
@@ -1979,6 +1989,11 @@ function masaUstuSidebarKur() {
   // kesim tarihleri masaüstünde panel açılınca hiç listelenmiyordu (veri Firestore'da
   // duruyordu, sadece ekrana hiç basılmıyordu).
   document.getElementById('mas-nav-kart').addEventListener('click', () => { if (typeof kartAyarListeGoster === 'function') kartAyarListeGoster(); }, true);
+  // YENİ: Masaüstünde "Bağlı Cihazlar" daha önce hiç yoktu (sadece mobil menüde vardı) — panel
+  // HTML'i ve verisi hazırdı ama açacak bir menü öğesi eksikti, bu yüzden masaüstünden hiç
+  // erişilemiyordu. panelAc ile diğer panellerle aynı şekilde bağlandı.
+  panelAc(document.getElementById('mas-nav-bagli-cihazlar'), 'bagli-cihazlar-panel', '🖥️ Bağlı Cihazlar');
+  document.getElementById('mas-nav-bagli-cihazlar').addEventListener('click', () => { if (typeof bagliCihazlarGoster === 'function') bagliCihazlarGoster(); }, true);
   panelAc(document.getElementById('mas-nav-bildirim'), 'bildirim-panel', '🔔 Sorun Bildir');
   panelAc(document.getElementById('mas-nav-sifre'), 'sifre-panel', '🔒 Şifre Değiştir');
   panelAc(document.getElementById('mas-nav-kahve'), 'kahve-panel', '☕ Kahve Ismarla');
@@ -2361,6 +2376,13 @@ function oturumTimerSifirla() {
   clearTimeout(oturumTimer);
   oturumTimer = setTimeout(() => {
     if (auth.currentUser) {
+      // DÜZELTME: Oturum zaman aşımında sadece signOut yapılıyordu; QR tarayıcı popup'ı açık
+      // kalmışsa kamera arka planda SONSUZA KADAR çalışmaya devam ediyordu. Kullanıcı daha sonra
+      // tekrar giriş yaptığında bu "ölü" tarama döngüsü hâlâ aktifti; çevrede herhangi bir QR benzeri
+      // görüntü (ör. TV'deki eski kod) yakalanırsa, kullanıcı hiç QR okutmamış olsa bile otomatik
+      // olarak yeni bir cihaz onayı gönderiyor, "Bağlı Cihazlar" listesini şişiriyor ve sürekli açık
+      // kalan kamera genel bir yavaşlığa yol açıyordu. Artık zaman aşımında kamera da kesin olarak kapatılıyor.
+      if (typeof qrOkutKapat === 'function') qrOkutKapat();
       if(auth.currentUser) dbSet(dbRef(rtdb, 'presence/' + auth.currentUser.uid), null);
       signOut(auth);
       alert("⏱️ 15 dakika işlem yapılmadığı için oturumunuz kapatıldı.");
@@ -2570,7 +2592,10 @@ function _tvYetkiIzle(anonUid) {
     }
     const data = snap.data();
     EFEKTIF_UID = data.sahipUid;
-    EFEKTIF_EMAIL = data.sahipEmail;
+    // DÜZELTME: sahipEmail alanı (çok eski/elle oluşturulmuş test kayıtlarında) boşsa
+    // ekranda literal "null (TV görüntüleme)" yazıyordu. Artık böyle bir durumda anlamlı bir
+    // yedek metin gösteriliyor.
+    EFEKTIF_EMAIL = data.sahipEmail || null;
     TV_MODU = true;
     tvModuUygula();
   });
@@ -2583,7 +2608,7 @@ function tvModuUygula() {
   ['btn-duyuru-ac', 'profil-baslik'].forEach(id => { const el = document.getElementById(id); if (el) { el.style.visibility = 'hidden'; el.style.pointerEvents = 'none'; } });
   document.getElementById('admin-alan').innerHTML = '';
   ekranGoster('app-screen');
-  document.getElementById('user-email').innerText = EFEKTIF_EMAIL + ' (TV görüntüleme)';
+  document.getElementById('user-email').innerText = (EFEKTIF_EMAIL || 'Hesap Sahibi') + ' (TV görüntüleme)';
   gorunumUygula('masaustu'); // TV geniş ekranlı olduğu için otomatik masaüstü düzeni uygulanır
   // Masaüstü kenar çubuğundaki yazma işlemi yapan menüleri TV modunda gizle (sadece görüntüleme kalsın)
   ['mas-nav-taksit', 'mas-nav-kart', 'mas-nav-bildirim', 'mas-nav-sifre', 'mas-nav-kahve', 'mas-nav-kullanici'].forEach(id => {
@@ -2630,7 +2655,10 @@ async function qrOkutBaslat() {
   durumBaslangic.style.fontWeight = '';
   _qrOkutAktif = true;
   try {
-    _qrOkutStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    // DÜZELTME (HIZLANDIRMA): facingMode dışında kısıt belirtilmediğinde tarayıcı çoğu zaman
+    // kameranın en yüksek çözünürlüğünü açıyor (bazı telefonlarda 3000px+); hem kamera açılışını
+    // hem de her karedeki taramayı yavaşlatıyordu. QR okumak için 640px genişlik fazlasıyla yeterli.
+    _qrOkutStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } } });
     const video = document.getElementById('qr-okut-video');
     video.srcObject = _qrOkutStream;
     await video.play();
@@ -2645,8 +2673,17 @@ function _qrOkutDongu() {
   const video = document.getElementById('qr-okut-video');
   const canvas = document.getElementById('qr-okut-canvas');
   if (video.readyState === video.HAVE_ENOUGH_DATA && window.jsQR) {
-    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
+    // DÜZELTME (HIZLANDIRMA): Önceden her karede video'nun TAM çözünürlüğü (modern telefonlarda
+    // genelde 1920x1080+) canvas'a çizilip jsQR ile taranıyordu. jsQR'ın taradığı piksel sayısı
+    // arttıkça işlem süresi de katlanarak artıyor — bu da taramayı "önceden hızlıydı, şimdi yavaş"
+    // hissettiren ana sebeplerden biri. QR kodu okumak için bu kadar yüksek çözünürlüğe gerek yok;
+    // görüntüyü en fazla 480px kenara küçültüp taramak doğruluğu neredeyse hiç etkilemeden
+    // her kareyi kat kat daha hızlı işliyor.
+    const MAKS_KENAR = 480;
+    const olcek = Math.min(1, MAKS_KENAR / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.round(video.videoWidth * olcek);
+    canvas.height = Math.round(video.videoHeight * olcek);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const kod = window.jsQR(img.data, img.width, img.height);
@@ -3022,7 +3059,7 @@ document.getElementById('btn-tekrar-dogrulama').onclick = async () => {
     hataGoster(e);
   }
 };
-document.getElementById('btn-cikis').onclick = () => { kapatPaneller(); if(auth.currentUser) { dbSet(dbRef(rtdb, 'presence/' + auth.currentUser.uid), null); } signOut(auth); };
+document.getElementById('btn-cikis').onclick = () => { kapatPaneller(); if (typeof qrOkutKapat === 'function') qrOkutKapat(); if(auth.currentUser) { dbSet(dbRef(rtdb, 'presence/' + auth.currentUser.uid), null); } signOut(auth); };
 document.getElementById('profil-baslik').onclick = () => { kapatPaneller(); document.getElementById('profil-menu').classList.toggle('hidden'); };
 document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); };
 document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); };
