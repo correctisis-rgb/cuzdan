@@ -2387,7 +2387,7 @@ function oturumTimerSifirla() {
       if (typeof qrOkutKapat === 'function') qrOkutKapat();
       if(auth.currentUser) dbSet(dbRef(rtdb, 'presence/' + auth.currentUser.uid), null);
       signOut(auth);
-      alert("⏱️ 15 dakika işlem yapılmadığı için oturumunuz kapatıldı.");
+      bilgiGoster('⏱️', 'Oturum Zaman Aşımı', '15 dakika boyunca herhangi bir işlem yapılmadığı için oturumunuz güvenlik amacıyla otomatik olarak kapatıldı. Devam etmek için tekrar giriş yapabilirsiniz.', '#f59e0b');
     }
   }, TIMEOUT_SURE);
 }
@@ -2594,7 +2594,7 @@ function _tvYetkiIzle(anonUid) {
   if (_tvYetkiUnsub) { _tvYetkiUnsub(); _tvYetkiUnsub = null; }
   _tvYetkiUnsub = onSnapshot(doc(db, 'yetkili_cihazlar', anonUid), (snap) => {
     if (!snap.exists() || snap.data().aktif !== true) {
-      if (TV_MODU) { alert('Bu cihazın erişimi sonlandırıldı.'); tvOturumuTemizle(); ekranGoster('auth-screen'); return; }
+      if (TV_MODU) { bilgiGoster('📴', 'Bağlantı Sonlandırıldı', 'Bu cihazın erişimi hesap sahibi tarafından sonlandırıldı.', '#ef4444'); tvOturumuTemizle(); ekranGoster('auth-screen'); return; }
       return;
     }
     if (TV_MODU) return; // zaten aktif, tekrar başlatma
