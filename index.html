@@ -1694,7 +1694,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); if (_bagliCihazUnsub) { _bagliCihazUnsub(); _bagliCihazUnsub = null; } };
 
 document.getElementById('btn-duyuru-ac').onclick = () => { 
 document.getElementById('bildirim-badge').style.display = 'none';
@@ -2741,44 +2741,34 @@ async function kodOnayla(kod) {
 // durumuna döndürebiliyordu. Her çağrıya bir sıra numarası veriyoruz; sadece EN GÜNCEL çağrı
 // ekranı güncelleyebiliyor.
 let _bagliCihazIstekNo = 0;
-async function bagliCihazlarGoster() {
-  const buIstek = ++_bagliCihazIstekNo;
+let _bagliCihazUnsub = null;
+
+function bagliCihazlarGoster() {
   const kutu = document.getElementById('bagli-cihazlar-listesi');
-  kutu.innerHTML = 'Yükleniyor...';
-  // Herhangi bir sebeple (ağ sorunu, beklenmedik gecikme) sorgu hiç sonuçlanmazsa
-  // "Yükleniyor..." sonsuza kadar ekranda kalmasın diye 8 saniyelik bir zaman aşımı ekledik.
-  let zamanAsimiOldu = false;
-  const zamanAsimiId = setTimeout(() => {
-    if (buIstek !== _bagliCihazIstekNo) return; // daha yeni bir çağrı var, bu eskisi artık geçersiz
-    zamanAsimiOldu = true;
-    kutu.innerHTML = '<div style="opacity:0.8; padding:8px;">⏱️ Yükleme zaman aşımına uğradı.<br><button id="btn-bagli-cihaz-yeniden-dene" style="background:#6366f1; margin-top:6px; width:auto; padding:5px 12px;">🔄 Yeniden Dene</button></div>';
-    const tekrarBtn = document.getElementById('btn-bagli-cihaz-yeniden-dene');
-    if (tekrarBtn) tekrarBtn.onclick = bagliCihazlarGoster;
-  }, 8000);
-  try {
-    const snap = await getDocs(query(collection(db, 'yetkili_cihazlar'), where('sahipUid', '==', auth.currentUser.uid)));
-    if (buIstek !== _bagliCihazIstekNo) return; // daha yeni bir çağrı var, bu sonucu yok say
-    clearTimeout(zamanAsimiId);
-    if (zamanAsimiOldu) return; // zaten zaman aşımı ekranı gösterildi, üzerine yazma
+  if (!kutu) return;
+
+  // Önceki listener'ı durdur
+  if (_bagliCihazUnsub) { _bagliCihazUnsub(); _bagliCihazUnsub = null; }
+
+  kutu.innerHTML = '<div style="opacity:0.6;padding:6px;">⏳ Yükleniyor...</div>';
+
+  const q = query(collection(db, 'yetkili_cihazlar'), where('sahipUid', '==', auth.currentUser.uid));
+
+  _bagliCihazUnsub = onSnapshot(q, (snap) => {
     let html = '';
     snap.forEach(d => {
       const data = d.data();
       if (!data.aktif) return;
       const tarih = new Date(data.tarih).toLocaleString('tr-TR');
-      html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.15);">
-        <div><div style="font-weight:bold;">🖥️ ${escapeHTML(data.cihazAdi || 'Bilinmeyen Cihaz')}</div><div style="opacity:0.6; font-size:10px;">Bağlanma: ${tarih}</div></div>
-        <button onclick="window.cihazCikisYaptir('${d.id}')" style="background:#ef4444; width:auto; padding:4px 10px; font-size:11px;">Çıkış Yaptır</button>
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.15);">
+        <div><div style="font-weight:bold;">🖥️ ${escapeHTML(data.cihazAdi || 'Bilinmeyen Cihaz')}</div><div style="opacity:0.6;font-size:10px;">Bağlanma: ${tarih}</div></div>
+        <button onclick="window.cihazCikisYaptir('${d.id}')" style="background:#ef4444;width:auto;padding:4px 10px;font-size:11px;">Çıkış Yaptır</button>
       </div>`;
     });
-    kutu.innerHTML = html || '<div style="opacity:0.6; padding:8px;">Bağlı cihaz yok. TV\'de "TV / Bilgisayarda QR ile Aç" seçip QR kodu buradan okutabilirsin.</div>';
-  } catch (e) {
-    if (buIstek !== _bagliCihazIstekNo) return; // daha yeni bir çağrı var, bu hatayı yok say
-    clearTimeout(zamanAsimiId);
-    if (zamanAsimiOldu) return;
-    kutu.innerHTML = `<div style="opacity:0.8; padding:8px;">Hata: ${escapeHTML(e.message)}<br><button id="btn-bagli-cihaz-yeniden-dene" style="background:#6366f1; margin-top:6px; width:auto; padding:5px 12px;">🔄 Yeniden Dene</button></div>`;
-    const tekrarBtn = document.getElementById('btn-bagli-cihaz-yeniden-dene');
-    if (tekrarBtn) tekrarBtn.onclick = bagliCihazlarGoster;
-  }
+    kutu.innerHTML = html || '<div style="opacity:0.6;padding:8px;">Bağlı cihaz yok.<br><span style="font-size:10px;">TV\'de "TV / Bilgisayarda QR ile Aç" seçip kodu okut.</span></div>';
+  }, (e) => {
+    kutu.innerHTML = `<div style="opacity:0.8;padding:8px;">❌ Hata: ${escapeHTML(e.message)}<br><button onclick="bagliCihazlarGoster()" style="background:#6366f1;margin-top:6px;width:auto;padding:5px 12px;">🔄 Yeniden Dene</button></div>`;
+  });
 }
 window.cihazCikisYaptir = async (anonUid) => {
   onayGoster('🔌', 'Bu cihazın erişimini sonlandırmak istediğine emin misin? Cihaz anında dışarı atılacak.', async () => {
