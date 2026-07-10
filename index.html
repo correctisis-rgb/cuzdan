@@ -14,6 +14,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<!-- YENİ: QR ile TV/Bilgisayar girişi özelliği için - QR üretimi (qrcodejs) ve QR okuma (jsQR) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
 html, body { 
 height: 100dvh; 
@@ -162,7 +165,8 @@ body:not(.masaustu-modu) #sifre-panel,
 body:not(.masaustu-modu) #bildirim-panel,
 body:not(.masaustu-modu) #kahve-panel,
 body:not(.masaustu-modu) #mesajlar-panel,
-body:not(.masaustu-modu) #kullanici-panel {
+body:not(.masaustu-modu) #kullanici-panel,
+body:not(.masaustu-modu) #bagli-cihazlar-panel {
   position: absolute;
   top: calc(40px + env(safe-area-inset-top));
   left: 4%;
@@ -494,6 +498,7 @@ body.masaustu-modu .header-icons { display: none; }
 <div class="link-text" id="btn-gecis-sifre-sifirla" style="color:#fbbf24;">Şifremi unuttum</div>
 <div class="link-text" id="btn-tekrar-dogrulama" style="color:#38bdf8; display:none;">📧 Doğrulama mailini tekrar gönder</div>
 <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin? Kayıt Ol</div>
+<div class="link-text" id="btn-tv-giris" style="color:#a78bfa;">📺 TV / Bilgisayarda QR ile Aç</div>
 <div class="footer-apps">
 <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
 <span>Diğer Uygulamalarımız</span>
@@ -519,7 +524,29 @@ body.masaustu-modu .header-icons { display: none; }
 <div class="link-text" id="btn-gecis-giris-2">Giriş ekranına dön</div>
 </div>
 
+<!-- DÜZELTME/YENİ: TV/Bilgisayarda QR ile giriş ekranı. Bu cihaz (TV) Firebase'e anonim olarak
+     bağlanır, tek kullanımlık bir kod üretir ve bunu QR + metin olarak gösterir. Telefondan bu kod
+     okutulup onaylanınca, TV bu kullanıcının verilerini SALT OKUNUR modda görüntülemeye başlar.
+     Cloud Functions / sunucu tarafı hiç kullanılmıyor; güvenlik tamamen Firestore güvenlik
+     kurallarındaki "yetkili_cihazlar" kontrolüne dayanıyor. -->
+<div class="container hidden" id="tv-qr-screen" style="text-align:center;">
+<h2>📺 TV / Bilgisayar Girişi</h2>
+<p style="font-size:13px; opacity:0.8; margin-bottom:12px;">Telefonunda uygulamayı aç, sağ üstteki profil menüsünden <b>"📷 QR Kod Okut"</b> seçeneğiyle bu kodu okut.</p>
+<div id="tv-qr-kutu" style="background:white; border-radius:12px; padding:16px; width:220px; height:220px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center;">
+  <div id="tv-qr-render"></div>
+</div>
+<div id="tv-qr-kod-metin" style="font-size:22px; font-weight:bold; letter-spacing:4px; margin-bottom:6px;"></div>
+<div id="tv-qr-durum" style="font-size:12px; opacity:0.7; margin-bottom:14px;">Onay bekleniyor...</div>
+<button id="btn-tv-qr-yenile" style="background:#7c3aed; width:auto; padding:8px 16px; margin-bottom:8px;">🔄 Yeni Kod Üret</button>
+<div class="link-text" id="btn-tv-qr-geri">Giriş ekranına dön</div>
+</div>
+
 <div class="container app-container hidden" id="app-screen">
+<!-- YENİ: TV/QR ile bağlanmış salt-okunur oturumlarda gösterilen banner -->
+<div id="tv-modu-banner" class="hidden" style="background:#7c3aed; color:white; text-align:center; padding:8px; border-radius:8px; margin-bottom:8px; font-size:12px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+  <span>📺 Salt Okunur Görüntüleme Modu</span>
+  <button id="btn-tv-modu-cikis" style="background:rgba(255,255,255,0.25); width:auto; padding:4px 10px; font-size:11px;">Bu Cihazı Çıkış Yaptır</button>
+</div>
 <div class="header-icons">
 <div class="icon-btn" id="btn-duyuru-ac">🔔<span id="bildirim-badge" class="badge">!</span></div>
 <div class="icon-btn" id="profil-baslik" style="position:relative;"><span id="mesaj-badge" class="badge" style="display:none; background:#ef4444;">!</span></div>
@@ -542,6 +569,8 @@ body.masaustu-modu .header-icons { display: none; }
 <button id="btn-kart-ayarlar" style="background:#0ea5e9; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💳 Kart Ayarları</button>
 <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
 <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
+<button id="btn-qr-okut" style="background:#7c3aed; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">📷 QR Kod Okut</button>
+<button id="btn-bagli-cihazlar" style="background:#4b5563; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">🖥️ Bağlı Cihazlar</button>
 <div style="margin:4px 0 2px 0; padding:5px; background:rgba(0,0,0,0.1); border-radius:8px;">
   <div style="font-size:10px; color:#555; margin-bottom:4px; font-weight:bold;">🎨 TEMA SEÇ</div>
   <div style="display:flex; gap:8px; align-items:center; justify-content:center;">
@@ -866,6 +895,27 @@ body.masaustu-modu .header-icons { display: none; }
   </div>
 </div>
 
+<!-- YENİ: QR Kod Okut popup'ı - telefon kamerasıyla TV ekranındaki kodu okuyup onaylar -->
+<div id="qr-okut-popup" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10001; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+  <div style="color:white; font-weight:bold; margin-bottom:10px;">📷 TV Ekranındaki QR Kodu Okut</div>
+  <video id="qr-okut-video" style="width:85%; max-width:340px; border-radius:12px;" playsinline muted></video>
+  <canvas id="qr-okut-canvas" style="display:none;"></canvas>
+  <div id="qr-okut-durum" style="color:#a78bfa; font-size:12px; margin-top:10px; min-height:16px;"></div>
+  <div style="color:white; font-size:11px; opacity:0.6; margin:10px 0;">veya kodu elle gir:</div>
+  <div style="display:flex; gap:6px;">
+    <input type="text" id="qr-okut-manuel-kod" placeholder="6 haneli kod" maxlength="6" style="width:130px; text-align:center; letter-spacing:3px; text-transform:uppercase;">
+    <button id="qr-okut-manuel-onayla" style="width:auto; padding:0 12px; background:#7c3aed;">Onayla</button>
+  </div>
+  <button id="qr-okut-kapat" style="background:#6b7280; margin-top:16px; width:auto; padding:8px 20px;">Kapat</button>
+</div>
+
+<!-- YENİ: Bağlı Cihazlar paneli - onaylanmış TV/ekran oturumlarını listeler, uzaktan çıkış yaptırma imkanı verir -->
+<div id="bagli-cihazlar-panel" class="hidden">
+  <button class="close-btn" onclick="kapatPaneller()">Kapat X</button>
+  <div style="font-weight:bold; margin-top:5px; border-bottom:1px solid #ccc; padding-bottom:4px;">🖥️ BAĞLI CİHAZLAR</div>
+  <div id="bagli-cihazlar-listesi" style="margin-top:8px; font-size:12px;"></div>
+</div>
+
 <!-- Admin mesaj popup -->
 <div id="admin-mesaj-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5);">
   <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#ef4444;">📩 Yeni Mesaj!</div>
@@ -899,7 +949,7 @@ body.masaustu-modu .header-icons { display: none; }
 // YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref as dbRef, set as dbSet, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", databaseURL: "https://cuzdan-99641-default-rtdb.firebaseio.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
@@ -1500,7 +1550,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); };
 
 document.getElementById('btn-duyuru-ac').onclick = () => { 
 document.getElementById('bildirim-badge').style.display = 'none';
@@ -2261,7 +2311,7 @@ function tabloRender() {
 const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 document.getElementById('tarih').valueAsDate = new Date();
 
-const ekranGoster = (id) => { ['auth-screen', 'signup-screen', 'reset-screen', 'app-screen'].forEach(s => document.getElementById(s).classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); };
+const ekranGoster = (id) => { ['auth-screen', 'signup-screen', 'reset-screen', 'app-screen', 'tv-qr-screen'].forEach(s => document.getElementById(s).classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); };
 
 // YENİ: Ana ekran kısayollarından (manifest.json "shortcuts") gelen ?action=... parametresini işler.
 // "Gider Ekle" kısayolu ile açılınca gider formuna odaklanır; "Bakiye Gör" zaten ana ekranda göründüğü için ekstra işlem gerekmez.
@@ -2292,8 +2342,230 @@ splash.style.visibility = 'hidden';
 }
 };
 
+// ================== YENİ: TV/BİLGİSAYARDA QR İLE GİRİŞ SİSTEMİ ==================
+// DÜZELTME: Bu özellik hiçbir sunucu (Cloud Functions) kullanmıyor. Firebase'in ücretsiz
+// "Anonim Giriş" özelliğini kullanıyor: TV, anonim bir Firebase Auth oturumu açıyor, telefon
+// bu anonim oturumu Firestore'daki "yetkili_cihazlar" koleksiyonuna yazarak "onaylıyor". TV daha
+// sonra sahibinin verilerini SALT OKUNUR şekilde görüntülüyor. Bunun çalışması için Firebase
+// konsolunda "Anonim Giriş" sağlayıcısının açık olması ve Firestore güvenlik kurallarına
+// "yetkili_cihazlar" kontrolünün eklenmiş olması gerekiyor (ayrı olarak paylaşılan kural metni).
+let TV_MODU = false;
+let EFEKTIF_UID = null;
+let EFEKTIF_EMAIL = null;
+let _tvKodUnsub = null;
+let _tvYetkiUnsub = null;
+
+function _tvRastgeleKod() {
+  const harfler = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // karışabilecek 0/O, 1/I gibi karakterler çıkarıldı
+  let kod = '';
+  for (let i = 0; i < 6; i++) kod += harfler[Math.floor(Math.random() * harfler.length)];
+  return kod;
+}
+
+async function tvKodUret() {
+  if (_tvKodUnsub) { _tvKodUnsub(); _tvKodUnsub = null; }
+  document.getElementById('tv-qr-durum').innerText = 'Kod hazırlanıyor...';
+  document.getElementById('tv-qr-render').innerHTML = '';
+  document.getElementById('tv-qr-kod-metin').innerText = '';
+  try {
+    let anonUid = localStorage.getItem('tv_anon_uid_bekleyen');
+    if (!auth.currentUser || !auth.currentUser.isAnonymous) {
+      const cred = await signInAnonymously(auth);
+      anonUid = cred.user.uid;
+    } else {
+      anonUid = auth.currentUser.uid;
+    }
+    const kod = _tvRastgeleKod();
+    const simdi = Date.now();
+    await setDoc(doc(db, 'qr_oturumlar', kod), {
+      tvUid: anonUid, durum: 'bekliyor', olusturulma: simdi, sonGecerlilik: simdi + 5 * 60 * 1000
+    });
+    localStorage.setItem('tv_bekleyen_kod', kod);
+    document.getElementById('tv-qr-kod-metin').innerText = kod;
+    document.getElementById('tv-qr-durum').innerText = 'Onay bekleniyor...';
+    if (window.QRCode) {
+      new QRCode(document.getElementById('tv-qr-render'), { text: kod, width: 190, height: 190, colorDark: '#1c2137', colorLight: '#ffffff' });
+    }
+    _tvKodDinle(kod, anonUid);
+  } catch (e) {
+    document.getElementById('tv-qr-durum').innerText = 'Hata: ' + e.message;
+  }
+}
+
+function _tvKodDinle(kod, anonUid) {
+  _tvKodUnsub = onSnapshot(doc(db, 'qr_oturumlar', kod), (snap) => {
+    if (!snap.exists()) return;
+    const data = snap.data();
+    if (Date.now() > data.sonGecerlilik && data.durum === 'bekliyor') {
+      document.getElementById('tv-qr-durum').innerText = 'Kodun süresi doldu. Yeni kod üretin.';
+      if (_tvKodUnsub) { _tvKodUnsub(); _tvKodUnsub = null; }
+      return;
+    }
+    if (data.durum === 'onaylandi') {
+      document.getElementById('tv-qr-durum').innerText = '✅ Onaylandı! Giriş yapılıyor...';
+      if (_tvKodUnsub) { _tvKodUnsub(); _tvKodUnsub = null; }
+      localStorage.setItem('tv_onayli_uid', anonUid);
+      localStorage.removeItem('tv_bekleyen_kod');
+      _tvYetkiIzle(anonUid);
+    }
+  });
+}
+
+// TV'nin kendi yetkilendirme kaydını canlı izler; sahibi "Bu Cihazı Çıkış Yaptır" yaparsa TV anında dışarı atılır
+function _tvYetkiIzle(anonUid) {
+  if (_tvYetkiUnsub) { _tvYetkiUnsub(); _tvYetkiUnsub = null; }
+  _tvYetkiUnsub = onSnapshot(doc(db, 'yetkili_cihazlar', anonUid), (snap) => {
+    if (!snap.exists() || snap.data().aktif !== true) {
+      if (TV_MODU) { alert('Bu cihazın erişimi sonlandırıldı.'); tvOturumuTemizle(); ekranGoster('auth-screen'); return; }
+      return;
+    }
+    const data = snap.data();
+    EFEKTIF_UID = data.sahipUid;
+    EFEKTIF_EMAIL = data.sahipEmail;
+    TV_MODU = true;
+    tvModuUygula();
+  });
+}
+
+function tvModuUygula() {
+  document.getElementById('tv-modu-banner').classList.remove('hidden');
+  document.getElementById('masaustu-form-sutun').style.display = 'none';
+  const formSutun2 = document.getElementById('arama-panel'); if (formSutun2) formSutun2.classList.add('hidden');
+  ['btn-duyuru-ac', 'profil-baslik'].forEach(id => { const el = document.getElementById(id); if (el) { el.style.visibility = 'hidden'; el.style.pointerEvents = 'none'; } });
+  document.getElementById('admin-alan').innerHTML = '';
+  ekranGoster('app-screen');
+  document.getElementById('user-email').innerText = EFEKTIF_EMAIL + ' (TV görüntüleme)';
+  gorunumUygula('masaustu'); // TV geniş ekranlı olduğu için otomatik masaüstü düzeni uygulanır
+  // Masaüstü kenar çubuğundaki yazma işlemi yapan menüleri TV modunda gizle (sadece görüntüleme kalsın)
+  ['mas-nav-taksit', 'mas-nav-kart', 'mas-nav-bildirim', 'mas-nav-sifre', 'mas-nav-kahve', 'mas-nav-kullanici'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  kartAyarlariYukle(EFEKTIF_UID);
+  kullaniciAyarlariYukle(EFEKTIF_UID);
+  verileriGetir(EFEKTIF_UID);
+  duyurulariDinle();
+  splashGizle();
+}
+
+function tvOturumuTemizle() {
+  TV_MODU = false; EFEKTIF_UID = null; EFEKTIF_EMAIL = null;
+  if (_tvKodUnsub) { _tvKodUnsub(); _tvKodUnsub = null; }
+  if (_tvYetkiUnsub) { _tvYetkiUnsub(); _tvYetkiUnsub = null; }
+  localStorage.removeItem('tv_onayli_uid');
+  localStorage.removeItem('tv_bekleyen_kod');
+  document.getElementById('tv-modu-banner').classList.add('hidden');
+  document.getElementById('masaustu-form-sutun').style.display = '';
+  ['btn-duyuru-ac', 'profil-baslik'].forEach(id => { const el = document.getElementById(id); if (el) el.style.visibility = ''; });
+  if (auth.currentUser && auth.currentUser.isAnonymous) signOut(auth);
+}
+
+document.getElementById('btn-tv-modu-cikis').onclick = async () => {
+  const anonUid = auth.currentUser ? auth.currentUser.uid : null;
+  if (anonUid) { try { await updateDoc(doc(db, 'yetkili_cihazlar', anonUid), { aktif: false }); } catch (e) {} }
+  tvOturumuTemizle();
+  ekranGoster('auth-screen');
+};
+
+// ---- Telefon tarafı: QR okutma ----
+let _qrOkutStream = null;
+let _qrOkutAktif = false;
+async function qrOkutBaslat() {
+  document.getElementById('qr-okut-popup').classList.remove('hidden');
+  document.getElementById('qr-okut-durum').innerText = 'Kamera açılıyor...';
+  _qrOkutAktif = true;
+  try {
+    _qrOkutStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('qr-okut-video');
+    video.srcObject = _qrOkutStream;
+    await video.play();
+    document.getElementById('qr-okut-durum').innerText = 'Kodu kameraya gösterin...';
+    _qrOkutDongu();
+  } catch (e) {
+    document.getElementById('qr-okut-durum').innerText = 'Kameraya erişilemedi, aşağıdan elle kod girebilirsiniz.';
+  }
+}
+function _qrOkutDongu() {
+  if (!_qrOkutAktif) return;
+  const video = document.getElementById('qr-okut-video');
+  const canvas = document.getElementById('qr-okut-canvas');
+  if (video.readyState === video.HAVE_ENOUGH_DATA && window.jsQR) {
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const kod = window.jsQR(img.data, img.width, img.height);
+    if (kod && kod.data) { qrOkutKapat(); kodOnayla(kod.data.trim().toUpperCase()); return; }
+  }
+  requestAnimationFrame(_qrOkutDongu);
+}
+function qrOkutKapat() {
+  _qrOkutAktif = false;
+  if (_qrOkutStream) { _qrOkutStream.getTracks().forEach(t => t.stop()); _qrOkutStream = null; }
+  document.getElementById('qr-okut-popup').classList.add('hidden');
+}
+document.getElementById('btn-qr-okut').onclick = () => { kapatPaneller(); qrOkutBaslat(); };
+document.getElementById('qr-okut-kapat').onclick = qrOkutKapat;
+document.getElementById('qr-okut-manuel-onayla').onclick = () => {
+  const kod = document.getElementById('qr-okut-manuel-kod').value.trim().toUpperCase();
+  if (kod.length !== 6) { alert('Lütfen 6 haneli kodu girin.'); return; }
+  qrOkutKapat();
+  kodOnayla(kod);
+};
+
+async function kodOnayla(kod) {
+  if (!auth.currentUser || auth.currentUser.isAnonymous) { alert('Bu işlem için önce kendi hesabınla giriş yapmalısın.'); return; }
+  try {
+    const ref = doc(db, 'qr_oturumlar', kod);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) { alert('Kod bulunamadı. Kodun doğru olduğundan ve süresinin dolmadığından emin ol.'); return; }
+    const data = snap.data();
+    if (data.durum !== 'bekliyor') { alert('Bu kod zaten kullanılmış.'); return; }
+    if (Date.now() > data.sonGecerlilik) { alert('Kodun süresi dolmuş, TV ekranından yeni kod üretin.'); return; }
+    await setDoc(doc(db, 'yetkili_cihazlar', data.tvUid), {
+      sahipUid: auth.currentUser.uid, sahipEmail: auth.currentUser.email, tarih: Date.now(), aktif: true, cihazAdi: 'TV / Ekran'
+    });
+    await updateDoc(ref, { durum: 'onaylandi', sahipUid: auth.currentUser.uid, sahipEmail: auth.currentUser.email });
+    alert('✅ TV ekranında oturum açıldı!');
+  } catch (e) { alert('Hata: ' + e.message); }
+}
+
+// ---- Telefon tarafı: Bağlı Cihazlar paneli ----
+async function bagliCihazlarGoster() {
+  const kutu = document.getElementById('bagli-cihazlar-listesi');
+  kutu.innerHTML = 'Yükleniyor...';
+  try {
+    const snap = await getDocs(query(collection(db, 'yetkili_cihazlar'), where('sahipUid', '==', auth.currentUser.uid)));
+    let html = '';
+    snap.forEach(d => {
+      const data = d.data();
+      if (!data.aktif) return;
+      const tarih = new Date(data.tarih).toLocaleString('tr-TR');
+      html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.15);">
+        <div><div style="font-weight:bold;">🖥️ ${escapeHTML(data.cihazAdi || 'Bilinmeyen Cihaz')}</div><div style="opacity:0.6; font-size:10px;">Bağlanma: ${tarih}</div></div>
+        <button onclick="window.cihazCikisYaptir('${d.id}')" style="background:#ef4444; width:auto; padding:4px 10px; font-size:11px;">Çıkış Yaptır</button>
+      </div>`;
+    });
+    kutu.innerHTML = html || '<div style="opacity:0.6; padding:8px;">Bağlı cihaz yok. TV\'de "TV / Bilgisayarda QR ile Aç" seçip QR kodu buradan okutabilirsin.</div>';
+  } catch (e) { kutu.innerHTML = 'Hata: ' + e.message; }
+}
+window.cihazCikisYaptir = async (anonUid) => {
+  try { await updateDoc(doc(db, 'yetkili_cihazlar', anonUid), { aktif: false }); bagliCihazlarGoster(); }
+  catch (e) { alert('Hata: ' + e.message); }
+};
+document.getElementById('btn-bagli-cihazlar').onclick = () => { kapatPaneller(); document.getElementById('bagli-cihazlar-panel').classList.remove('hidden'); bagliCihazlarGoster(); };
+// ================== /TV-QR SİSTEMİ SONU ==================
+
 onAuthStateChanged(auth, (user) => {
 if (user) {
+if (user.isAnonymous) {
+  // Bu bir TV/ekran oturumu; normal kullanıcı akışını hiç çalıştırma, sadece onay bekle/uygula.
+  const bekleyenAnon = localStorage.getItem('tv_onayli_uid');
+  if (bekleyenAnon === user.uid) { _tvYetkiIzle(user.uid); }
+  else if (localStorage.getItem('tv_bekleyen_kod')) { ekranGoster('tv-qr-screen'); _tvKodDinle(localStorage.getItem('tv_bekleyen_kod'), user.uid); splashGizle(); }
+  else { ekranGoster('auth-screen'); splashGizle(); }
+  return;
+}
+
 loadCustomData(user); // boş, uyumluluk için
 oturumTimerSifirla();
 ekranGoster('app-screen');
@@ -2540,6 +2812,9 @@ document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-s
 document.getElementById('btn-gecis-giris').onclick = () => ekranGoster('auth-screen');
 document.getElementById('btn-gecis-giris-2').onclick = () => ekranGoster('auth-screen');
 document.getElementById('btn-gecis-sifre-sifirla').onclick = () => ekranGoster('reset-screen');
+document.getElementById('btn-tv-giris').onclick = () => { ekranGoster('tv-qr-screen'); tvKodUret(); };
+document.getElementById('btn-tv-qr-geri').onclick = () => { tvOturumuTemizle(); ekranGoster('auth-screen'); };
+document.getElementById('btn-tv-qr-yenile').onclick = () => tvKodUret();
 document.getElementById('btn-tekrar-dogrulama').onclick = async () => {
   const user = window._dogrulanmamisKullanici;
   if (!user) {
@@ -2578,15 +2853,16 @@ document.getElementById('btn-borclar-menu').onclick = () => { kapatPaneller(); d
 // --- KART KESİM TARİHİ SİSTEMİ (Firestore tabanlı) ---
 let _kartAyarlariCache = {}; // Yerel cache - Firestore'dan yüklenir
 
-async function kartAyarlariYukle() {
-  if (!auth.currentUser) return;
+async function kartAyarlariYukle(uidOverride) {
+  if (!auth.currentUser && !uidOverride) return;
+  const hedefUid = uidOverride || auth.currentUser.uid;
   try {
-    const docRef = doc(db, "kart_ayarlari", auth.currentUser.uid);
+    const docRef = doc(db, "kart_ayarlari", hedefUid);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       _kartAyarlariCache = docSnap.data().tarihler || {};
-    } else {
-      // localStorage'da eski veri varsa Firestore'a taşı
+    } else if (!uidOverride) {
+      // localStorage'da eski veri varsa Firestore'a taşı (sadece gerçek kullanıcı oturumunda; TV modunda yazma yapılmaz)
       const uid = auth.currentUser.uid;
       const eski = JSON.parse(localStorage.getItem('kart_kesim_' + uid) || '{}');
       if (Object.keys(eski).length > 0) {
