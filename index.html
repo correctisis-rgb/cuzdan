@@ -563,6 +563,7 @@ body.masaustu-modu .header-icons { display: none; }
 <div id="profil-menu" class="hidden">
 <button class="close-btn" onclick="kapatPaneller()">Kapat X</button>
 <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
+<div id="profil-rutbe-etiket" style="display:none; font-size:10px; font-weight:bold; margin-bottom:6px; padding:3px 6px; border-radius:6px; background:#fef3c7; color:#92400e;"></div>
 <button id="btn-rapor-menu" style="background:#10b981; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Rapor / Grafik</button>
 <button id="btn-borclar-menu" style="background:#6366f1; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💳 Hesap Özetleri / Borçlar</button>
 <button id="btn-excel-aktar" style="background:#059669; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Excel'e Aktar</button>
@@ -679,6 +680,7 @@ body.masaustu-modu .header-icons { display: none; }
 
 <div id="bildirim-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
+<div id="bildirim-rutbe-kutu" style="background:rgba(255,255,255,0.12); border-radius:10px; padding:8px; margin-bottom:8px; text-align:center; display:none;"></div>
 <textarea id="bildirim-metni" placeholder="Sorununuzu veya önerinizi yazın..." style="height:60px;"></textarea>
 <button id="btn-bildirim-gonder" style="background:#3b82f6;">Gönder</button>
 </div>
@@ -2857,12 +2859,18 @@ if (user.uid === ADMIN_ID) {
   adminMesajDinle();
 } else {
   kullaniciBildirimDinle(user.uid);
+  bildirimRutbeDinle(user.uid);
 }
 gorunumYukle();
 kisayolIsleAc();
 } else { 
 ekranGoster('auth-screen'); 
 if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
+if (_bildirimRutbeUnsub) { _bildirimRutbeUnsub(); _bildirimRutbeUnsub = null; }
+const rutbeKutuCikis = document.getElementById('bildirim-rutbe-kutu');
+const rutbeEtiketCikis = document.getElementById('profil-rutbe-etiket');
+if (rutbeKutuCikis) rutbeKutuCikis.style.display = 'none';
+if (rutbeEtiketCikis) rutbeEtiketCikis.style.display = 'none';
 // Çıkış yapıldığında masaüstü kenar çubuğunu/ana alanı tamamen gizle ki giriş ekranı düzgün ortalansın
 document.body.classList.remove('masaustu-modu');
 document.documentElement.classList.remove('masaustu-modu');
@@ -2890,13 +2898,16 @@ snapshot.forEach((d) => {
   if (data.kanal === 'sohbet') return; // DÜZELTME: doğrudan sohbet cevapları Sorun Bildir listesine karışmasın
   const tarih = new Date(data.tarih).toLocaleString('tr-TR');
   const cevapHtml = data.cevap ? `<div style="background:#e8f5e9; border-left:3px solid #10b981; padding:4px 6px; margin-top:4px; font-size:10px; border-radius:4px;">✓ Cevap: ${escapeHTML(data.cevap)}</div>` : '';
+  const uygulandiMi = data.durum === 'uygulandi';
+  const uygulandiRozetHtml = uygulandiMi ? `<span style="background:#f59e0b; color:white; font-size:9px; font-weight:bold; padding:1px 6px; border-radius:8px; margin-left:4px;">⭐ UYGULANDI</span>` : '';
   html += `<div style="border-bottom:1px solid #eee; padding:6px 0;" data-id="${d.id}">
     <div style="font-size:10px; color:#888; margin-bottom:2px;">${tarih}</div>
-    <div style="font-size:11px;"><b>${escapeHTML(data.email)}</b></div>
+    <div style="font-size:11px;"><b>${escapeHTML(data.email)}</b>${uygulandiRozetHtml}</div>
     <div style="font-size:11px; margin:2px 0;">${escapeHTML(data.mesaj)}</div>
     ${cevapHtml}
-    <div style="display:flex; gap:4px; margin-top:4px;">
+    <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
       <button onclick="window.cevapVer('${d.id}')" style="background:#10b981; color:white; border:none; border-radius:4px; font-size:10px; padding:2px 6px; cursor:pointer; width:auto;">💬 Cevap</button>
+      <button onclick="window.uygulandiToggle('${d.id}', ${uygulandiMi})" style="background:${uygulandiMi ? '#9ca3af' : '#f59e0b'}; color:white; border:none; border-radius:4px; font-size:10px; padding:2px 6px; cursor:pointer; width:auto;">${uygulandiMi ? '↩️ Uygulandı Kaldır' : '⭐ Uygulandı İşaretle'}</button>
       <button onclick="window.silMesaj('${d.id}')" style="background:#ef4444; color:white; border:none; border-radius:4px; font-size:10px; padding:2px 6px; cursor:pointer; width:auto;">🗑 Sil</button>
     </div>
   </div>`;
@@ -2908,6 +2919,14 @@ localStorage.setItem('son_okunan_mesaj', Date.now());
 }
 
 window.silMesaj = async (id) => { if(confirm("Silmek istediğine emin misin?")) { await deleteDoc(doc(db, "bildirimler", id)); mesajlariGetir(); } };
+
+// Bir öneriyi "uygulandı" olarak işaretlemek, kullanıcının rütbe/yıldız rozetini otomatik
+// yükseltir (bkz. bildirimRutbeDinle) — kullanıcı hiçbir şey yapmadan, sadece admin panelden
+// tek tıkla, katkısının gerçekten değerlendirildiğini görüyor.
+window.uygulandiToggle = async (id, suAnUygulandiMi) => {
+  await updateDoc(doc(db, "bildirimler", id), { durum: suAnUygulandiMi ? null : 'uygulandi' });
+  mesajlariGetir();
+};
 
 window.cevapVer = async (id) => {
   const snap = await getDocs(query(collection(db, "bildirimler")));
@@ -3372,6 +3391,69 @@ if (!metin) return;
 await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
 alert("Gönderildi!"); document.getElementById('bildirim-metni').value = ''; kapatPaneller();
 };
+
+// ============ KULLANICI RÜTBE / YILDIZ SİSTEMİ ============
+// Amaç: sisteme öneri/hata bildiren ve programın gelişmesine katkı sağlayan kullanıcıları
+// küçük bir "unvan + yıldız" rozetiyle ödüllendirip motive etmek. Unvan basit gönderim
+// sayısıyla değil, admin'in "Mesajları Gör" panelinden bir öneriyi gerçekten uygulamaya
+// aldığını işaretlemesiyle (durum:'uygulandi') yükseliyor — böylece rozet gerçek bir
+// katkıyı yansıtıyor, sadece ticket açma sayısını değil.
+const RUTBE_KADEMELERI = [
+  { min: 10, unvan: '👑 Efsane Katkıcı',  yildiz: 5 },
+  { min: 5,  unvan: '🏆 Usta Katkıcı',    yildiz: 4 },
+  { min: 3,  unvan: '💎 Değerli Katkıcı', yildiz: 3 },
+  { min: 1,  unvan: '🌟 Katkı Sağlayan',  yildiz: 2 },
+];
+
+function rutbeHesapla(toplamGonderilen, uygulanan) {
+  for (const k of RUTBE_KADEMELERI) {
+    if (uygulanan >= k.min) return { unvan: k.unvan, yildiz: k.yildiz, uygulanan, toplamGonderilen };
+  }
+  if (toplamGonderilen > 0) return { unvan: '🎫 Gönüllü Test Kullanıcısı', yildiz: 1, uygulanan, toplamGonderilen };
+  return null; // Henüz hiç bildirim göndermemiş, gösterilecek bir şey yok
+}
+
+function bildirimRutbeCiz(toplamGonderilen, uygulanan) {
+  const kutu = document.getElementById('bildirim-rutbe-kutu');
+  const etiket = document.getElementById('profil-rutbe-etiket');
+  const rutbe = rutbeHesapla(toplamGonderilen, uygulanan);
+  if (!rutbe) {
+    if (kutu) kutu.style.display = 'none';
+    if (etiket) etiket.style.display = 'none';
+    return;
+  }
+  const yildizHtml = '⭐'.repeat(rutbe.yildiz) + '☆'.repeat(5 - rutbe.yildiz);
+  if (kutu) {
+    kutu.style.display = 'block';
+    kutu.innerHTML = `
+      <div style="font-size:13px; font-weight:bold;">${rutbe.unvan}</div>
+      <div style="font-size:15px; letter-spacing:2px; margin:3px 0;">${yildizHtml}</div>
+      <div style="font-size:10px; opacity:0.8;">${rutbe.toplamGonderilen} bildirim gönderdin${rutbe.uygulanan > 0 ? `, ${rutbe.uygulanan} tanesi uygulamaya eklendi 🎉` : ''}</div>
+    `;
+  }
+  if (etiket) {
+    etiket.style.display = 'inline-block';
+    etiket.innerText = `${rutbe.unvan}  ${'⭐'.repeat(rutbe.yildiz)}`;
+  }
+}
+
+let _bildirimRutbeUnsub = null;
+function bildirimRutbeDinle(uid) {
+  if (_bildirimRutbeUnsub) { _bildirimRutbeUnsub(); _bildirimRutbeUnsub = null; }
+  if (!uid || !navigator.onLine) return;
+  try {
+    _bildirimRutbeUnsub = onSnapshot(query(collection(db, "bildirimler"), where("uid", "==", uid)), (snap) => {
+      let toplam = 0, uygulanan = 0;
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.kanal === 'sohbet') return; // sohbet cevapları unvan hesabına dahil değil
+        toplam++;
+        if (data.durum === 'uygulandi') uygulanan++;
+      });
+      bildirimRutbeCiz(toplam, uygulanan);
+    }, (e) => console.log("Rütbe dinleme hatası:", e.message));
+  } catch(e) { console.log("Rütbe dinleme hatası:", e); }
+}
 
 // --- ŞİFRE GEÇMİŞİ KONTROLÜ: son 3 şifrenin tekrar kullanılmasını engellemek için ---
 // Şifrenin kendisi hiçbir yere düz metin olarak yazılmıyor; sadece kullanıcıya özel
