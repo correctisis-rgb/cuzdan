@@ -1250,19 +1250,19 @@ function adminYaniMesajRozetDinle() {
 
 // --- TEMA SİSTEMİ ---
 // --- KULLANICI AYARLARI (Firestore tabanlı) ---
-let _kullaniciAyarlariCache = { tema: 'mor', kategoriler: [], hesaplar: [] };
+let _kullaniciAyarlariCache = { tema: 'mor', kategoriler: [], hesaplar: [], sifreGecmisi: [] };
 
 async function kullaniciAyarlariYukle(uid) {
   try {
     const docSnap = await getDoc(doc(db, "kullanici_ayarlari", uid));
     if (docSnap.exists()) {
-      _kullaniciAyarlariCache = { tema: 'mor', kategoriler: [], hesaplar: [], ...docSnap.data() };
+      _kullaniciAyarlariCache = { tema: 'mor', kategoriler: [], hesaplar: [], sifreGecmisi: [], ...docSnap.data() };
     } else {
       // localStorage'dan eski verileri taşı
       const eskiTema = localStorage.getItem('tema_' + uid) || 'mor';
       const eskiCats = JSON.parse(localStorage.getItem('custom_cats_' + uid) || '[]');
       const eskiAccs = JSON.parse(localStorage.getItem('custom_accs_' + uid) || '[]');
-      _kullaniciAyarlariCache = { tema: eskiTema, kategoriler: eskiCats, hesaplar: eskiAccs };
+      _kullaniciAyarlariCache = { tema: eskiTema, kategoriler: eskiCats, hesaplar: eskiAccs, sifreGecmisi: [] };
       await setDoc(doc(db, "kullanici_ayarlari", uid), { ..._kullaniciAyarlariCache, uid });
       // Eski localStorage'ı temizle
       localStorage.removeItem('tema_' + uid);
@@ -3373,6 +3373,18 @@ await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: 
 alert("Gönderildi!"); document.getElementById('bildirim-metni').value = ''; kapatPaneller();
 };
 
+// --- ŞİFRE GEÇMİŞİ KONTROLÜ: son 3 şifrenin tekrar kullanılmasını engellemek için ---
+// Şifrenin kendisi hiçbir yere düz metin olarak yazılmıyor; sadece kullanıcıya özel
+// (uid ile tuzlanmış) SHA-256 özeti (hash) Firestore'da saklanıyor ve karşılaştırma
+// bu özetler üzerinden yapılıyor.
+const SIFRE_GECMISI_UZUNLUK = 3;
+
+async function sifreHashHesapla(sifre, uid) {
+  const veri = new TextEncoder().encode(uid + ':' + sifre);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', veri);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 document.getElementById('btn-sifre-onayla').onclick = async () => {
 if(!navigator.onLine) { alert("Şifre değiştirmek için internet bağlantısı gereklidir."); return; }
 const yeniSifre = document.getElementById('yeni-sifre').value;
@@ -3380,8 +3392,19 @@ const yeniSifreTekrar = document.getElementById('yeni-sifre-tekrar').value;
 if (yeniSifre !== yeniSifreTekrar) { alert("Yeni şifreler birbiriyle uyuşmuyor. Lütfen tekrar kontrol edin."); return; }
 if (!sifrePolitikasiKontrol(yeniSifre)) { alert(sifreHataMesaji); return; }
 try {
+const uid = auth.currentUser.uid;
+const yeniSifreHash = await sifreHashHesapla(yeniSifre, uid);
+const gecmis = _kullaniciAyarlariCache.sifreGecmisi || [];
+if (gecmis.includes(yeniSifreHash)) {
+alert(`⚠️ Bu şifreyi daha önce kullandınız. Lütfen son ${SIFRE_GECMISI_UZUNLUK} şifrenizden farklı yeni bir şifre belirleyin.`);
+return;
+}
 await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value));
 await updatePassword(auth.currentUser, yeniSifre);
+// Şifre geçmişini güncelle: yeni hash eklenir, sadece son N tanesi tutulur
+const guncelGecmis = [...gecmis, yeniSifreHash].slice(-SIFRE_GECMISI_UZUNLUK);
+_kullaniciAyarlariCache.sifreGecmisi = guncelGecmis;
+await kullaniciAyarlariKaydet();
 alert("Şifre güncellendi!"); kapatPaneller();
 document.getElementById('mevcut-sifre').value = '';
 document.getElementById('yeni-sifre').value = '';
