@@ -232,6 +232,8 @@ input, textarea, select { width: 100%; padding: 8px; margin: 1px 0; border: none
 button { padding: 8px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 1px; text-transform: uppercase; }
 .container.app-container button { padding: 5px; }
 .close-btn { background: #ff0000 !important; font-size: 10px; padding: 3px !important; margin-bottom: 5px; width: auto !important; }
+.hm-btn { padding: 9px 0; font-size: 14px; border-radius: 8px; background: rgba(255,255,255,0.12); margin: 0; text-transform: none; }
+.hm-btn:active { filter: brightness(1.3); }
 .link-text { font-size: 12px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 4px; margin-bottom: 4px; }
 .liste-alani { flex: 1 1 0; min-height: 0; overflow-y: auto; margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.2); }
 table { width: 100%; border-collapse: collapse; }
@@ -759,7 +761,10 @@ body.masaustu-modu .header-icons { display: none; }
 </div>
 
 <input type="text" id="aciklama" placeholder="Açıklama" maxlength="60">
-<input type="text" id="tutar" placeholder="Tutar (Örn: 123.456,78)" inputmode="decimal">
+<div style="position:relative;">
+<input type="text" id="tutar" placeholder="Tutar (Örn: 123.456,78)" inputmode="decimal" style="padding-right:38px;">
+<button type="button" id="btn-hesap-makinesi" title="Hesap Makinesi" style="position:absolute; right:4px; top:50%; transform:translateY(-50%); width:27px; height:27px; padding:0; margin:0; border-radius:7px; background:rgba(255,255,255,0.18); color:white; font-size:14px; line-height:1; cursor:pointer;">🧮</button>
+</div>
 <input type="date" id="tarih" style="padding: 4px; color: #555;">
 
 <div style="display:flex; gap:5px; margin-top:2px;">
@@ -848,6 +853,41 @@ body.masaustu-modu .header-icons { display: none; }
      taşıdık; artık hem mobilde hem masaüstünde her zaman görünür oluyorlar. -->
 <!-- "Silindi / Geri Al" toast'ı da aynı sebeple .app-container içinden buraya taşındı -->
 <div id="toast" style="display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(30,30,30,0.95); color:white; padding:10px 16px; border-radius:12px; font-size:13px; z-index:9999; box-shadow:0 4px 15px rgba(0,0,0,0.4); align-items:center; gap:10px; min-width:220px; justify-content:space-between;"><span id="toast-mesaj"></span><button id="toast-geri-al" style="background:#f59e0b; color:black; font-size:11px; padding:3px 8px; border-radius:6px; width:auto; margin:0; font-weight:bold;">GERİ AL</button></div>
+<!-- Hesap Makinesi popup (Tutar alanının yanındaki 🧮 butonuyla açılır) -->
+<div id="hesap-makinesi-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1e1b2e; color:white; border-radius:15px; padding:14px; width:82%; max-width:250px; z-index:10001; box-shadow:0 8px 30px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.1);">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <span style="font-weight:bold; font-size:13px;">🧮 Hesap Makinesi</span>
+    <button onclick="document.getElementById('hesap-makinesi-popup').classList.add('hidden')" style="background:none; border:none; color:white; opacity:0.6; font-size:16px; padding:0; width:auto; cursor:pointer; line-height:1;">✕</button>
+  </div>
+  <div id="hm-ekran" style="background:rgba(0,0,0,0.35); border-radius:8px; padding:10px 8px; text-align:right; font-size:20px; font-weight:bold; margin-bottom:8px; min-height:28px; overflow-x:auto; white-space:nowrap;">0</div>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:5px;">
+    <button class="hm-btn" data-hm="C" style="background:#ef4444;">C</button>
+    <button class="hm-btn" data-hm="back" style="background:#4b5563;">⌫</button>
+    <button class="hm-btn" data-hm="%" style="background:#4b5563;">%</button>
+    <button class="hm-btn" data-hm="/" style="background:#6366f1;">÷</button>
+
+    <button class="hm-btn" data-hm="7">7</button>
+    <button class="hm-btn" data-hm="8">8</button>
+    <button class="hm-btn" data-hm="9">9</button>
+    <button class="hm-btn" data-hm="*" style="background:#6366f1;">×</button>
+
+    <button class="hm-btn" data-hm="4">4</button>
+    <button class="hm-btn" data-hm="5">5</button>
+    <button class="hm-btn" data-hm="6">6</button>
+    <button class="hm-btn" data-hm="-" style="background:#6366f1;">−</button>
+
+    <button class="hm-btn" data-hm="1">1</button>
+    <button class="hm-btn" data-hm="2">2</button>
+    <button class="hm-btn" data-hm="3">3</button>
+    <button class="hm-btn" data-hm="+" style="background:#6366f1;">+</button>
+
+    <button class="hm-btn" data-hm="0" style="grid-column:span 2;">0</button>
+    <button class="hm-btn" data-hm="," style="background:#4b5563;">,</button>
+    <button class="hm-btn" data-hm="=" style="background:#10b981;">=</button>
+  </div>
+  <button id="btn-hm-kullan" style="background:#10b981; width:100%; margin-top:8px; font-size:12px; padding:7px;">✓ Tutara Aktar</button>
+</div>
+
 <!-- Kahve hatırlatıcı popup -->
 <div id="kahve-hatirlatici" class="hidden" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#5d4037,#a1887f); color:white; border-radius:16px; padding:12px 16px; width:85%; max-width:300px; z-index:9998; box-shadow:0 4px 20px rgba(0,0,0,0.4); display:flex; align-items:center; gap:10px;">
   <div style="font-size:28px; flex-shrink:0;">☕</div>
@@ -1468,6 +1508,101 @@ let tamKisim = parts[0].replace(/\./g, '');
 tamKisim = tamKisim.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 e.target.value = parts.length > 1 ? tamKisim + ',' + parts[1].substring(0, 2) : tamKisim;
 };
+
+// --- HESAP MAKİNESİ (Tutar alanı yanındaki 🧮 butonu) ---
+(function () {
+  let deger = '0';       // ekranda görünen değer (virgül ondalık ayracıyla)
+  let oncekiDeger = null; // bekleyen ilk sayı
+  let operator = null;    // bekleyen işlem: + - * /
+  let yeniGiris = true;   // true ise bir sonraki rakam ekranı sıfırlayıp başlar
+
+  const ekranEl = () => document.getElementById('hm-ekran');
+  const guncelle = () => { ekranEl().innerText = deger; };
+  const sayiyaCevir = (s) => parseFloat(String(s).replace(',', '.')) || 0;
+  const sayiyiYaz = (n) => {
+    if (!isFinite(n)) return 'Hata';
+    let s = String(Math.round(n * 100000000) / 100000000);
+    if (s.length > 14) s = s.substring(0, 14);
+    return s.replace('.', ',');
+  };
+  const hesapla = (a, b, op) => {
+    switch (op) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '*': return a * b;
+      case '/': return b === 0 ? NaN : a / b;
+      default: return b;
+    }
+  };
+  const sifirla = () => { deger = '0'; oncekiDeger = null; operator = null; yeniGiris = true; guncelle(); };
+
+  document.getElementById('btn-hesap-makinesi').onclick = () => {
+    sifirla();
+    document.getElementById('hesap-makinesi-popup').classList.remove('hidden');
+  };
+
+  document.querySelectorAll('.hm-btn').forEach(btn => {
+    btn.onclick = () => {
+      const tus = btn.dataset.hm;
+      if (tus === 'C') { sifirla(); return; }
+      if (tus === 'back') {
+        deger = deger.length > 1 ? deger.slice(0, -1) : '0';
+        if (deger === '-') deger = '0';
+        yeniGiris = false;
+        guncelle();
+        return;
+      }
+      if (tus === '%') {
+        deger = sayiyiYaz(sayiyaCevir(deger) / 100);
+        yeniGiris = true;
+        guncelle();
+        return;
+      }
+      if (tus === ',') {
+        if (yeniGiris) { deger = '0,'; yeniGiris = false; }
+        else if (!deger.includes(',')) { deger += ','; }
+        guncelle();
+        return;
+      }
+      if (['+', '-', '*', '/'].includes(tus)) {
+        const guncel = sayiyaCevir(deger);
+        if (operator && !yeniGiris) {
+          oncekiDeger = hesapla(oncekiDeger, guncel, operator);
+          deger = sayiyiYaz(oncekiDeger);
+        } else {
+          oncekiDeger = guncel;
+        }
+        operator = tus;
+        yeniGiris = true;
+        guncelle();
+        return;
+      }
+      if (tus === '=') {
+        if (operator !== null) {
+          const guncel = sayiyaCevir(deger);
+          deger = sayiyiYaz(hesapla(oncekiDeger, guncel, operator));
+          operator = null; oncekiDeger = null; yeniGiris = true;
+          guncelle();
+        }
+        return;
+      }
+      // Rakam tuşları (0-9)
+      if (deger.length >= 14) return;
+      if (yeniGiris) { deger = (tus === '0') ? '0' : tus; yeniGiris = false; }
+      else { deger = (deger === '0') ? tus : deger + tus; }
+      guncelle();
+    };
+  });
+
+  document.getElementById('btn-hm-kullan').onclick = () => {
+    // Ekranda bekleyen bir işlem varsa (örn. 10 + 5 yazıp "Tutara Aktar"a doğrudan basıldıysa) önce onu tamamla.
+    let sonuc = sayiyaCevir(deger);
+    if (operator !== null) sonuc = hesapla(oncekiDeger, sonuc, operator);
+    if (!isFinite(sonuc)) { bilgiGoster('❌', 'Hesaplama Hatası', 'Sıfıra bölme gibi geçersiz bir işlem var, tutar aktarılamadı.', '#ef4444'); return; }
+    document.getElementById('tutar').value = formatla(Math.abs(sonuc));
+    document.getElementById('hesap-makinesi-popup').classList.add('hidden');
+  };
+})();
 
 document.getElementById('aciklama').addEventListener('input', (e) => {
 const metin = e.target.value.toLowerCase();
@@ -2475,7 +2610,11 @@ function tvOturumuTemizle() {
 
 document.getElementById('btn-tv-modu-cikis').onclick = async () => {
   const anonUid = auth.currentUser ? auth.currentUser.uid : null;
-  if (anonUid) { try { await updateDoc(doc(db, 'yetkili_cihazlar', anonUid), { aktif: false }); } catch (e) {} }
+  // DÜZELTME: Bu güncelleme daha önce Firestore kurallarına takılıp sessizce başarısız oluyordu
+  // (sadece hesap sahibi güncelleyebiliyordu, TV'nin kendisi değil) — TV "çıkış yaptım" görünse de
+  // veritabanındaki kayıt hep "aktif" kalıyordu. Kural artık TV'nin sadece kendi kaydını pasife
+  // çekmesine izin veriyor (bkz. güncellenmiş firestore.rules). Hata olursa artık konsola logluyoruz.
+  if (anonUid) { try { await updateDoc(doc(db, 'yetkili_cihazlar', anonUid), { aktif: false }); } catch (e) { console.log('TV kendi çıkışını Firestore\'a yazamadı:', e.message); } }
   tvOturumuTemizle();
   ekranGoster('auth-screen');
 };
@@ -2485,7 +2624,10 @@ let _qrOkutStream = null;
 let _qrOkutAktif = false;
 async function qrOkutBaslat() {
   document.getElementById('qr-okut-popup').classList.remove('hidden');
-  document.getElementById('qr-okut-durum').innerText = 'Kamera açılıyor...';
+  const durumBaslangic = document.getElementById('qr-okut-durum');
+  durumBaslangic.innerText = 'Kamera açılıyor...';
+  durumBaslangic.style.color = '';
+  durumBaslangic.style.fontWeight = '';
   _qrOkutAktif = true;
   try {
     _qrOkutStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -2508,7 +2650,19 @@ function _qrOkutDongu() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const kod = window.jsQR(img.data, img.width, img.height);
-    if (kod && kod.data) { qrOkutKapat(); kodOnayla(kod.data.trim().toUpperCase()); return; }
+    if (kod && kod.data) {
+      // DÜZELTME: Daha önce kamera QR'ı okur okumaz anında kapanıp bir sonraki adıma geçiyordu,
+      // kullanıcı ne olduğunu anlayamıyordu. Şimdi kısa bir "✅ QR kod okundu!" bilgisini gösterip
+      // kamerayı bir anlık açık tutuyoruz, sonra kapatıp onay adımına geçiyoruz.
+      _qrOkutAktif = false;
+      const durumEl = document.getElementById('qr-okut-durum');
+      durumEl.innerText = '✅ QR kod okundu!';
+      durumEl.style.color = '#10b981';
+      durumEl.style.fontWeight = 'bold';
+      const okunanKod = kod.data.trim().toUpperCase();
+      setTimeout(() => { qrOkutKapat(); kodOnayla(okunanKod); }, 700);
+      return;
+    }
   }
   requestAnimationFrame(_qrOkutDongu);
 }
@@ -2521,34 +2675,45 @@ document.getElementById('btn-qr-okut').onclick = () => { kapatPaneller(); qrOkut
 document.getElementById('qr-okut-kapat').onclick = qrOkutKapat;
 document.getElementById('qr-okut-manuel-onayla').onclick = () => {
   const kod = document.getElementById('qr-okut-manuel-kod').value.trim().toUpperCase();
-  if (kod.length !== 6) { alert('Lütfen 6 haneli kodu girin.'); return; }
+  if (kod.length !== 6) { bilgiGoster('⚠️', 'Eksik Kod', 'Lütfen 6 haneli kodu girin.', '#f59e0b'); return; }
   qrOkutKapat();
   kodOnayla(kod);
 };
 
 async function kodOnayla(kod) {
-  if (!auth.currentUser || auth.currentUser.isAnonymous) { alert('Bu işlem için önce kendi hesabınla giriş yapmalısın.'); return; }
+  if (!auth.currentUser || auth.currentUser.isAnonymous) { bilgiGoster('⚠️', 'Giriş Gerekli', 'Bu işlem için önce kendi hesabınla giriş yapmalısın.', '#f59e0b'); return; }
   try {
     const ref = doc(db, 'qr_oturumlar', kod);
     const snap = await getDoc(ref);
-    if (!snap.exists()) { alert('Kod bulunamadı. Kodun doğru olduğundan ve süresinin dolmadığından emin ol.'); return; }
+    if (!snap.exists()) { bilgiGoster('❌', 'Kod Bulunamadı', 'Kodun doğru olduğundan ve süresinin dolmadığından emin ol.', '#ef4444'); return; }
     const data = snap.data();
-    if (data.durum !== 'bekliyor') { alert('Bu kod zaten kullanılmış.'); return; }
-    if (Date.now() > data.sonGecerlilik) { alert('Kodun süresi dolmuş, TV ekranından yeni kod üretin.'); return; }
+    if (data.durum !== 'bekliyor') { bilgiGoster('⚠️', 'Kod Kullanılmış', 'Bu kod zaten kullanılmış.', '#f59e0b'); return; }
+    if (Date.now() > data.sonGecerlilik) { bilgiGoster('⏱️', 'Kodun Süresi Dolmuş', 'TV ekranından yeni kod üretin.', '#f59e0b'); return; }
     await setDoc(doc(db, 'yetkili_cihazlar', data.tvUid), {
       sahipUid: auth.currentUser.uid, sahipEmail: auth.currentUser.email, tarih: Date.now(), aktif: true, cihazAdi: 'TV / Ekran'
     });
     await updateDoc(ref, { durum: 'onaylandi', sahipUid: auth.currentUser.uid, sahipEmail: auth.currentUser.email });
-    alert('✅ TV ekranında oturum açıldı!');
-  } catch (e) { alert('Hata: ' + e.message); }
+    bilgiGoster('✅', 'Bağlantı Kuruldu', 'TV ekranında oturum açıldı!', '#10b981');
+  } catch (e) { bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
 }
 
 // ---- Telefon tarafı: Bağlı Cihazlar paneli ----
 async function bagliCihazlarGoster() {
   const kutu = document.getElementById('bagli-cihazlar-listesi');
   kutu.innerHTML = 'Yükleniyor...';
+  // DÜZELTME: Herhangi bir sebeple (ağ sorunu, beklenmedik gecikme) sorgu hiç sonuçlanmazsa
+  // "Yükleniyor..." sonsuza kadar ekranda kalmasın diye 10 saniyelik bir zaman aşımı ekledik.
+  let zamanAsimiOldu = false;
+  const zamanAsimiId = setTimeout(() => {
+    zamanAsimiOldu = true;
+    kutu.innerHTML = '<div style="opacity:0.8; padding:8px;">⏱️ Yükleme zaman aşımına uğradı.<br><button id="btn-bagli-cihaz-yeniden-dene" style="background:#6366f1; margin-top:6px; width:auto; padding:5px 12px;">🔄 Yeniden Dene</button></div>';
+    const tekrarBtn = document.getElementById('btn-bagli-cihaz-yeniden-dene');
+    if (tekrarBtn) tekrarBtn.onclick = bagliCihazlarGoster;
+  }, 10000);
   try {
     const snap = await getDocs(query(collection(db, 'yetkili_cihazlar'), where('sahipUid', '==', auth.currentUser.uid)));
+    clearTimeout(zamanAsimiId);
+    if (zamanAsimiOldu) return; // zaten zaman aşımı ekranı gösterildi, üzerine yazma
     let html = '';
     snap.forEach(d => {
       const data = d.data();
@@ -2560,7 +2725,13 @@ async function bagliCihazlarGoster() {
       </div>`;
     });
     kutu.innerHTML = html || '<div style="opacity:0.6; padding:8px;">Bağlı cihaz yok. TV\'de "TV / Bilgisayarda QR ile Aç" seçip QR kodu buradan okutabilirsin.</div>';
-  } catch (e) { kutu.innerHTML = 'Hata: ' + e.message; }
+  } catch (e) {
+    clearTimeout(zamanAsimiId);
+    if (zamanAsimiOldu) return;
+    kutu.innerHTML = `<div style="opacity:0.8; padding:8px;">Hata: ${escapeHTML(e.message)}<br><button id="btn-bagli-cihaz-yeniden-dene" style="background:#6366f1; margin-top:6px; width:auto; padding:5px 12px;">🔄 Yeniden Dene</button></div>`;
+    const tekrarBtn = document.getElementById('btn-bagli-cihaz-yeniden-dene');
+    if (tekrarBtn) tekrarBtn.onclick = bagliCihazlarGoster;
+  }
 }
 window.cihazCikisYaptir = async (anonUid) => {
   onayGoster('🔌', 'Bu cihazın erişimini sonlandırmak istediğine emin misin? Cihaz anında dışarı atılacak.', async () => {
