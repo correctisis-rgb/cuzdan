@@ -2545,10 +2545,20 @@ async function tvKodUret() {
       const cred = await signInAnonymously(auth);
       anonUid = cred.user.uid;
       localStorage.setItem('tv_cihaz_uid', anonUid);
-    } else if (!auth.currentUser || !auth.currentUser.isAnonymous) {
+    } else if (!auth.currentUser || !auth.currentUser.isAnonymous || auth.currentUser.uid !== anonUid) {
+      // DÜZELTME: localStorage'daki tv_cihaz_uid ile Firebase Auth'un o an bağlı olduğu anonim
+      // oturum farklı olabiliyordu (ör. tarayıcı verileri kısmen temizlenmiş, oturum süresi dolmuş,
+      // gizli sekme, farklı bir cihaz vs.). Böyle bir durumda signInAnonymously() TAMAMEN YENİ bir
+      // uid ile giriş yapıyor, ama kod eski (artık erişilemez) uid'yi Firestore dokümanına
+      // "tvUid" olarak yazmaya çalışıyordu. Firestore kuralı create işleminde
+      // "request.auth.uid == request.resource.data.tvUid" şartını aradığı için bu eşleşmezlik
+      // "Missing or insufficient permissions" hatasına yol açıyordu. Artık yeni oturumun asıl
+      // uid'si hem değişkene hem de localStorage'a yazılıp tutarlılık sağlanıyor. (Not: eski uid
+      // artık bu tarayıcıdan erişilemez olduğu için önceki "yetkili_cihazlar" onayı geçersiz kalır;
+      // TV, üretilen yeni kodla tekrar onaylanmalı — zaten bu fonksiyon yeni kod üretiyor.)
       const cred = await signInAnonymously(auth);
-      // Eski uid'yi koru, yeni anonymous uid farklı olabilir ama biz eski dokümanı kullanacağız
-      // Firestore dokümanı tv_cihaz_uid ile eşleşiyor, auth uid ile değil
+      anonUid = cred.user.uid;
+      localStorage.setItem('tv_cihaz_uid', anonUid);
     }
     const kod = _tvRastgeleKod();
     const simdi = Date.now();
@@ -2564,7 +2574,16 @@ async function tvKodUret() {
     _tvKodDinle(kod, anonUid);
     _tvYetkiIzle(anonUid);
   } catch (e) {
-    document.getElementById('tv-qr-durum').innerText = 'Hata: ' + e.message;
+    console.error('tvKodUret hatası:', e.code, e.message);
+    if (e.code === 'permission-denied' || /insufficient permissions/i.test(e.message || '')) {
+      // Bu durum normalde uid tutarsızlığından kaynaklanıyordu (yukarıdaki DÜZELTME ile giderildi),
+      // ama yine de oluşursa kullanıcıyı "Yeni Kod Üret"e yönlendiren anlaşılır bir mesaj gösterelim.
+      document.getElementById('tv-qr-durum').innerText = 'Bağlantı sırasında bir yetki sorunu oluştu. Lütfen "Yeni Kod Üret" butonuna tekrar basın.';
+    } else if (!navigator.onLine) {
+      document.getElementById('tv-qr-durum').innerText = 'İnternet bağlantısı yok. Bağlandıktan sonra tekrar deneyin.';
+    } else {
+      document.getElementById('tv-qr-durum').innerText = 'Kod üretilemedi: ' + e.message;
+    }
   } finally {
     _tvKodUretiliyor = false;
   }
