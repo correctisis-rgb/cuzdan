@@ -2260,7 +2260,12 @@ function satirOlustur(d) {
       ekstreEtiket = ` <span style="background:#f59e0b; color:#000; font-size:9px; border-radius:4px; padding:1px 4px; font-weight:bold;">${ayIsimleriKisa[parseInt(eAy)-1]} Ekstresi</span>`;
     }
   }
-  return `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}${ekstreEtiket}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;"><button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button></td></tr>`;
+  // DÜZELTME: TV modunda (salt okunur) düzenle/sil butonları hiç render edilmiyor,
+  // böylece TV'den yanlışlıkla işlem silinmesi/değiştirilmesi mümkün olmuyor.
+  const islemButonlari = (typeof TV_MODU !== 'undefined' && TV_MODU)
+    ? ''
+    : `<button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button>`;
+  return `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}${ekstreEtiket}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;">${islemButonlari}</td></tr>`;
 }
 
 function tabloYenile() {
@@ -2354,6 +2359,12 @@ let EFEKTIF_UID = null;
 let EFEKTIF_EMAIL = null;
 let _tvKodUnsub = null;
 let _tvYetkiUnsub = null;
+// DÜZELTME: tvKodUret() çalışırken signInAnonymously() bir onAuthStateChanged olayı tetikliyor.
+// O handler henüz "tv_bekleyen_kod" localStorage'a yazılmadan (kod üretilmeden) devreye girerse
+// bekleyen bir kod olmadığını sanıp kullanıcıyı giriş ekranına geri atıyordu — ilk tıklamada
+// QR'ın gelmeyip login ekranına dönme sorunu buradan kaynaklanıyordu. Bu bayrak, tvKodUret()
+// süreci tamamlanana kadar onAuthStateChanged'in araya girip ekranı değiştirmesini engelliyor.
+let _tvKodUretiliyor = false;
 
 function _tvRastgeleKod() {
   const harfler = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // karışabilecek 0/O, 1/I gibi karakterler çıkarıldı
@@ -2364,6 +2375,7 @@ function _tvRastgeleKod() {
 
 async function tvKodUret() {
   if (_tvKodUnsub) { _tvKodUnsub(); _tvKodUnsub = null; }
+  _tvKodUretiliyor = true;
   document.getElementById('tv-qr-durum').innerText = 'Kod hazırlanıyor...';
   document.getElementById('tv-qr-render').innerHTML = '';
   document.getElementById('tv-qr-kod-metin').innerText = '';
@@ -2389,6 +2401,8 @@ async function tvKodUret() {
     _tvKodDinle(kod, anonUid);
   } catch (e) {
     document.getElementById('tv-qr-durum').innerText = 'Hata: ' + e.message;
+  } finally {
+    _tvKodUretiliyor = false;
   }
 }
 
@@ -2549,8 +2563,13 @@ async function bagliCihazlarGoster() {
   } catch (e) { kutu.innerHTML = 'Hata: ' + e.message; }
 }
 window.cihazCikisYaptir = async (anonUid) => {
-  try { await updateDoc(doc(db, 'yetkili_cihazlar', anonUid), { aktif: false }); bagliCihazlarGoster(); }
-  catch (e) { alert('Hata: ' + e.message); }
+  onayGoster('🔌', 'Bu cihazın erişimini sonlandırmak istediğine emin misin? Cihaz anında dışarı atılacak.', async () => {
+    try {
+      await updateDoc(doc(db, 'yetkili_cihazlar', anonUid), { aktif: false });
+      bagliCihazlarGoster();
+      bilgiGoster('✅', 'Çıkış Yaptırıldı', 'Cihazın erişimi sonlandırıldı.', '#10b981');
+    } catch (e) { bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
+  }, '#ef4444', 'Evet, Çıkış Yaptır');
 };
 document.getElementById('btn-bagli-cihazlar').onclick = () => { kapatPaneller(); document.getElementById('bagli-cihazlar-panel').classList.remove('hidden'); bagliCihazlarGoster(); };
 // ================== /TV-QR SİSTEMİ SONU ==================
@@ -2559,6 +2578,9 @@ onAuthStateChanged(auth, (user) => {
 if (user) {
 if (user.isAnonymous) {
   // Bu bir TV/ekran oturumu; normal kullanıcı akışını hiç çalıştırma, sadece onay bekle/uygula.
+  // DÜZELTME: tvKodUret() zaten süreci yönetiyorsa (kod henüz üretiliyor/yazılıyorsa) araya girip
+  // ekranı değiştirmiyoruz; aksi halde ilk QR denemesinde kullanıcı giriş ekranına geri atılıyordu.
+  if (_tvKodUretiliyor) { splashGizle(); return; }
   const bekleyenAnon = localStorage.getItem('tv_onayli_uid');
   if (bekleyenAnon === user.uid) { _tvYetkiIzle(user.uid); }
   else if (localStorage.getItem('tv_bekleyen_kod')) { ekranGoster('tv-qr-screen'); _tvKodDinle(localStorage.getItem('tv_bekleyen_kod'), user.uid); splashGizle(); }
