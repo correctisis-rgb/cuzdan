@@ -628,6 +628,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
 <button id="btn-qr-okut" style="background:#7c3aed; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">📷 QR Kod Okut</button>
 <button id="btn-bagli-cihazlar" style="background:#4b5563; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">🖥️ Bağlı Cihazlar</button>
+<button id="btn-anaekrana-ekle" style="background:#16a34a; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white; display:none;">📲 Ana Ekrana Ekle</button>
 <div style="margin:4px 0 2px 0; padding:5px; background:rgba(0,0,0,0.1); border-radius:8px;">
   <div style="font-size:10px; color:#555; margin-bottom:4px; font-weight:bold;">🎨 TEMA SEÇ</div>
   <div style="display:flex; gap:8px; align-items:center; justify-content:center;">
@@ -639,6 +640,21 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
 <button id="btn-gorunum-degistir">🖥️ Masaüstü Sitesi İste</button>
 <div id="admin-alan"></div>
+</div>
+
+<div id="ios-install-panel" class="hidden" onclick="if(event.target===this) this.classList.add('hidden')" style="position:fixed; left:0; right:0; bottom:0; top:0; background:rgba(0,0,0,0.5); z-index:100; display:flex; align-items:flex-end; justify-content:center;">
+<div style="background:white; color:#111; width:100%; max-width:420px; border-radius:16px 16px 0 0; padding:18px; padding-bottom:calc(18px + env(safe-area-inset-bottom));">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <div style="font-weight:bold; font-size:15px;">📲 Ana Ekrana Ekle</div>
+    <button onclick="document.getElementById('ios-install-panel').classList.add('hidden')" style="background:#eee; color:#111; border:none; width:28px; height:28px; border-radius:50%; font-size:14px; padding:0;">✕</button>
+  </div>
+  <div style="font-size:13px; line-height:1.7;">
+    1. Aşağıdaki <b>Paylaş</b> düğmesine dokunun &nbsp;<span style="display:inline-block; border:1px solid #ccc; border-radius:6px; padding:1px 6px;">⬆️</span><br>
+    2. Açılan menüden <b>"Ana Ekrana Ekle"</b> seçeneğini bulun&nbsp;<span style="display:inline-block; border:1px solid #ccc; border-radius:6px; padding:1px 6px;">➕</span><br>
+    3. Sağ üstteki <b>"Ekle"</b> düğmesine dokunun
+  </div>
+  <div style="font-size:11px; color:#666; margin-top:10px;">Not: Bu işlem yalnızca Safari tarayıcısından yapılabilir.</div>
+</div>
 </div>
 
 <div id="grafik-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.15); border-radius:10px;">
@@ -1798,7 +1814,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel', 'ios-install-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
 
 // YENİ: Sağ üstteki bildirim (🔔) ve profil menüleri artık boş bir yere tıklanınca da otomatik
 // kapanıyor. Aynı mantık, "Kapat X" butonu artık gösterilmeyen (bkz. CSS: body:not(.masaustu-modu)
@@ -2971,6 +2987,56 @@ window.cihazCikisYaptir = async (anonUid) => {
   }, '#ef4444', 'Evet, Çıkış Yaptır');
 };
 document.getElementById('btn-bagli-cihazlar').onclick = () => { kapatPaneller(); document.getElementById('bagli-cihazlar-panel').classList.remove('hidden'); bagliCihazlarGoster(); };
+
+// ============ ANA EKRANA EKLE (PWA Install) ============
+(() => {
+  const btn = document.getElementById('btn-anaekrana-ekle');
+  if (!btn) return;
+
+  // Zaten yüklenmiş / standalone modda mı çalışıyor kontrolü
+  const zatenYuklu = () => window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true; // iOS Safari standalone
+
+  const iOSMu = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS
+
+  let deferredPrompt = null;
+
+  if (zatenYuklu()) {
+    btn.style.display = 'none';
+  } else if (iOSMu()) {
+    // iOS'ta beforeinstallprompt desteklenmez, kullanıcıya elle talimat gösteriyoruz.
+    btn.style.display = '';
+    btn.onclick = () => {
+      kapatPaneller();
+      document.getElementById('ios-install-panel').classList.remove('hidden');
+    };
+  } else {
+    // Android/Chrome/Edge vb. - native install prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btn.style.display = '';
+    });
+    btn.onclick = async () => {
+      if (!deferredPrompt) {
+        alert('Uygulama zaten yüklü olabilir ya da bu tarayıcı doğrudan yüklemeyi desteklemiyor. Tarayıcı menüsünden "Ana Ekrana Ekle / Uygulamayı Yükle" seçeneğini deneyebilirsiniz.');
+        return;
+      }
+      kapatPaneller();
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      if (outcome === 'accepted') {
+        btn.style.display = 'none';
+      }
+    };
+  }
+
+  window.addEventListener('appinstalled', () => {
+    btn.style.display = 'none';
+  });
+})();
 // ================== /TV-QR SİSTEMİ SONU ==================
 
 onAuthStateChanged(auth, (user) => {
