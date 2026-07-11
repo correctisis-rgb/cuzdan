@@ -754,6 +754,12 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <div id="kullanici-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.4); border-radius:10px; text-align:left; max-height:300px; overflow-y:auto; z-index:1001;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">👥 KULLANICI YÖNETİMİ</div>
+<!-- YENİ: "Kullanıcı Yönetimi" butonundaki kırmızı rozet, admin o kullanıcının yazışma penceresini
+     açıp okumadıkça hiç sıfırlanmıyordu (ör. gönderen kullanıcı listede kolayca bulunamıyorsa rozet
+     sonsuza kadar "1" gösteriyordu). Aşağıdaki buton, tüm okunmamış kullanıcı cevaplarını tek
+     tıkla "okundu" işaretleyip rozeti temizliyor; kullanıcı listesindeki 🔴 işaretli satırlar ise
+     hangi kullanıcının mesajı olduğunu gösteriyor. -->
+<button id="btn-tum-mesajlari-okundu-yap" style="display:none; background:#ef4444; width:100%; padding:5px; border-radius:5px; margin-bottom:8px; font-size:11px;">✅ Tüm Okunmamış Mesajları Okundu Yap</button>
 <div id="kullanici-istatistik" style="display:flex; gap:6px; margin-bottom:8px;">
   <div style="flex:1; background:rgba(16,185,129,0.2); border:1px solid #10b981; border-radius:8px; padding:6px; text-align:center;">
     <div style="font-size:18px; font-weight:bold;" id="stat-toplam">-</div>
@@ -1073,7 +1079,12 @@ function presenceBaslat(user) {
     if (snap.val() === true) {
       // Önce onDisconnect'i register et, sonra yaz - sıra önemli
       await onDisconnect(userPresenceRef).remove();
-      dbSet(userPresenceRef, { email: user.email, girisTarihi: Date.now() });
+      // DÜZELTME: Bu yazma hatası önceden tamamen sessizdi (.catch yoktu) — Realtime Database
+      // güvenlik kuralları "presence/$uid" yoluna yazmaya izin vermiyorsa, kullanıcı hiçbir zaman
+      // "Şu An Online" listesinde görünmüyordu ama ortada hiçbir hata/log de yoktu, bu yüzden sorun
+      // fark edilemiyordu. Artık başarısız olursa konsola açıkça yazılıyor.
+      dbSet(userPresenceRef, { email: user.email, girisTarihi: Date.now() })
+        .catch(e => console.error('presenceBaslat: presence/' + user.uid + ' yazılamadı (RTDB kurallarını kontrol edin):', e.message));
     } else {
       // Bağlantı kesildi - presence'ı temizle (backup)
       // Bu kısım Firebase offline'da çalışmaz ama online'a döndüğünde temizler
@@ -1196,17 +1207,22 @@ function kullaniciListeRenderFiltered() {
   const aramaEl = document.getElementById('kullanici-arama');
   const filtre = (aramaEl ? aramaEl.value : '').trim().toLocaleLowerCase('tr-TR');
 
+  const okunmamisUidler = window._okunmamisSohbetUidler || new Set();
   let kullaniciListeHtml = '';
   kullanicilar.forEach(([uid, u]) => {
     if (filtre && !(u.email || '').toLocaleLowerCase('tr-TR').includes(filtre)) return;
     const sonGirisTarih = u.sonGiris ? new Date(u.sonGiris).toLocaleString('tr-TR') : 'Henüz kaydedilmedi';
     const ilkKayitTarih = u.ilkKayit ? new Date(u.ilkKayit).toLocaleDateString('tr-TR') : '—';
+    // YENİ: Bu kullanıcının okunmamış bir mesajı varsa 💬 butonunun üzerinde küçük bir 🔴 nokta
+    // gösteriliyor, böylece admin kırmızı "1" rozetinin HANGİ kullanıcıdan geldiğini kolayca bulup
+    // yazışmayı açarak (bu da otomatik olarak okundu işaretliyor) rozeti temizleyebiliyor.
+    const okunmadiMi = okunmamisUidler.has(uid);
     kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; gap:6px;">
         <div style="flex:1; min-width:0;">
-          <div style="font-weight:bold; font-size:11px; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(u.email)}</div>
+          <div style="font-weight:bold; font-size:11px; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(u.email)}${okunmadiMi ? ' <span title="Okunmamış mesaj var" style="color:#ef4444;">●</span>' : ''}</div>
           <div style="opacity:0.6; font-size:10px;">Son giriş: ${sonGirisTarih} | Kayıt: ${ilkKayitTarih}</div>
         </div>
-        <button onclick="window.adminMesajGonderForm('${uid}','${u.email.replace(/'/g,"\\'")}')" style="background:#3b82f6; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto; flex-shrink:0;">💬</button>
+        <button onclick="window.adminMesajGonderForm('${uid}','${u.email.replace(/'/g,"\\'")}')" style="background:${okunmadiMi ? '#ef4444' : '#3b82f6'}; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto; flex-shrink:0;">💬</button>
       </div>`;
   });
 
@@ -1293,7 +1309,17 @@ window.adminKullaniciMesajKapat = () => {
 function adminYaniMesajRozetDinle() {
   onSnapshot(collection(db, 'bildirimler'), (snap) => {
     let sayac = 0;
-    snap.forEach(d => { const data = d.data(); if (data.kanal === 'sohbet' && !data.okundu) sayac++; });
+    // YENİ: sadece toplam sayıyı değil, hangi kullanıcı(lar)ın mesajı okunmadıysa onların uid'lerini
+    // de topluyoruz; hem "tümünü okundu yap" butonu hem de kullanıcı listesindeki 🔴 işaretleri
+    // bu listeyi kullanıyor.
+    const okunmamisIdler = [];
+    const okunmamisUidler = new Set();
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.kanal === 'sohbet' && !data.okundu) { sayac++; okunmamisIdler.push(d.id); if (data.uid) okunmamisUidler.add(data.uid); }
+    });
+    window._okunmamisSohbetIdler = okunmamisIdler;
+    window._okunmamisSohbetUidler = okunmamisUidler;
     [
       { hedefId: 'btn-kullanici-yonetim', rozetId: 'kullanici-mesaj-rozet', stil: 'background:#ef4444; color:white; border-radius:10px; padding:1px 7px; font-size:10px; margin-left:6px; display:inline-block;' },
       { hedefId: 'mas-nav-kullanici', rozetId: 'kullanici-mesaj-rozet-mas', stil: 'background:#ef4444; color:white; border-radius:10px; padding:1px 7px; font-size:10px; margin-left:6px; display:inline-block; float:right;' }
@@ -1306,8 +1332,21 @@ function adminYaniMesajRozetDinle() {
         rozet.innerText = sayac > 9 ? '9+' : sayac;
       } else if (rozet) { rozet.remove(); }
     });
+    const tumunuOkuBtn = document.getElementById('btn-tum-mesajlari-okundu-yap');
+    if (tumunuOkuBtn) tumunuOkuBtn.style.display = sayac > 0 ? 'block' : 'none';
+    // Kullanıcı paneli o an açıksa 🔴 işaretlerini de güncelle
+    if (typeof kullaniciListeRenderFiltered === 'function') kullaniciListeRenderFiltered();
   });
 }
+
+document.getElementById('btn-tum-mesajlari-okundu-yap').onclick = async () => {
+  const idler = window._okunmamisSohbetIdler || [];
+  if (!idler.length) return;
+  try {
+    await Promise.all(idler.map(id => updateDoc(doc(db, 'bildirimler', id), { okundu: true })));
+    if (typeof bilgiToastGoster === 'function') bilgiToastGoster('✅ Tüm mesajlar okundu olarak işaretlendi.');
+  } catch (e) { alert('Hata: ' + e.message); }
+};
 
 // --- TEMA SİSTEMİ ---
 // --- KULLANICI AYARLARI (Firestore tabanlı) ---
@@ -1757,10 +1796,38 @@ isInitialLoad = false;
 window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
 window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
 
-document.getElementById('btn-duyuru-ac').onclick = () => { 
+// YENİ: Sağ üstteki bildirim (🔔) ve profil menüleri artık boş bir yere tıklanınca da otomatik
+// kapanıyor. Menü açıkken; menünün kendisinin, menüyü açan ikonun VEYA sayfa içindeki başka bir
+// panel/iç bileşenin (ör. panel içindeki bir butona/inputa tıklama) dışında bir yere tıklanırsa
+// kapatılıyor. "mousedown" kullanılıyor çünkü "click" olayı bazı butonlarda (özellikle iç
+// panellerdeki onclick'lerden önce) tetiklenirse istenmeyen şekilde menüyü kapatıp ardından
+// asıl butonun işlevini de iptal edebiliyordu; mousedown ile kapatma işlemi buton click'inden
+// önce sorunsuz gerçekleşiyor.
+document.addEventListener('mousedown', (e) => {
+  [
+    { menuId: 'duyuru-menu', btnId: 'btn-duyuru-ac' },
+    { menuId: 'profil-menu', btnId: 'profil-baslik' }
+  ].forEach(({ menuId, btnId }) => {
+    const menu = document.getElementById(menuId);
+    const btn = document.getElementById(btnId);
+    if (!menu || menu.classList.contains('hidden')) return;
+    if (menu.contains(e.target) || (btn && btn.contains(e.target))) return; // menünün/butonun içine tıklandıysa dokunma
+    menu.classList.add('hidden');
+  });
+});
+
+document.getElementById('btn-duyuru-ac').onclick = (e) => {
 document.getElementById('bildirim-badge').style.display = 'none';
 onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (s) => { if(!s.empty) localStorage.setItem('sonOkunanDuyuruID', s.docs[0].id); });
-kapatPaneller(); document.getElementById('duyuru-menu').classList.toggle('hidden'); 
+// DÜZELTME: Önceden kapatPaneller() menüyü önce zorla gizleyip, hemen ardından toggle('hidden')
+// tekrar 'hidden' sınıfını kaldırdığı için menü her tıklamada AÇILIYORDU; aynı ikona ikinci kez
+// basmak menüyü asla kapatamıyordu. Şimdi menünün o anki durumu tıklamadan önce okunuyor ve
+// gerçek bir aç/kapa yapılıyor.
+if (e && e.stopPropagation) e.stopPropagation();
+const menu = document.getElementById('duyuru-menu');
+const acikMi = !menu.classList.contains('hidden');
+kapatPaneller();
+if (!acikMi) menu.classList.remove('hidden');
 };
 
 // Admin kimlik doğrulama (obfuscated)
@@ -3181,7 +3248,14 @@ document.getElementById('btn-tekrar-dogrulama').onclick = async () => {
   }
 };
 document.getElementById('btn-cikis').onclick = () => { kapatPaneller(); if (typeof qrOkutKapat === 'function') qrOkutKapat(); if(auth.currentUser) { dbSet(dbRef(rtdb, 'presence/' + auth.currentUser.uid), null); } signOut(auth); };
-document.getElementById('profil-baslik').onclick = () => { kapatPaneller(); document.getElementById('profil-menu').classList.toggle('hidden'); };
+document.getElementById('profil-baslik').onclick = (e) => {
+// DÜZELTME: duyuru-menu ile aynı aç/kapa hatası burada da vardı, aynı şekilde düzeltildi.
+if (e && e.stopPropagation) e.stopPropagation();
+const menu = document.getElementById('profil-menu');
+const acikMi = !menu.classList.contains('hidden');
+kapatPaneller();
+if (!acikMi) menu.classList.remove('hidden');
+};
 document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); };
 document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); };
 document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
