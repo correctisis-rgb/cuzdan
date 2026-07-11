@@ -351,16 +351,29 @@ body.masaustu-modu #masaustu-ozet-kartlari {
   border-radius: 12px;
   padding: 16px 18px;
   border: 1px solid #e5e7eb;
+  border-top: 3px solid var(--ozet-accent, #e5e7eb);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+.ozet-kart:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(17,24,39,0.08); }
+.ozet-kart-metin { display: flex; flex-direction: column; }
 .ozet-kart-baslik { font-size: 12px; color: #6b7280; margin-bottom: 5px; font-weight: 500; }
 .ozet-kart-deger { font-size: 24px; font-weight: 700; color: #111827; }
 .ozet-kart-ikon {
-  width: 36px; height: 36px; border-radius: 8px;
+  width: 38px; height: 38px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center; font-size: 18px;
+  background: var(--ozet-accent-bg, #f3f4f6); flex-shrink: 0;
 }
+.ozet-kart.ozet-kart-gelir { --ozet-accent: #10b981; }
+.ozet-kart.ozet-kart-gelir .ozet-kart-ikon { --ozet-accent-bg: #ecfdf5; }
+.ozet-kart.ozet-kart-gider { --ozet-accent: #ef4444; }
+.ozet-kart.ozet-kart-gider .ozet-kart-ikon { --ozet-accent-bg: #fef2f2; }
+.ozet-kart.ozet-kart-net { --ozet-accent: #2563eb; }
+.ozet-kart.ozet-kart-net .ozet-kart-ikon { --ozet-accent-bg: #eff6ff; }
+.ozet-kart-gelir .ozet-kart-deger { color: #059669; }
+.ozet-kart-gider .ozet-kart-deger { color: #dc2626; }
 
 /* İki sütun */
 #masaustu-ana-alan, #masaustu-form-sutun, #masaustu-liste-sutun { display: contents; }
@@ -387,9 +400,17 @@ body.masaustu-modu #masaustu-liste-sutun {
    (özet kartları çalıştığı için bu fark edilmesi zor bir hataydı). Burada flex/min-height'ı
    masaüstüne özgü olarak eziyoruz ki liste kendi içeriğine göre boyutlansın.
 */
-body.masaustu-modu .liste-alani { flex: 0 0 auto; height: auto; min-height: 120px; max-height: 60dvh; overflow-y: auto; }
-body.masaustu-modu .liste-alani table { font-size: 13px; }
-body.masaustu-modu .liste-alani td { color: #374151; border-bottom: 1px solid #f3f4f6; padding: 7px 8px; }
+body.masaustu-modu .liste-alani { flex: 0 0 auto; height: auto; min-height: 120px; max-height: 60dvh; overflow-y: auto; background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 4px 14px; }
+body.masaustu-modu .liste-alani table { font-size: 13px; border-collapse: collapse; width: 100%; }
+body.masaustu-modu .liste-alani td { color: #374151; border-bottom: 1px solid #f3f4f6; padding: 10px 8px; }
+body.masaustu-modu .liste-alani tr:last-child td { border-bottom: none; }
+body.masaustu-modu .liste-alani tr:hover td { background: #f9fafb; }
+body.masaustu-modu .liste-alani small { color: #9ca3af; }
+
+.tutar-gelir { color: #00ff9d; }
+.tutar-gider { color: #ff4d4d; }
+body.masaustu-modu .tutar-gelir { color: #059669; }
+body.masaustu-modu .tutar-gider { color: #dc2626; }
 
 /* Nav ay */
 body.masaustu-modu .nav-container { display: flex; align-items: center; gap: 8px; margin: 0; }
@@ -448,7 +469,15 @@ body.masaustu-modu .header-icons { display: none; }
   text-transform: none; margin: 0; transition: all .15s;
 }
 .mas-nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
-.mas-nav-item.aktif { background: #2563eb; color: white; }
+.mas-nav-item.aktif { background: rgba(37,99,235,0.18); color: white; box-shadow: inset 3px 0 0 #3b82f6; }
+
+/* İnce, temaya uygun scrollbar (sadece masaüstünde) */
+body.masaustu-modu ::-webkit-scrollbar { width: 8px; height: 8px; }
+body.masaustu-modu ::-webkit-scrollbar-track { background: transparent; }
+body.masaustu-modu ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; }
+body.masaustu-modu ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 #mas-sidebar-footer {
   margin-top: auto; padding: 14px 18px;
   border-top: 1px solid rgba(255,255,255,0.08);
@@ -753,17 +782,26 @@ body.masaustu-modu .header-icons { display: none; }
 </div>
 
 <div id="masaustu-ozet-kartlari">
-  <div class="ozet-kart">
-    <div class="ozet-kart-baslik">Toplam Gelir</div>
-    <div class="ozet-kart-deger" id="masaustu-toplam-gelir" style="color:#00ff9d;">₺0,00</div>
+  <div class="ozet-kart ozet-kart-gelir">
+    <div class="ozet-kart-metin">
+      <div class="ozet-kart-baslik">Toplam Gelir</div>
+      <div class="ozet-kart-deger" id="masaustu-toplam-gelir">₺0,00</div>
+    </div>
+    <div class="ozet-kart-ikon">💰</div>
   </div>
-  <div class="ozet-kart">
-    <div class="ozet-kart-baslik">Toplam Gider</div>
-    <div class="ozet-kart-deger" id="masaustu-toplam-gider" style="color:#ff4d4d;">₺0,00</div>
+  <div class="ozet-kart ozet-kart-gider">
+    <div class="ozet-kart-metin">
+      <div class="ozet-kart-baslik">Toplam Gider</div>
+      <div class="ozet-kart-deger" id="masaustu-toplam-gider">₺0,00</div>
+    </div>
+    <div class="ozet-kart-ikon">💸</div>
   </div>
-  <div class="ozet-kart">
-    <div class="ozet-kart-baslik">Net Bakiye</div>
-    <div class="ozet-kart-deger" id="masaustu-net-bakiye">₺0,00</div>
+  <div class="ozet-kart ozet-kart-net">
+    <div class="ozet-kart-metin">
+      <div class="ozet-kart-baslik">Net Bakiye</div>
+      <div class="ozet-kart-deger" id="masaustu-net-bakiye">₺0,00</div>
+    </div>
+    <div class="ozet-kart-ikon">📊</div>
   </div>
 </div>
 
@@ -1139,8 +1177,8 @@ function kullanicilariDinle() {
     const toplamKullanici = tumUidler.size;
 
     let son24h = 0;
-    const kullanicilar = Object.entries(usersData).sort((a, b) => b[1].sonGiris - a[1].sonGiris);
-    kullanicilar.forEach(([uid, u]) => { if (simdi - u.sonGiris < yirmiDortSaat) son24h++; });
+    const kullanicilar = Object.entries(usersData).sort((a, b) => (b[1].sonGiris || 0) - (a[1].sonGiris || 0));
+    kullanicilar.forEach(([uid, u]) => { if (u.sonGiris && simdi - u.sonGiris < yirmiDortSaat) son24h++; });
 
     document.getElementById('stat-toplam').innerText = toplamKullanici;
     document.getElementById('stat-24h').innerText = son24h;
@@ -1161,8 +1199,8 @@ function kullaniciListeRenderFiltered() {
   let kullaniciListeHtml = '';
   kullanicilar.forEach(([uid, u]) => {
     if (filtre && !(u.email || '').toLocaleLowerCase('tr-TR').includes(filtre)) return;
-    const sonGirisTarih = new Date(u.sonGiris).toLocaleString('tr-TR');
-    const ilkKayitTarih = new Date(u.ilkKayit).toLocaleDateString('tr-TR');
+    const sonGirisTarih = u.sonGiris ? new Date(u.sonGiris).toLocaleString('tr-TR') : 'Henüz kaydedilmedi';
+    const ilkKayitTarih = u.ilkKayit ? new Date(u.ilkKayit).toLocaleDateString('tr-TR') : '—';
     kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; gap:6px;">
         <div style="flex:1; min-width:0;">
           <div style="font-weight:bold; font-size:11px; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(u.email)}</div>
@@ -1867,17 +1905,17 @@ function masaUstuSidebarKur() {
   const ozetDiv = document.createElement('div');
   ozetDiv.id = 'masaustu-ozet-kartlari';
   ozetDiv.innerHTML = `
-    <div class="ozet-kart">
-      <div><div class="ozet-kart-baslik">Toplam Gelir</div><div class="ozet-kart-deger" id="mas-kart-gelir" style="color:#059669;">₺0,00</div></div>
-      <div class="ozet-kart-ikon" style="background:#d1fae5;color:#059669;">↑</div>
+    <div class="ozet-kart ozet-kart-gelir">
+      <div class="ozet-kart-metin"><div class="ozet-kart-baslik">Toplam Gelir</div><div class="ozet-kart-deger" id="mas-kart-gelir">₺0,00</div></div>
+      <div class="ozet-kart-ikon">💰</div>
     </div>
-    <div class="ozet-kart">
-      <div><div class="ozet-kart-baslik">Toplam Gider</div><div class="ozet-kart-deger" id="mas-kart-gider" style="color:#dc2626;">₺0,00</div></div>
-      <div class="ozet-kart-ikon" style="background:#fee2e2;color:#dc2626;">↓</div>
+    <div class="ozet-kart ozet-kart-gider">
+      <div class="ozet-kart-metin"><div class="ozet-kart-baslik">Toplam Gider</div><div class="ozet-kart-deger" id="mas-kart-gider">₺0,00</div></div>
+      <div class="ozet-kart-ikon">💸</div>
     </div>
-    <div class="ozet-kart">
-      <div><div class="ozet-kart-baslik">Net Bakiye</div><div class="ozet-kart-deger" id="mas-kart-bakiye">₺0,00</div></div>
-      <div class="ozet-kart-ikon" style="background:#dbeafe;color:#2563eb;">₺</div>
+    <div class="ozet-kart ozet-kart-net">
+      <div class="ozet-kart-metin"><div class="ozet-kart-baslik">Net Bakiye</div><div class="ozet-kart-deger" id="mas-kart-bakiye">₺0,00</div></div>
+      <div class="ozet-kart-ikon">📊</div>
     </div>
   `;
 
@@ -1922,6 +1960,12 @@ function masaUstuSidebarKur() {
       const se=document.getElementById(s), de=document.getElementById(d);
       if(se&&de&&se.innerText!==de.innerText) de.innerText=se.innerText;
     });
+    // DÜZELTME: Net bakiye kartının rengi (negatifse kırmızı, pozitifse mavi) daha önce hiç
+    // senkronize edilmiyordu — sadece metin kopyalanıyordu, mobil tarafta ayarlanan renk
+    // masaüstü kartına hiç yansımıyordu (her zaman varsayılan koyu gri kalıyordu).
+    const netKaynak = document.getElementById('masaustu-net-bakiye');
+    const netHedef = document.getElementById('mas-kart-bakiye');
+    if (netKaynak && netHedef && netKaynak.style.color) netHedef.style.color = netKaynak.style.color;
   }, 500);
 
   // Nav seç
@@ -2445,7 +2489,7 @@ function satirOlustur(d) {
   const islemButonlari = (typeof TV_MODU !== 'undefined' && TV_MODU)
     ? ''
     : `<button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button>`;
-  return `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}${ekstreEtiket}</small></td><td style="color:${d.tur==='gelir'?'#00ff9d':'#ff4d4d'}; font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;">${islemButonlari}</td></tr>`;
+  return `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}${ekstreEtiket}</small></td><td class="${d.tur==='gelir'?'tutar-gelir':'tutar-gider'}" style="font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;">${islemButonlari}</td></tr>`;
 }
 
 function tabloYenile() {
@@ -3543,7 +3587,18 @@ document.getElementById('btn-sonraki').onclick = () => { seciliTarih.setMonth(se
 function verileriGetir(uid) {
 document.getElementById('ay-baslik').innerText = `${ayIsimleri[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
 if (unsubIslemler) { unsubIslemler(); unsubIslemler = null; }
-unsubIslemler = onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid)), { includeMetadataChanges: true }, (snapshot) => {
+// DÜZELTME (PERFORMANS): Bu sorgu daha önce kullanıcının TÜM ZAMANLAR boyunca olan işlemlerini
+// çekip ay filtrelemesini tarayıcıda yapıyordu. Yıllar geçtikçe veri arttıkça her ay değişiminde
+// tüm geçmiş yeniden indirilip işleniyordu — bu hem yavaşlıyor hem gereksiz Firestore okuma
+// maliyeti oluşturuyordu. Şimdi sorguyu Firestore seviyesinde tarih aralığıyla sınırlıyoruz.
+// Pencere ±1 ay geniş tutuluyor (seçili aydan bir önce, bir sonra dahil) çünkü "kart kesim
+// tarihi" özelliği bir işlemi ekstreAy ile en fazla 1 ay kaydırabiliyor (bkz. işlem eklerken
+// ekstreAy hesaplama mantığı); bu pencere daraltılırsa kesim tarihine göre kaymış işlemler
+// yanlışlıkla görünmeyebilirdi. Sonuç: veri ne kadar büyürse büyüsün her zaman en fazla ~3 aylık
+// veri çekiliyor, artık kullanıcının geçmişiyle birlikte yavaşlamıyor.
+const ayBaslangicTarih = new Date(seciliTarih.getFullYear(), seciliTarih.getMonth() - 1, 1);
+const ayBitisTarih = new Date(seciliTarih.getFullYear(), seciliTarih.getMonth() + 2, 1);
+unsubIslemler = onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid), where("tarih", ">=", ayBaslangicTarih.getTime()), where("tarih", "<", ayBitisTarih.getTime())), { includeMetadataChanges: true }, (snapshot) => {
 let bakiye = 0, veriler = [];
 const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
 const hesapBorclari = { 'Nakit': 0, 'Garanti': 0, 'Ziraat': 0, 'Qnb': 0, 'Diğer Kredi Kartı': 0 };
@@ -3594,7 +3649,7 @@ const mGider = document.getElementById('masaustu-toplam-gider');
 const mNet = document.getElementById('masaustu-net-bakiye');
 if (mGelir) mGelir.innerText = '₺' + formatla(toplamGelir);
 if (mGider) mGider.innerText = '₺' + formatla(toplamGider);
-if (mNet) { mNet.innerText = '₺' + formatla(bakiye); mNet.style.color = bakiye < 0 ? '#ff4d4d' : '#60a5fa'; }
+if (mNet) { mNet.innerText = '₺' + formatla(bakiye); mNet.style.color = bakiye < 0 ? '#dc2626' : '#2563eb'; }
 
 tabloYenile();
 
