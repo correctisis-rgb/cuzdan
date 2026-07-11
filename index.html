@@ -232,6 +232,10 @@ input, textarea, select { width: 100%; padding: 8px; margin: 1px 0; border: none
 button { padding: 8px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 1px; text-transform: uppercase; }
 .container.app-container button { padding: 5px; }
 .close-btn { background: #ff0000 !important; font-size: 10px; padding: 3px !important; margin-bottom: 5px; width: auto !important; }
+/* YENİ: Artık mobilde tüm açılır panellerde boş bir yere tıklayınca otomatik kapanma çalıştığı için
+   "Kapat X" butonları gereksiz hale geldi. Masaüstü modunda dokunmuyoruz; orada paneller ayrı bir
+   modal penceresinde açılıyor ve JS zaten kendi "✕ Kapat" başlık butonunu kullanıyor. */
+body:not(.masaustu-modu) .close-btn { display: none !important; }
 .hm-btn { padding: 9px 0; font-size: 14px; border-radius: 8px; background: rgba(255,255,255,0.12); margin: 0; text-transform: none; }
 .hm-btn:active { filter: brightness(1.3); }
 .link-text { font-size: 12px; cursor: pointer; text-decoration: underline; color: #e0e0e0; margin-top: 4px; margin-bottom: 4px; }
@@ -1797,19 +1801,35 @@ window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) delet
 window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
 
 // YENİ: Sağ üstteki bildirim (🔔) ve profil menüleri artık boş bir yere tıklanınca da otomatik
-// kapanıyor. Menü açıkken; menünün kendisinin, menüyü açan ikonun VEYA sayfa içindeki başka bir
-// panel/iç bileşenin (ör. panel içindeki bir butona/inputa tıklama) dışında bir yere tıklanırsa
-// kapatılıyor. "mousedown" kullanılıyor çünkü "click" olayı bazı butonlarda (özellikle iç
-// panellerdeki onclick'lerden önce) tetiklenirse istenmeyen şekilde menüyü kapatıp ardından
-// asıl butonun işlevini de iptal edebiliyordu; mousedown ile kapatma işlemi buton click'inden
-// önce sorunsuz gerçekleşiyor.
+// kapanıyor. Aynı mantık, "Kapat X" butonu artık gösterilmeyen (bkz. CSS: body:not(.masaustu-modu)
+// .close-btn) diğer tüm mobil yüzen panellere (rapor, borçlar, tekrarlayan, kart ayarları, şifre,
+// sorun bildir, kahve, mesajlar, kullanıcı yönetimi, bağlı cihazlar) de uygulanıyor; bunların
+// profil menüsü gibi kalıcı bir "aç/kapa" ikonu olmadığı için sadece panelin kendisinin dışına
+// tıklanınca kapatılmaları yeterli. "mousedown" kullanılıyor çünkü "click" olayı bazı butonlarda
+// (özellikle iç panellerdeki onclick'lerden önce) tetiklenirse istenmeyen şekilde menüyü kapatıp
+// ardından asıl butonun işlevini de iptal edebiliyordu; mousedown ile kapatma işlemi buton
+// click'inden önce sorunsuz gerçekleşiyor.
+const _disaTiklaKapatListesi = [
+  { menuId: 'duyuru-menu', btnId: 'btn-duyuru-ac' },
+  { menuId: 'profil-menu', btnId: 'profil-baslik' },
+  { menuId: 'grafik-panel' },
+  { menuId: 'borclar-panel' },
+  { menuId: 'tekrarlayan-panel' },
+  { menuId: 'kart-ayar-panel' },
+  { menuId: 'sifre-panel' },
+  { menuId: 'bildirim-panel' },
+  { menuId: 'kahve-panel' },
+  { menuId: 'mesajlar-panel' },
+  { menuId: 'kullanici-panel' },
+  { menuId: 'bagli-cihazlar-panel' }
+];
 document.addEventListener('mousedown', (e) => {
-  [
-    { menuId: 'duyuru-menu', btnId: 'btn-duyuru-ac' },
-    { menuId: 'profil-menu', btnId: 'profil-baslik' }
-  ].forEach(({ menuId, btnId }) => {
+  // Masaüstü modunda bu paneller ayrı bir modal + karartma (backdrop) sistemiyle açılıyor;
+  // backdrop'a tıklama zaten kendi kapatma mantığını yönetiyor, burada karışmıyoruz.
+  if (document.body.classList.contains('masaustu-modu')) return;
+  _disaTiklaKapatListesi.forEach(({ menuId, btnId }) => {
     const menu = document.getElementById(menuId);
-    const btn = document.getElementById(btnId);
+    const btn = btnId ? document.getElementById(btnId) : null;
     if (!menu || menu.classList.contains('hidden')) return;
     if (menu.contains(e.target) || (btn && btn.contains(e.target))) return; // menünün/butonun içine tıklandıysa dokunma
     menu.classList.add('hidden');
