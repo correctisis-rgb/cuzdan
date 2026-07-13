@@ -3699,12 +3699,9 @@ async function bakiyeleriGoster() {
       const isim = _hesapIsimleriMapBakiye[hsp] || hsp;
       const { renk1, renk2, ikon } = hesapGorselGetir(hsp);
       html += `
-      <div style="position:relative; background:linear-gradient(135deg, ${renk1}, ${renk2}); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
+      <div class="hesap-karti" data-hesap="${escapeHTML(hsp)}" style="position:relative; background:linear-gradient(135deg, ${renk1}, ${renk2}); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
         <button class="btn-bakiye-duzelt" data-hesap="${escapeHTML(hsp)}" data-ham="${hamBakiye}" title="Bakiyeyi Düzelt" style="position:absolute; top:10px; right:10px; width:26px; height:26px; padding:0; margin:0; border-radius:8px; background:rgba(255,255,255,0.22); font-size:12px; text-transform:none;">✏️</button>
-        <div class="hesap-sira-kontrol" style="position:absolute; top:10px; left:10px; display:flex; flex-direction:column; gap:3px;">
-          <button class="btn-hesap-yukari" data-hesap="${escapeHTML(hsp)}" title="Yukarı taşı" ${index === 0 ? 'disabled' : ''} style="width:22px; height:16px; padding:0; margin:0; border-radius:4px; background:rgba(255,255,255,${index === 0 ? '0.08' : '0.28'}); font-size:9px; line-height:1; text-transform:none; opacity:${index === 0 ? '0.4' : '1'};">▲</button>
-          <button class="btn-hesap-asagi" data-hesap="${escapeHTML(hsp)}" title="Aşağı taşı" ${index === siraliAnahtarlar.length - 1 ? 'disabled' : ''} style="width:22px; height:16px; padding:0; margin:0; border-radius:4px; background:rgba(255,255,255,${index === siraliAnahtarlar.length - 1 ? '0.08' : '0.28'}); font-size:9px; line-height:1; text-transform:none; opacity:${index === siraliAnahtarlar.length - 1 ? '0.4' : '1'};">▼</button>
-        </div>
+        <div class="hesap-surukle-tutamak" title="Sürükleyerek sırala" style="position:absolute; top:8px; left:8px; width:24px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; background:rgba(255,255,255,0.2); font-size:15px; color:rgba(255,255,255,0.85); cursor:grab; touch-action:none; user-select:none;">⠿</div>
         <div style="display:flex; align-items:center; gap:8px; padding-left:28px;">
           <div style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; flex-shrink:0;">${ikon}</div>
           <div style="color:white; font-weight:600; font-size:14px; padding-right:30px;">${isim}</div>
@@ -3738,25 +3735,67 @@ async function bakiyeleriGoster() {
         bakiyeleriGoster();
       });
     });
-    // YENİ: Yukarı/aşağı okları - kartın Bakiyelerim'deki sırasını değiştirir. Bu sıra hem
-    // panel yeniden açıldığında hem de gelir/gider eklerken "ödeme şekli" listesinde korunur.
-    listeEl.querySelectorAll('.btn-hesap-yukari').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const i = siraliAnahtarlar.indexOf(btn.dataset.hesap);
-        if (i <= 0) return;
-        [siraliAnahtarlar[i - 1], siraliAnahtarlar[i]] = [siraliAnahtarlar[i], siraliAnahtarlar[i - 1]];
-        hesapSiralamasiKaydet(siraliAnahtarlar);
-        bakiyeleriGoster();
+    // YENİ: Kart sırası artık ⠿ tutamağından tutup sürükleyerek değiştiriliyor. Tutamak dışındaki
+    // alana dokunmak listeyi normal şekilde kaydırmaya devam eder (touch-action:none sadece
+    // tutamağın kendisinde olduğu için scroll ile çakışmıyor). Pointer Events kullanıldığı için
+    // aynı kod hem fare hem dokunmatik ekranda çalışıyor.
+    listeEl.querySelectorAll('.hesap-surukle-tutamak').forEach(tutamak => {
+      let siruklenenKart = null;
+      let siraDegisti = false;
+
+      tutamak.addEventListener('pointerdown', (e) => {
+        const kart = tutamak.closest('.hesap-karti');
+        if (!kart) return;
+        siruklenenKart = kart;
+        siraDegisti = false;
+        kart.setPointerCapture(e.pointerId);
+        kart.style.transition = 'none';
+        kart.style.zIndex = '20';
+        kart.style.boxShadow = '0 10px 26px rgba(0,0,0,0.5)';
+        tutamak.style.cursor = 'grabbing';
+        e.preventDefault();
       });
-    });
-    listeEl.querySelectorAll('.btn-hesap-asagi').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const i = siraliAnahtarlar.indexOf(btn.dataset.hesap);
-        if (i === -1 || i >= siraliAnahtarlar.length - 1) return;
-        [siraliAnahtarlar[i], siraliAnahtarlar[i + 1]] = [siraliAnahtarlar[i + 1], siraliAnahtarlar[i]];
-        hesapSiralamasiKaydet(siraliAnahtarlar);
-        bakiyeleriGoster();
+
+      tutamak.addEventListener('pointermove', (e) => {
+        if (!siruklenenKart) return;
+        const rect = siruklenenKart.getBoundingClientRect();
+        const mevcutOrta = e.clientY;
+        siruklenenKart.style.transform = `translateY(${mevcutOrta - (rect.top + rect.height / 2)}px)`;
+
+        const kardesler = Array.from(listeEl.querySelectorAll('.hesap-karti'));
+        const suankiIndex = kardesler.indexOf(siruklenenKart);
+        for (let i = 0; i < kardesler.length; i++) {
+          if (kardesler[i] === siruklenenKart) continue;
+          const r = kardesler[i].getBoundingClientRect();
+          const orta = r.top + r.height / 2;
+          if ((i < suankiIndex && mevcutOrta < orta) || (i > suankiIndex && mevcutOrta > orta)) {
+            if (i < suankiIndex) listeEl.insertBefore(siruklenenKart, kardesler[i]);
+            else listeEl.insertBefore(siruklenenKart, kardesler[i].nextSibling);
+            siruklenenKart.style.transform = 'none';
+            siraDegisti = true;
+            break;
+          }
+        }
       });
+
+      const birak = (e) => {
+        if (!siruklenenKart) return;
+        try { siruklenenKart.releasePointerCapture(e.pointerId); } catch (err) {}
+        siruklenenKart.style.transition = '';
+        siruklenenKart.style.transform = '';
+        siruklenenKart.style.zIndex = '';
+        siruklenenKart.style.boxShadow = '';
+        tutamak.style.cursor = 'grab';
+        if (siraDegisti) {
+          const yeniSira = Array.from(listeEl.querySelectorAll('.hesap-karti')).map(k => k.dataset.hesap);
+          hesapSiralamasiKaydet(yeniSira);
+          hesapDropdownSiralaGoster(yeniSira);
+          transferHesapSecenekleriDoldur(yeniSira);
+        }
+        siruklenenKart = null;
+      };
+      tutamak.addEventListener('pointerup', birak);
+      tutamak.addEventListener('pointercancel', birak);
     });
   } catch (e) {
     console.error("Bakiyeler yüklenirken hata:", e);
