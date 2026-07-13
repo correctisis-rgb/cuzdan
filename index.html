@@ -1211,10 +1211,14 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.0.2";
+const APP_SURUM = "1.0.3";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
+// YENİ: Taksit / Sabit Gider gibi tekrarlayan-işlem kayıtları eklendiğinde çalınan onay/uyarı sesleri.
+// "onay.mp3" başarılı ekleme onayı, "uyari.mp3" ise geçersiz/limit aşımı gibi durumlarda kullanılıyor.
+const onaySesi = new Audio('onay.mp3');
+const uyariSesi = new Audio('uyari.mp3');
 
 // --- AKTİF KULLANICI PRESENCE SİSTEMİ ---
 function presenceBaslat(user) {
@@ -1766,6 +1770,8 @@ window.location.reload();
 
 const sesKilidiniAc = () => {
 bildirimSesi.play().then(() => bildirimSesi.pause()).catch(() => {});
+onaySesi.play().then(() => onaySesi.pause()).catch(() => {});
+uyariSesi.play().then(() => uyariSesi.pause()).catch(() => {});
 document.body.removeEventListener('click', sesKilidiniAc);
 };
 document.body.addEventListener('click', sesKilidiniAc);
@@ -2626,8 +2632,8 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
   const gun = parseInt(document.getElementById('tkr-gun').value);
   const abonelik = document.getElementById('tkr-abonelik').checked;
 
-  if (!aciklama || isNaN(tutar) || tutar <= 0) return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen açıklama ve tutarı doldurun!', '#f59e0b');
-  if (tutar > 3000000) return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b');
+  if (!aciklama || isNaN(tutar) || tutar <= 0) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen açıklama ve tutarı doldurun!', '#f59e0b'); }
+  if (tutar > 3000000) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b'); }
 
   const veri = { uid: auth.currentUser.uid, aciklama, tutar, kategori, hesap, gun, abonelik, aktif: true };
 
@@ -2636,12 +2642,14 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
       await updateDoc(doc(db, "tekrarlayanlar", tkrDuzenlenecekId), veri);
       tkrDuzenlenecekId = null;
       document.getElementById('btn-tkr-kaydet').innerText = "+ Tekrarlayan İşlem Ekle";
+      onaySesi.play().catch(() => {});
       bilgiGoster('✏️', 'Güncellendi!', 'Değişiklik bir sonraki otomatik eklemede geçerli olacak. Geçmiş kayıtlar değişmedi.', '#10b981');
     } else {
       veri.sonEklenenAy = null;
       veri.olusturmaTarihi = Date.now();
       await addDoc(collection(db, "tekrarlayanlar"), veri);
       const bugunGun = new Date().getDate();
+      onaySesi.play().catch(() => {});
       if (bugunGun >= gun) {
         await tekrarlayanOtomatikEkle(auth.currentUser.uid);
         bilgiGoster('✅', 'Kural Kaydedildi!', `Bu ay için ${gun}. gün zaten geçtiği için işlem bu aya otomatik eklendi. Sonraki aylarda her ayın ${gun}. günü otomatik eklenecek.`, '#10b981');
@@ -2652,7 +2660,7 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
     document.getElementById('tkr-aciklama').value = '';
     document.getElementById('tkr-tutar').value = '';
     document.getElementById('tkr-abonelik').checked = false;
-  } catch(e) { bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
+  } catch(e) { uyariSesi.play().catch(() => {}); bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
 };
 
 function ayFarki(ts) {
@@ -2772,6 +2780,7 @@ async function tekrarlayanOtomatikEkle(uid) {
     const buAyAnahtari = `${simdi.getFullYear()}-${simdi.getMonth()}`;
     const snap = await getDocs(query(collection(db, "tekrarlayanlar"), where("uid", "==", uid), where("aktif", "==", true)));
 
+    let otomatikEklenenSayisi = 0;
     for (const d of snap.docs) {
       const t = d.data();
       if (t.sonEklenenAy === buAyAnahtari) continue;
@@ -2784,7 +2793,10 @@ async function tekrarlayanOtomatikEkle(uid) {
         kategori: t.kategori, hesap: t.hesap, tarih: islemTarihi.getTime()
       });
       await updateDoc(doc(db, "tekrarlayanlar", d.id), { sonEklenenAy: buAyAnahtari });
+      otomatikEklenenSayisi++;
     }
+    // YENİ: Bu ay ilk kez otomatik olarak eklenen sabit gider/abonelik varsa kullanıcıyı sesli uyar.
+    if (otomatikEklenenSayisi > 0) onaySesi.play().catch(() => {});
   } catch(e) { console.log("Tekrarlayan otomatik ekleme hatası:", e); }
 }
 
@@ -4139,10 +4151,14 @@ if (typeof window.jspdf === 'undefined') { bilgiGoster('❌', 'Hata', 'PDF motor
 // jsPDF'in standart fontları (Helvetica) Türkçe'ye özgü ı/İ/ş/Ş/ğ/Ğ harflerini ve ₺ işaretini
 // desteklemiyor (bu harfler PDF'in temel WinAnsi kodlamasında yok). Bunları en yakın okunabilir
 // karşılıklarına çeviriyoruz; ç/ö/ü/Ç/Ö/Ü zaten destekleniyor, onlara dokunmuyoruz.
+// DÜZELTME: Transfer açıklamalarında kullanılan "→" / "←" ok karakterleri de aynı sebeple
+// (WinAnsi kodlamasında yoklar) PDF'e aktarılırken bozuk/garip bir simgeye ("!" gibi) dönüşüyordu.
+// Bunları da okunabilir ASCII karşılıklarına ("->" / "<-") çeviriyoruz.
 const trPdf = (s) => String(s ?? '')
   .replace(/ı/g, 'i').replace(/İ/g, 'I')
   .replace(/ş/g, 's').replace(/Ş/g, 'S')
-  .replace(/ğ/g, 'g').replace(/Ğ/g, 'G');
+  .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+  .replace(/→/g, '->').replace(/←/g, '<-');
 const paraPdf = (n) => `${formatla(n)} TL`;
 
 const ayIsimleriPdf = ['Ocak','Subat','Mart','Nisan','Mayis','Haziran','Temmuz','Agustos','Eylul','Ekim','Kasim','Aralik'];
@@ -4845,8 +4861,8 @@ const rawValue = document.getElementById('tutar').value;
 const toplamTutar = parseFloat(rawValue.replace(/\./g, '').replace(',', '.'));
 const tarihVal = document.getElementById('tarih').value;
 
-if (!aciklama || isNaN(toplamTutar) || toplamTutar <= 0 || !tarihVal) return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen tutarı ve açıklamayı tam doldurun!', '#f59e0b');
-if (toplamTutar > 3000000) return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b');
+if (!aciklama || isNaN(toplamTutar) || toplamTutar <= 0 || !tarihVal) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen tutarı ve açıklamayı tam doldurun!', '#f59e0b'); }
+if (toplamTutar > 3000000) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b'); }
 
 const TAKSIT_USTSINIR = 36; // 3 yıl
 
@@ -4857,8 +4873,8 @@ const TAKSIT_USTSINIR = 36; // 3 yıl
 girisGoster('💸', `Kaç taksit yapılacak? (Sadece sayı girin, en fazla ${TAKSIT_USTSINIR})`, 'Örn: 12', (taksitSayisiStr) => {
 if (!taksitSayisiStr) return;
 const taksitSayisi = parseInt(taksitSayisiStr);
-if (isNaN(taksitSayisi) || taksitSayisi <= 1) return bilgiGoster('⚠️', 'Geçersiz Taksit Sayısı', 'Geçerli bir taksit sayısı girin.', '#f59e0b');
-if (taksitSayisi > TAKSIT_USTSINIR) return bilgiGoster('⚠️', 'Sınır Aşıldı', `En fazla ${TAKSIT_USTSINIR} taksit yapabilirsiniz.`, '#f59e0b');
+if (isNaN(taksitSayisi) || taksitSayisi <= 1) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Geçersiz Taksit Sayısı', 'Geçerli bir taksit sayısı girin.', '#f59e0b'); }
+if (taksitSayisi > TAKSIT_USTSINIR) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Sınır Aşıldı', `En fazla ${TAKSIT_USTSINIR} taksit yapabilirsiniz.`, '#f59e0b'); }
 
 const aylikTutar = parseFloat((toplamTutar / taksitSayisi).toFixed(2));
 let baslangicTarihi = new Date(tarihVal);
@@ -4881,6 +4897,7 @@ tarih: islemTarihi.getTime()
 });
 }
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
+onaySesi.play().catch(() => {});
 bilgiGoster('✅', 'Başarılı', 'Taksitler başarıyla eklendi!', '#10b981');
 }, '#6366f1', 'Onayla, Ekle');
 }, {tur:'number', inputMode:'numeric'});
