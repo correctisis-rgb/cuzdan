@@ -696,6 +696,15 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <div id="bakiyeler-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:left; max-height:420px; overflow-y:auto;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">💰 BAKİYELERİM</div>
+<button id="btn-transfer-goster" style="background:#7c3aed; width:100%; padding:6px; border-radius:6px; margin-bottom:8px; color:white; font-size:12px;">🔄 Hesaplar Arası Transfer</button>
+<div id="transfer-form" class="hidden" style="background:rgba(255,255,255,0.08); border-radius:8px; padding:10px; margin-bottom:10px;">
+  <div style="font-size:11px; margin-bottom:3px; opacity:0.8;">Nereden</div>
+  <select id="transfer-kaynak" style="margin-bottom:6px;"></select>
+  <div style="font-size:11px; margin-bottom:3px; opacity:0.8;">Nereye</div>
+  <select id="transfer-hedef" style="margin-bottom:6px;"></select>
+  <input type="text" id="transfer-tutar" placeholder="Tutar" inputmode="decimal" style="margin-bottom:8px;">
+  <button id="btn-transfer-yap" style="background:#7c3aed; width:100%; padding:6px; border-radius:6px; color:white;">Transfer Et</button>
+</div>
 <div id="bakiyeler-yukleniyor" style="text-align:center; padding:20px; font-size:12px; opacity:0.7;">Yükleniyor...</div>
 <div id="bakiyeler-listesi"></div>
 </div>
@@ -1593,8 +1602,35 @@ document.getElementById('offline-uyari').classList.remove('offline-gizle');
 });
 
 if ('serviceWorker' in navigator) {
-navigator.serviceWorker.register('sw.js').then(reg => {
+// DÜZELTME: Kullanıcılar site güncellendiğinde yeni sürümü görmüyordu. Bunun iki olası sebebi var:
+// 1) Tarayıcı, sw.js dosyasının KENDİSİNİ HTTP önbelleğinde tutup güncellemeyi hiç fark etmiyor
+//    olabilir (updateViaCache:'none' bunu engelliyor, tarayıcıyı sw.js'i her zaman ağdan kontrol
+//    etmeye zorluyor).
+// 2) Yeni bir service worker kurulsa bile, tarayıcının varsayılan davranışı onu "waiting" (bekleme)
+//    durumunda tutup eski sekmeler kapanana kadar devreye almamaktır. Aşağıdaki kod, yeni bir sürüm
+//    bulunduğunda ona hemen "skipWaiting" mesajı gönderip devreye girmesini istiyor, devreye girince
+//    de sayfayı otomatik yeniliyor. sw.js dosyasında da bu mesajı dinleyen ve self.skipWaiting() +
+//    self.clients.claim() çağıran karşılık gelen kod OLMASI GEREKİYOR (aşağıya ayrıca not düşüldü).
+navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
 console.log('SW kayıt edildi:', reg.scope);
+reg.update(); // sayfa her açıldığında sunucudaki sw.js'i hemen kontrol ettir
+reg.addEventListener('updatefound', () => {
+const yeniWorker = reg.installing;
+if (!yeniWorker) return;
+yeniWorker.addEventListener('statechange', () => {
+if (yeniWorker.state === 'installed' && navigator.serviceWorker.controller) {
+console.log('Yeni sürüm bulundu, uygulama güncelleniyor...');
+yeniWorker.postMessage({ type: 'SKIP_WAITING' });
+}
+});
+});
+});
+
+let _swYenilendi = false;
+navigator.serviceWorker.addEventListener('controllerchange', () => {
+if (_swYenilendi) return; // aynı anda birden fazla tetiklenirse sayfa döngüye girmesin
+_swYenilendi = true;
+window.location.reload();
 });
 }
 
@@ -3451,6 +3487,8 @@ async function bakiyeleriGoster() {
       if (!(hsp in hesapBakiyeleri)) hesapBakiyeleri[hsp] = 0;
       if (data.tur === 'gelir') hesapBakiyeleri[hsp] += data.tutar; else hesapBakiyeleri[hsp] -= data.tutar;
     });
+    _sonHesapBakiyeleri = hesapBakiyeleri; // transfer formunun bakiye kontrolü için ham (kırpılmamış) değerler saklanıyor
+    transferHesapSecenekleriDoldur(Object.keys(hesapBakiyeleri));
     let html = '';
     Object.keys(hesapBakiyeleri).forEach(hsp => {
       // KUMBARA MANTIĞI: Bakiyelerim ekranı borç göstermiyor (borç zaten "Hesap Özetleri/Borçlar"
@@ -3478,6 +3516,58 @@ async function bakiyeleriGoster() {
     yukleniyorEl.style.display = 'none';
   }
 }
+
+// ============ HESAPLAR ARASI TRANSFER ============
+// Transfer, kaynak hesaba "gider", hedef hesaba "gelir" olarak, özel kategori:'Transfer' ile
+// kaydediliyor. Bu sayede toplam bakiye (üstteki BAKİYE) doğal olarak etkilenmiyor (biri düşüp
+// biri arttığı için birbirini götürüyor), ama "Transfer" kategorisi asıl gelir/gider raporlarını
+// (kategori grafiği, toplam gelir/gider özetleri, kart borç hesaplaması) YANILTMASIN diye
+// verileriGetir() içindeki hesaplamalarda kategori==='Transfer' olan kayıtlar ayrıca hariç
+// tutuluyor (bkz. aşağıdaki DÜZELTME yorumları).
+let _sonHesapBakiyeleri = {};
+document.getElementById('btn-transfer-goster').onclick = () => {
+  document.getElementById('transfer-form').classList.toggle('hidden');
+};
+function transferHesapSecenekleriDoldur(hesapAnahtarlari) {
+  const kaynakSel = document.getElementById('transfer-kaynak');
+  const hedefSel = document.getElementById('transfer-hedef');
+  const opts = hesapAnahtarlari.map(h => `<option value="${h}">${_hesapIsimleriMapBakiye[h] || h}</option>`).join('');
+  kaynakSel.innerHTML = opts;
+  hedefSel.innerHTML = opts;
+  if (hesapAnahtarlari.length > 1) hedefSel.selectedIndex = 1;
+}
+document.getElementById('btn-transfer-yap').onclick = async () => {
+  const kaynak = document.getElementById('transfer-kaynak').value;
+  const hedef = document.getElementById('transfer-hedef').value;
+  const rawTutar = document.getElementById('transfer-tutar').value;
+  const tutar = parseFloat(rawTutar.replace(/\./g, '').replace(',', '.'));
+  if (!kaynak || !hedef) return alert('Lütfen hesapları seçin.');
+  if (kaynak === hedef) return alert('Kaynak ve hedef hesap aynı olamaz.');
+  if (isNaN(tutar) || tutar <= 0) return alert('Lütfen geçerli bir tutar girin.');
+  const mevcutBakiye = Math.max(0, _sonHesapBakiyeleri[kaynak] || 0);
+  if (tutar > mevcutBakiye) {
+    const devamEt = confirm(`${_hesapIsimleriMapBakiye[kaynak] || kaynak} hesabında ${formatla(mevcutBakiye)} TL var. Yine de ${formatla(tutar)} TL transfer etmek istiyor musun?`);
+    if (!devamEt) return;
+  }
+  const kaynakIsim = _hesapIsimleriMapBakiye[kaynak] || kaynak;
+  const hedefIsim = _hesapIsimleriMapBakiye[hedef] || hedef;
+  const uid = auth.currentUser.uid;
+  const simdi = Date.now();
+  const btnTransfer = document.getElementById('btn-transfer-yap');
+  btnTransfer.disabled = true;
+  try {
+    await addDoc(collection(db, "islemler"), { uid, aciklama: `Transfer → ${hedefIsim}`, tutar, tur: 'gider', kategori: 'Transfer', hesap: kaynak, tarih: simdi });
+    await addDoc(collection(db, "islemler"), { uid, aciklama: `Transfer ← ${kaynakIsim}`, tutar, tur: 'gelir', kategori: 'Transfer', hesap: hedef, tarih: simdi + 1 });
+    document.getElementById('transfer-tutar').value = '';
+    document.getElementById('transfer-form').classList.add('hidden');
+    bakiyeleriGoster();
+  } catch (e) {
+    console.error('Transfer hatası:', e);
+    alert('Transfer yapılırken bir hata oluştu.');
+  } finally {
+    btnTransfer.disabled = false;
+  }
+};
 
 // --- KART KESİM TARİHİ SİSTEMİ ---
 
@@ -3903,13 +3993,23 @@ const t = new Date(data.tarih);
 const islemAyKey = data.ekstreAy || `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`;
 if (islemAyKey === seciliAyKey) {
 veriler.push({ id: d.id, ...data, isPending: d.metadata.hasPendingWrites });
-if(data.tur === 'gelir') { bakiye += data.tutar; kategoriToplamlar['Gelir'] += data.tutar; } 
+// DÜZELTME: Hesaplar arası transfer (Bakiyelerim > Transfer Et) kaynak hesaba gider, hedef
+// hesaba gelir olarak, kategori:'Transfer' etiketiyle kaydediliyor. Bunlar gerçek bir gelir/gider
+// değil, kullanıcının kendi parasının bir hesaptan diğerine taşınması. Genel BAKİYE'yi zaten
+// etkilemiyorlar (biri düşüp biri arttığı için birbirini götürüyor) ama kategori grafiği, toplam
+// gelir/gider özeti ve kart borç hesaplaması gerçek gelir/gider sanıp yanlış rakamlar
+// göstermesin diye buradan hariç tutuluyorlar (yine de işlem listesinde görünmeye devam ediyorlar,
+// şeffaflık için).
+const transferMi = data.kategori === 'Transfer';
+if(data.tur === 'gelir') { bakiye += data.tutar; if (!transferMi) kategoriToplamlar['Gelir'] += data.tutar; } 
 else { 
 bakiye -= data.tutar; 
+if (!transferMi) {
 const kat = data.kategori || 'Genel'; 
 kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar;
 const hsp = data.hesap || 'Nakit';
 if (hesapBorclari[hsp] !== undefined) { hesapBorclari[hsp] += data.tutar; } else { hesapBorclari[hsp] = (hesapBorclari[hsp] || 0) + data.tutar; }
+}
 }
 }
 });
@@ -3926,9 +4026,9 @@ void bakiyeEl.offsetWidth;
 if (bakiye > eskiBakiye) bakiyeEl.classList.add('bakiye-yukari');
 else if (bakiye < eskiBakiye) bakiyeEl.classList.add('bakiye-asagi');
 
-// Gelir/Gider özeti güncelle
-const toplamGelir = veriler.filter(d => d.tur === 'gelir').reduce((t, d) => t + d.tutar, 0);
-const toplamGider = veriler.filter(d => d.tur === 'gider').reduce((t, d) => t + d.tutar, 0);
+// Gelir/Gider özeti güncelle (transferler hariç, yukarıdaki DÜZELTME notuna bkz.)
+const toplamGelir = veriler.filter(d => d.tur === 'gelir' && d.kategori !== 'Transfer').reduce((t, d) => t + d.tutar, 0);
+const toplamGider = veriler.filter(d => d.tur === 'gider' && d.kategori !== 'Transfer').reduce((t, d) => t + d.tutar, 0);
 const ozetGelir = document.getElementById('ozet-gelir');
 const ozetGider = document.getElementById('ozet-gider');
 if (ozetGelir) ozetGelir.innerText = formatla(toplamGelir);
