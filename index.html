@@ -1463,7 +1463,7 @@ window.adminMesajGonderForm = (uid, email) => {
     if (!mesaj) return;
     addDoc(collection(db, "kullanici_bildirimleri"), {
       uid: uid, mesaj: mesaj, tarih: Date.now(), okundu: false, gonderen: 'admin'
-    }).then(() => { document.getElementById('admin-kullanici-mesaj-input').value = ''; }).catch(e => alert("Hata: " + e.message));
+    }).then(() => { document.getElementById('admin-kullanici-mesaj-input').value = ''; }).catch(e => bilgiGoster('❌', 'Hata', e.message, '#ef4444'));
   };
 };
 
@@ -1515,7 +1515,7 @@ document.getElementById('btn-tum-mesajlari-okundu-yap').onclick = async () => {
   try {
     await Promise.all(idler.map(id => updateDoc(doc(db, 'bildirimler', id), { okundu: true })));
     if (typeof bilgiToastGoster === 'function') bilgiToastGoster('✅ Tüm mesajlar okundu olarak işaretlendi.');
-  } catch (e) { alert('Hata: ' + e.message); }
+  } catch (e) { bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
 };
 
 // --- TEMA SİSTEMİ ---
@@ -1631,14 +1631,14 @@ function adminMesajDinle() {
           localStorage.setItem('son_okunan_mesaj', Date.now());
           document.getElementById('popup-cevap-gonder').onclick = async () => {
             const cevap = document.getElementById('popup-cevap-input').value.trim();
-            if (!cevap) return alert("Cevap boş olamaz!");
+            if (!cevap) return bilgiGoster('⚠️', 'Eksik Bilgi', 'Cevap boş olamaz!', '#f59e0b');
             await updateDoc(doc(db, "bildirimler", mesajId), { cevap, cevapTarih: Date.now() });
             await addDoc(collection(db, "kullanici_bildirimleri"), {
               uid: data.uid, mesaj: `Admin cevapladı: ${cevap}`, tarih: Date.now(), okundu: false, gonderen: 'admin'
             });
             document.getElementById('admin-mesaj-popup').classList.add('hidden');
             localStorage.setItem('son_okunan_mesaj', Date.now());
-            alert("Cevap gönderildi!");
+            bilgiGoster('✅', 'Başarılı', 'Cevap gönderildi!', '#10b981');
           };
         }
       }
@@ -1679,8 +1679,8 @@ function kullaniciBildirimDinle(uid) {
           };
           document.getElementById('kullanici-cevap-gonder').onclick = async () => {
             const cevapMetni = document.getElementById('kullanici-cevap-input').value.trim();
-            if (!cevapMetni) { alert('Lütfen bir cevap yazın.'); return; }
-            if (!navigator.onLine) { alert('Cevap göndermek için internet bağlantısı gereklidir.'); return; }
+            if (!cevapMetni) { bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen bir cevap yazın.', '#f59e0b'); return; }
+            if (!navigator.onLine) { bilgiGoster('📡', 'Bağlantı Yok', 'Cevap göndermek için internet bağlantısı gereklidir.', '#f59e0b'); return; }
             try {
               // DÜZELTME: "kullanici_bildirimleri" koleksiyonu Firestore güvenlik kurallarında
               // muhtemelen sadece admin'in yazabileceği şekilde ayarlı (bu yüzden kullanıcının
@@ -1693,8 +1693,8 @@ function kullaniciBildirimDinle(uid) {
               });
               await updateDoc(doc(db, 'kullanici_bildirimleri', change.doc.id), { okundu: true });
               popup.classList.add('hidden');
-              alert('Cevabınız gönderildi!');
-            } catch (e) { alert('Hata: ' + e.message); }
+              bilgiGoster('✅', 'Başarılı', 'Cevabınız gönderildi!', '#10b981');
+            } catch (e) { bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
           };
         }, 500);
       }
@@ -1828,9 +1828,9 @@ hamTutar = parseFloat(hamTutar).toFixed(2).replace('.', ',');
 }
 document.getElementById('tutar').value = hamTutar;
 } else {
-alert("Tutar net okunamadı. Lütfen fişin net fotoğrafını çekin.");
+bilgiGoster('⚠️', 'Tutar Okunamadı', 'Tutar net okunamadı. Lütfen fişin net fotoğrafını çekin.', '#f59e0b');
 }
-} catch (err) { alert("Okuma sırasında hata oluştu."); }
+} catch (err) { bilgiGoster('❌', 'Hata', 'Okuma sırasında hata oluştu.', '#ef4444'); }
 btn.innerText = "📷 FİŞİ OKUT";
 };
 
@@ -2012,15 +2012,15 @@ kategoriSelect.value = 'Maaş';
 });
 
 const hataGoster = (err) => {
-if (!navigator.onLine) { alert("Bu işlem için internet bağlantısı gerekiyor."); return; }
+if (!navigator.onLine) { bilgiGoster('📡', 'Bağlantı Yok', 'Bu işlem için internet bağlantısı gerekiyor.', '#f59e0b'); return; }
 let mesaj = "Bir hata oluştu.";
 if(err.code === 'auth/invalid-credential') mesaj = "E-posta veya şifre hatalı.";
-else if(err.code === 'auth/email-already-in-use') mesaj = "⚠️ Bu e-posta adresi zaten kayıtlı.\n\nLütfen giriş yapın veya 'Şifremi unuttum' seçeneğini kullanın.";
+else if(err.code === 'auth/email-already-in-use') mesaj = "Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapın veya 'Şifremi unuttum' seçeneğini kullanın.";
 else if(err.code === 'auth/weak-password') mesaj = "Şifre çok zayıf. Daha güçlü bir şifre seçin.";
 else if(err.code === 'auth/invalid-email') mesaj = "Geçersiz e-posta adresi.";
 else if(err.code === 'auth/missing-fields') mesaj = "Lütfen tüm alanları doldurun.";
 else if(err.code === 'auth/too-many-requests') mesaj = "Çok fazla deneme yapıldı. Lütfen birkaç dakika bekleyin.";
-alert(mesaj);
+bilgiGoster('⚠️', 'Hata', mesaj, '#ef4444');
 };
 
 const sifrePolitikasiKontrol = (sifre) => {
@@ -2613,8 +2613,8 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
   const gun = parseInt(document.getElementById('tkr-gun').value);
   const abonelik = document.getElementById('tkr-abonelik').checked;
 
-  if (!aciklama || isNaN(tutar) || tutar <= 0) return alert("Lütfen açıklama ve tutarı doldurun!");
-  if (tutar > 3000000) return alert("Tutar en fazla 3.000.000 TL olabilir.");
+  if (!aciklama || isNaN(tutar) || tutar <= 0) return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen açıklama ve tutarı doldurun!', '#f59e0b');
+  if (tutar > 3000000) return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b');
 
   const veri = { uid: auth.currentUser.uid, aciklama, tutar, kategori, hesap, gun, abonelik, aktif: true };
 
@@ -3325,7 +3325,7 @@ document.getElementById('btn-bagli-cihazlar').onclick = () => { kapatPaneller();
   btn.onclick = async () => {
     const dp = window.__pwaDeferredPrompt;
     if (!dp) {
-      alert('Uygulama zaten yüklü olabilir ya da tarayıcı henüz yükleme için hazır değil. Birkaç saniye sonra tekrar dene, ya da tarayıcı menüsünden "Ana Ekrana Ekle / Uygulamayı Yükle" seçeneğini kullan.');
+      bilgiGoster('ℹ️', 'Yükleme Hazır Değil', 'Uygulama zaten yüklü olabilir ya da tarayıcı henüz yükleme için hazır değil. Birkaç saniye sonra tekrar dene, ya da tarayıcı menüsünden "Ana Ekrana Ekle / Uygulamayı Yükle" seçeneğini kullan.', '#6366f1');
       return;
     }
     kapatPaneller();
@@ -3429,7 +3429,7 @@ splashGizle();
 });
 
 async function mesajlariGetir() {
-if(!navigator.onLine) { alert("Mesajları görmek için internete bağlanın."); return; }
+if(!navigator.onLine) { bilgiGoster('📡', 'Bağlantı Yok', 'Mesajları görmek için internete bağlanın.', '#f59e0b'); return; }
 kapatPaneller();
 document.getElementById('mesajlar-panel').classList.remove('hidden');
 const snapshot = await getDocs(query(collection(db, "bildirimler"), orderBy("tarih", "desc")));
@@ -3478,7 +3478,7 @@ window.cevapVer = async (id) => {
   document.getElementById('admin-mesaj-popup').classList.remove('hidden');
   document.getElementById('popup-cevap-gonder').onclick = async () => {
     const cevap = document.getElementById('popup-cevap-input').value.trim();
-    if (!cevap) return alert("Cevap boş olamaz!");
+    if (!cevap) return bilgiGoster('⚠️', 'Eksik Bilgi', 'Cevap boş olamaz!', '#f59e0b');
     await updateDoc(doc(db, "bildirimler", id), { cevap, cevapTarih: Date.now() });
     // Kullanıcıya bildirim gönder
     const mesajDoc = await getDocs(query(collection(db, "bildirimler")));
@@ -3489,7 +3489,7 @@ window.cevapVer = async (id) => {
     }});
     document.getElementById('admin-mesaj-popup').classList.add('hidden');
     mesajlariGetir();
-    alert("Cevap gönderildi!");
+    bilgiGoster('✅', 'Başarılı', 'Cevap gönderildi!', '#10b981');
   };
 };
 
@@ -3562,7 +3562,7 @@ document.getElementById('btn-giris-yap').onclick = async () => {
       window._dogrulanmamisKullanici = uc.user;
       document.getElementById('btn-tekrar-dogrulama').style.display = 'block';
       await signOut(auth);
-      alert("📧 E-posta adresiniz henüz doğrulanmamış.\n\nLütfen gelen kutunuzu kontrol edin. Mail gelmemişse sayfadaki 'Doğrulama mailini tekrar gönder' butonuna tıklayın.");
+      bilgiGoster('📧', 'E-posta Doğrulanmadı', "E-posta adresiniz henüz doğrulanmamış. Lütfen gelen kutunuzu kontrol edin. Mail gelmemişse sayfadaki Doğrulama mailini tekrar gönder butonuna tıklayın.", '#f59e0b');
       return;
     }
     bruteForceBasarili(email);
@@ -3593,27 +3593,27 @@ document.getElementById('btn-kayit-ol').onclick = async () => {
   const girilenSifre = document.getElementById('signup-sifre').value;
   const sifreTekrar = document.getElementById('signup-sifre-tekrar').value;
   const email = document.getElementById('signup-email').value.trim();
-  if (girilenSifre !== sifreTekrar) { alert("⚠️ Şifreler eşleşmiyor. Lütfen kontrol edin."); return; }
-  if (!sifrePolitikasiKontrol(girilenSifre)) { alert(sifreHataMesaji); return; }
+  if (girilenSifre !== sifreTekrar) { bilgiGoster('⚠️', 'Şifreler Eşleşmiyor', 'Şifreler eşleşmiyor. Lütfen kontrol edin.', '#f59e0b'); return; }
+  if (!sifrePolitikasiKontrol(girilenSifre)) { bilgiGoster('⚠️', 'Zayıf Şifre', sifreHataMesaji, '#f59e0b'); return; }
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, girilenSifre);
     const actionCodeSettings = { url: 'https://correctisis-rgb.github.io/cuzdan/', handleCodeInApp: false };
     await sendEmailVerification(userCredential.user, actionCodeSettings);
     await signOut(auth);
-    alert("✅ Kayıt başarılı!\n\nE-posta adresinize doğrulama maili gönderdik. Lütfen mailinizi onaylayıp giriş yapın.");
+    bilgiGoster('✅', 'Kayıt Başarılı', 'E-posta adresinize doğrulama maili gönderdik. Lütfen mailinizi onaylayıp giriş yapın.', '#10b981');
     ekranGoster('auth-screen');
   } catch(e) { hataGoster(e); }
 };
 
 document.getElementById('btn-sifre-onay-mail').onclick = async () => {
   const email = document.getElementById('reset-email').value.trim();
-  if (!email) { alert("E-posta adresinizi girin."); return; }
+  if (!email) { bilgiGoster('⚠️', 'Eksik Bilgi', 'E-posta adresinizi girin.', '#f59e0b'); return; }
   const actionCodeSettings = {
     url: 'https://correctisis-rgb.github.io/cuzdan/',
     handleCodeInApp: false
   };
   await sendPasswordResetEmail(auth, email, actionCodeSettings)
-    .then(() => alert("Şifre sıfırlama e-postası gönderildi. Lütfen mailinizi kontrol edin."))
+    .then(() => bilgiGoster('✅', 'Gönderildi', 'Şifre sıfırlama e-postası gönderildi. Lütfen mailinizi kontrol edin.', '#10b981'))
     .catch(hataGoster);
 };
 document.getElementById('btn-gecis-kayit').onclick = () => ekranGoster('signup-screen');
@@ -3626,13 +3626,13 @@ document.getElementById('btn-tv-qr-yenile').onclick = () => tvKodUret();
 document.getElementById('btn-tekrar-dogrulama').onclick = async () => {
   const user = window._dogrulanmamisKullanici;
   if (!user) {
-    alert("Lütfen önce e-posta ve şifrenizle giriş yapmayı deneyin. Doğrulanmamış hesap algılanınca bu buton aktif olur.");
+    bilgiGoster('ℹ️', 'Bilgi', 'Lütfen önce e-posta ve şifrenizle giriş yapmayı deneyin. Doğrulanmamış hesap algılanınca bu buton aktif olur.', '#6366f1');
     return;
   }
   try {
     const actionCodeSettings = { url: 'https://correctisis-rgb.github.io/cuzdan/', handleCodeInApp: false };
     await sendEmailVerification(user, actionCodeSettings);
-    alert("✅ Doğrulama maili gönderildi!\n\nLütfen gelen kutunuzu ve spam/gereksiz klasörünüzü kontrol edin.");
+    bilgiGoster('✅', 'Gönderildi', 'Doğrulama maili gönderildi! Lütfen gelen kutunuzu ve spam/gereksiz klasörünüzü kontrol edin.', '#10b981');
   } catch(e) {
     hataGoster(e);
   }
@@ -3923,7 +3923,7 @@ async function transferiUygula(kaynak, hedef, tutar) {
     bakiyeleriGoster();
   } catch (e) {
     console.error('Transfer hatası:', e);
-    alert('Transfer yapılırken bir hata oluştu.');
+    bilgiGoster('❌', 'Hata', 'Transfer yapılırken bir hata oluştu.', '#ef4444');
   } finally {
     btnTransfer.disabled = false;
   }
@@ -3934,9 +3934,9 @@ document.getElementById('btn-transfer-yap').onclick = () => {
   const hedef = document.getElementById('transfer-hedef').value;
   const rawTutar = document.getElementById('transfer-tutar').value;
   const tutar = parseFloat(rawTutar.replace(/\./g, '').replace(',', '.'));
-  if (!kaynak || !hedef) return alert('Lütfen hesapları seçin.');
-  if (kaynak === hedef) return alert('Kaynak ve hedef hesap aynı olamaz.');
-  if (isNaN(tutar) || tutar <= 0) return alert('Lütfen geçerli bir tutar girin.');
+  if (!kaynak || !hedef) return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen hesapları seçin.', '#f59e0b');
+  if (kaynak === hedef) return bilgiGoster('⚠️', 'Geçersiz Seçim', 'Kaynak ve hedef hesap aynı olamaz.', '#f59e0b');
+  if (isNaN(tutar) || tutar <= 0) return bilgiGoster('⚠️', 'Geçersiz Tutar', 'Lütfen geçerli bir tutar girin.', '#f59e0b');
   // Kredi kartından yapılan transferlerde eski kumbara mantığı (0'da sabit) korunuyor; banka/nakit
   // hesaplarında ise gerçek (eksi olabilen) bakiye üzerinden kontrol yapılıyor.
   const kaynakTuru = hesapTuruGetir(kaynak);
@@ -4095,7 +4095,7 @@ document.getElementById('hesap').addEventListener('change', () => {
 
 
 document.getElementById('btn-excel-aktar').onclick = () => {
-if (mevcutAyVerileri.length === 0) { alert("Bu aya ait aktarılacak işlem bulunamadı."); return; }
+if (mevcutAyVerileri.length === 0) { bilgiGoster('⚠️', 'Veri Yok', 'Bu aya ait aktarılacak işlem bulunamadı.', '#f59e0b'); return; }
 let csvContent = "\uFEFF"; 
 csvContent += "Tarih;Açıklama;Kategori;Hesap;Tür;Tutar (TL)\n";
 mevcutAyVerileri.forEach(islem => {
@@ -4120,8 +4120,8 @@ kapatPaneller();
 };
 
 document.getElementById('btn-pdf-aktar').onclick = () => {
-if (mevcutAyVerileri.length === 0) { alert("Bu aya ait aktarılacak işlem bulunamadı."); return; }
-if (typeof window.jspdf === 'undefined') { alert("PDF motoru yüklenemedi, internet bağlantınızı kontrol edip tekrar deneyin."); return; }
+if (mevcutAyVerileri.length === 0) { bilgiGoster('⚠️', 'Veri Yok', 'Bu aya ait aktarılacak işlem bulunamadı.', '#f59e0b'); return; }
+if (typeof window.jspdf === 'undefined') { bilgiGoster('❌', 'Hata', 'PDF motoru yüklenemedi, internet bağlantınızı kontrol edip tekrar deneyin.', '#ef4444'); return; }
 
 // jsPDF'in standart fontları (Helvetica) Türkçe'ye özgü ı/İ/ş/Ş/ğ/Ğ harflerini ve ₺ işaretini
 // desteklemiyor (bu harfler PDF'in temel WinAnsi kodlamasında yok). Bunları en yakın okunabilir
@@ -4236,7 +4236,7 @@ document.getElementById('btn-bildirim-gonder').onclick = async () => {
 const metin = document.getElementById('bildirim-metni').value;
 if (!metin) return;
 await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
-alert("Gönderildi!"); document.getElementById('bildirim-metni').value = ''; kapatPaneller();
+bilgiGoster('✅', 'Başarılı', 'Gönderildi!', '#10b981'); document.getElementById('bildirim-metni').value = ''; kapatPaneller();
 };
 
 // ============ KULLANICI RÜTBE / YILDIZ SİSTEMİ ============
@@ -4315,17 +4315,17 @@ async function sifreHashHesapla(sifre, uid) {
 }
 
 document.getElementById('btn-sifre-onayla').onclick = async () => {
-if(!navigator.onLine) { alert("Şifre değiştirmek için internet bağlantısı gereklidir."); return; }
+if(!navigator.onLine) { bilgiGoster('📡', 'Bağlantı Yok', 'Şifre değiştirmek için internet bağlantısı gereklidir.', '#f59e0b'); return; }
 const yeniSifre = document.getElementById('yeni-sifre').value;
 const yeniSifreTekrar = document.getElementById('yeni-sifre-tekrar').value;
-if (yeniSifre !== yeniSifreTekrar) { alert("Yeni şifreler birbiriyle uyuşmuyor. Lütfen tekrar kontrol edin."); return; }
-if (!sifrePolitikasiKontrol(yeniSifre)) { alert(sifreHataMesaji); return; }
+if (yeniSifre !== yeniSifreTekrar) { bilgiGoster('⚠️', 'Şifreler Eşleşmiyor', 'Yeni şifreler birbiriyle uyuşmuyor. Lütfen tekrar kontrol edin.', '#f59e0b'); return; }
+if (!sifrePolitikasiKontrol(yeniSifre)) { bilgiGoster('⚠️', 'Zayıf Şifre', sifreHataMesaji, '#f59e0b'); return; }
 try {
 const uid = auth.currentUser.uid;
 const yeniSifreHash = await sifreHashHesapla(yeniSifre, uid);
 const gecmis = _kullaniciAyarlariCache.sifreGecmisi || [];
 if (gecmis.includes(yeniSifreHash)) {
-alert(`⚠️ Bu şifreyi daha önce kullandınız. Lütfen son ${SIFRE_GECMISI_UZUNLUK} şifrenizden farklı yeni bir şifre belirleyin.`);
+bilgiGoster('⚠️', 'Şifre Daha Önce Kullanılmış', `Bu şifreyi daha önce kullandınız. Lütfen son ${SIFRE_GECMISI_UZUNLUK} şifrenizden farklı yeni bir şifre belirleyin.`, '#f59e0b');
 return;
 }
 await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, document.getElementById('mevcut-sifre').value));
@@ -4334,7 +4334,7 @@ await updatePassword(auth.currentUser, yeniSifre);
 const guncelGecmis = [...gecmis, yeniSifreHash].slice(-SIFRE_GECMISI_UZUNLUK);
 _kullaniciAyarlariCache.sifreGecmisi = guncelGecmis;
 await kullaniciAyarlariKaydet();
-alert("Şifre güncellendi!"); kapatPaneller();
+bilgiGoster('✅', 'Başarılı', 'Şifre güncellendi!', '#10b981'); kapatPaneller();
 document.getElementById('mevcut-sifre').value = '';
 document.getElementById('yeni-sifre').value = '';
 document.getElementById('yeni-sifre-tekrar').value = '';
@@ -4549,8 +4549,8 @@ const rawValue = document.getElementById('tutar').value;
 const tutar = parseFloat(rawValue.replace(/\./g, '').replace(',', '.'));
 const tarihVal = document.getElementById('tarih').value;
 const TUTAR_USTSINIR = 3000000;
-if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return alert("Lütfen tutarı ve açıklamayı kontrol edin!");
-if (tutar > TUTAR_USTSINIR) return alert(`Tutar en fazla ${TUTAR_USTSINIR.toLocaleString('tr-TR')} TL olabilir.`);
+if (!aciklama || isNaN(tutar) || tutar <= 0 || !tarihVal) return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen tutarı ve açıklamayı kontrol edin!', '#f59e0b');
+if (tutar > TUTAR_USTSINIR) return bilgiGoster('⚠️', 'Tutar Çok Yüksek', `Tutar en fazla ${TUTAR_USTSINIR.toLocaleString('tr-TR')} TL olabilir.`, '#f59e0b');
 const tarihObj = new Date(tarihVal);
 tarihObj.setHours(12, 0, 0, 0);
 
@@ -4709,7 +4709,7 @@ document.querySelectorAll('.hesap-turu-pill').forEach(pill => {
 document.getElementById('btn-hesap-ekle-onayla').onclick = () => {
   const yeni = document.getElementById('hesap-ekle-adi').value.trim();
   if (!yeni) { document.getElementById('hesap-ekle-adi').focus(); return; }
-  if (document.querySelector(`#hesap option[value="${yeni}"]`)) { alert('Bu isimde bir hesap zaten var.'); return; }
+  if (document.querySelector(`#hesap option[value="${yeni}"]`)) { bilgiGoster('⚠️', 'Zaten Var', 'Bu isimde bir hesap zaten var.', '#f59e0b'); return; }
   document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
   document.getElementById('hesap').value = yeni;
   if (auth.currentUser) {
@@ -4753,7 +4753,7 @@ document.getElementById('btn-bakiye-duzelt-onayla').onclick = async () => {
   if (!_duzeltilecekHesap) return;
   const raw = document.getElementById('bakiye-duzelt-tutar').value;
   const hedefBakiye = parseFloat(raw.replace(/\./g, '').replace(',', '.'));
-  if (isNaN(hedefBakiye)) { alert('Lütfen geçerli bir tutar girin.'); return; }
+  if (isNaN(hedefBakiye)) { bilgiGoster('⚠️', 'Geçersiz Tutar', 'Lütfen geçerli bir tutar girin.', '#f59e0b'); return; }
   const hamBakiye = _sonHesapBakiyeleri[_duzeltilecekHesap] || 0;
   const fark = Math.round((hedefBakiye - hamBakiye) * 100) / 100; // kuruş yuvarlama hatalarını önle
   if (fark === 0) { bakiyeDuzeltModaliniKapat(); return; }
@@ -4773,7 +4773,7 @@ document.getElementById('btn-bakiye-duzelt-onayla').onclick = async () => {
     bakiyeleriGoster();
   } catch (e) {
     console.error('Bakiye düzeltme hatası:', e);
-    alert('Bakiye düzeltilirken bir hata oluştu.');
+    bilgiGoster('❌', 'Hata', 'Bakiye düzeltilirken bir hata oluştu.', '#ef4444');
   } finally {
     btn.disabled = false;
   }
@@ -4783,7 +4783,7 @@ document.getElementById('btn-sil-kategori').onclick = () => {
 const select = document.getElementById('kategori');
 const seciliDeger = select.value;
 const sabitKategoriler = ['Genel', 'Maaş', 'Market', 'Fatura', 'Ulaşım', 'Sağlık', 'Eğlence', 'Diğer'];
-if (sabitKategoriler.includes(seciliDeger)) { alert("Varsayılan kategoriler silinemez."); return; }
+if (sabitKategoriler.includes(seciliDeger)) { bilgiGoster('⚠️', 'İşlem Yapılamaz', "Varsayılan kategoriler silinemez.", '#f59e0b'); return; }
 onayGoster('🗑️', `"${seciliDeger}" kategorisini silmek istediğine emin misin?`, () => {
 select.querySelector(`option[value="${seciliDeger}"]`).remove();
 select.value = 'Genel';
@@ -4801,7 +4801,7 @@ document.getElementById('btn-sil-hesap').onclick = () => {
 const select = document.getElementById('hesap');
 const seciliDeger = select.value;
 const sabitHesaplar = ['Nakit', 'Diğer Kredi Kartı'];
-if (sabitHesaplar.includes(seciliDeger)) { alert("Varsayılan ödeme şekilleri silinemez."); return; }
+if (sabitHesaplar.includes(seciliDeger)) { bilgiGoster('⚠️', 'İşlem Yapılamaz', "Varsayılan ödeme şekilleri silinemez.", '#f59e0b'); return; }
 onayGoster('🗑️', `"${seciliDeger}" hesabını silmek istediğine emin misin?`, () => {
 select.querySelector(`option[value="${seciliDeger}"]`).remove();
 select.value = 'Nakit';
@@ -4894,7 +4894,7 @@ btnSesli.style.background = "#00d2d3";
 };
 
 btnSesli.onclick = () => {
-if(!navigator.onLine) { alert("Sesli algılama motoru çevrimdışı modda çalışmayabilir."); }
+if(!navigator.onLine) { bilgiGoster('📡', 'Bağlantı Yok', 'Sesli algılama motoru çevrimdışı modda çalışmayabilir.', '#f59e0b'); }
 if (!isListening) {
 isListening = true;
 btnSesli.innerText = "🎤 DİNLENİYOR...";
@@ -4912,7 +4912,7 @@ dinlemeyiDurdurTasarim();
 };
 
 recognition.onerror = (event) => {
-alert("Ses tanınamadı veya mikrofon izni verilmedi: " + event.error);
+bilgiGoster('❌', 'Hata', 'Ses tanınamadı veya mikrofon izni verilmedi: ' + event.error, '#ef4444');
 dinlemeyiDurdurTasarim();
 };
 
@@ -4921,7 +4921,7 @@ const metin = event.results[0][0].transcript.toLowerCase();
 const sayilar = metin.match(/\d+/g);
 let bulunanTutar = 0;
 if (sayilar && sayilar.length > 0) { bulunanTutar = parseFloat(sayilar[0]); }
-if (bulunanTutar === 0 || isNaN(bulunanTutar)) { alert(`Söylediğiniz cümleden bir harcama/gelir tutarı çıkarılamadı.`); return; }
+if (bulunanTutar === 0 || isNaN(bulunanTutar)) { bilgiGoster('⚠️', 'Tutar Bulunamadı', 'Söylediğiniz cümleden bir harcama/gelir tutarı çıkarılamadı.', '#f59e0b'); return; }
 
 document.getElementById('tutar').value = formatla(bulunanTutar);
 
