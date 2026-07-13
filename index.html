@@ -600,6 +600,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <div class="link-text" id="btn-tekrar-dogrulama" style="color:#38bdf8; display:none;">📧 Doğrulama mailini tekrar gönder</div>
 <div class="link-text" id="btn-gecis-kayit">Henüz üye değil misin? Kayıt Ol</div>
 <div class="link-text" id="btn-tv-giris" style="color:#a78bfa;">📺 TV / Bilgisayarda QR ile Aç</div>
+<div id="app-versiyon-etiketi" style="text-align:center; font-size:10px; opacity:0.45; margin-top:10px; letter-spacing:0.5px;"></div>
 <div class="footer-apps">
 <a href="https://correctisis-rgb.github.io/yakit/" class="app-box" target="_blank">
 <span>Diğer Uygulamalarımız</span>
@@ -1188,6 +1189,12 @@ localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 
 const auth = getAuth(app);
+
+// YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
+// (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
+// kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
+const APP_SURUM = "1.0.0";
+document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
 
