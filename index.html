@@ -3742,12 +3742,25 @@ async function bakiyeleriGoster() {
     listeEl.querySelectorAll('.hesap-surukle-tutamak').forEach(tutamak => {
       let siruklenenKart = null;
       let siraDegisti = false;
+      // DÜZELTME (titreme sorunu): Önceden translateY her pointermove'da kartın O ANKİ
+      // getBoundingClientRect() konumundan yeniden hesaplanıyordu. Ancak getBoundingClientRect()
+      // zaten bir önceki karede uygulanmış transform'u İÇEREN sonucu döndürür; bu değer üzerinden
+      // tekrar "mutlak" bir transform hesaplanıp üzerine yazılınca küçük bir hata birikiyor ve bu
+      // hata her karede büyüyüp küçülerek kartın parmak/imleçle senkronize kalamayıp ileri-geri
+      // salınmasına (titremesine) yol açıyordu — klasik bir geri besleme (feedback loop) hatası.
+      // Çözüm: transform'u kartın kendi rect'inden değil, pointer'ın bir önceki olaydan bu yana
+      // ne kadar hareket ettiğinden (delta) kümülatif olarak hesaplıyoruz. Böylece kartın rect'i
+      // hiç referans alınmıyor ve geri besleme hatası tamamen ortadan kalkıyor.
+      let mevcutTranslateY = 0;
+      let sonPointerY = 0;
 
       tutamak.addEventListener('pointerdown', (e) => {
         const kart = tutamak.closest('.hesap-karti');
         if (!kart) return;
         siruklenenKart = kart;
         siraDegisti = false;
+        mevcutTranslateY = 0;
+        sonPointerY = e.clientY;
         // DÜZELTME: setPointerCapture, olayları tutan (bu fonksiyonda dinleyicilerin bağlı olduğu)
         // elemente yönlendirir. Önceden "kart" üzerinde capture alınıyordu ama pointermove/pointerup
         // dinleyicileri "tutamak" üzerindeydi — capture sonrası olaylar "kart"a yönlendirildiği için
@@ -3763,20 +3776,25 @@ async function bakiyeleriGoster() {
 
       tutamak.addEventListener('pointermove', (e) => {
         if (!siruklenenKart) return;
-        const rect = siruklenenKart.getBoundingClientRect();
-        const mevcutOrta = e.clientY;
-        siruklenenKart.style.transform = `translateY(${mevcutOrta - (rect.top + rect.height / 2)}px)`;
+        const delta = e.clientY - sonPointerY;
+        sonPointerY = e.clientY;
+        mevcutTranslateY += delta;
+        siruklenenKart.style.transform = `translateY(${mevcutTranslateY}px)`;
 
+        const mevcutY = e.clientY;
         const kardesler = Array.from(listeEl.querySelectorAll('.hesap-karti'));
         const suankiIndex = kardesler.indexOf(siruklenenKart);
         for (let i = 0; i < kardesler.length; i++) {
           if (kardesler[i] === siruklenenKart) continue;
           const r = kardesler[i].getBoundingClientRect();
           const orta = r.top + r.height / 2;
-          if ((i < suankiIndex && mevcutOrta < orta) || (i > suankiIndex && mevcutOrta > orta)) {
+          if ((i < suankiIndex && mevcutY < orta) || (i > suankiIndex && mevcutY > orta)) {
             if (i < suankiIndex) listeEl.insertBefore(siruklenenKart, kardesler[i]);
             else listeEl.insertBefore(siruklenenKart, kardesler[i].nextSibling);
+            // Kart DOM içinde yeni bir konuma taşındı; o konumdaki doğal (transform'suz) yeri
+            // artık pointer'a yakın olduğu için transform'u ve kümülatif sayacı sıfırlıyoruz.
             siruklenenKart.style.transform = 'none';
+            mevcutTranslateY = 0;
             siraDegisti = true;
             break;
           }
