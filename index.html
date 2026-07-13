@@ -620,6 +620,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <div id="profil-rutbe-etiket" style="display:none; font-size:10px; font-weight:bold; margin-bottom:6px; padding:3px 6px; border-radius:6px; background:#fef3c7; color:#92400e;"></div>
 <button id="btn-rapor-menu" style="background:#10b981; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Rapor / Grafik</button>
 <button id="btn-borclar-menu" style="background:#6366f1; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💳 Hesap Özetleri / Borçlar</button>
+<button id="btn-bakiyeler-menu" style="background:#0d9488; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💰 Bakiyelerim</button>
 <button id="btn-excel-aktar" style="background:#059669; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Excel'e Aktar</button>
 <button id="btn-pdf-aktar" style="background:#dc2626; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📄 PDF Rapor İndir</button>
 <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
@@ -673,6 +674,13 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">💳 AYLIK HARCAMA & BORÇ ÖZETİ</div>
 <div id="borc-listesi"></div>
+</div>
+
+<div id="bakiyeler-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:left; max-height:420px; overflow-y:auto;">
+<button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
+<div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">💰 BAKİYELERİM</div>
+<div id="bakiyeler-yukleniyor" style="text-align:center; padding:20px; font-size:12px; opacity:0.7;">Yükleniyor...</div>
+<div id="bakiyeler-listesi"></div>
 </div>
 
 <div id="tekrarlayan-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:left; max-height:340px; overflow-y:auto;">
@@ -1222,6 +1230,28 @@ function kullanicilariDinle() {
   });
 }
 
+// YENİ: "Son giriş" bilgisi önceden diğer metinlerin arasında, çok küçük (10px) ve soluk bir
+// yazıyla, "Kayıt" tarihiyle aynı satırda gizli kalıyordu — admin listeye baktığında kimin ne
+// zaman giriş yaptığını net ayırt edemiyordu. Aşağıdaki yardımcı fonksiyon göreceli bir ifade
+// üretiyor ("3 saat önce", "Dün" gibi) ve son giriş artık kendi satırında, renk kodlu (yeşil:
+// bugün/son saatler, sarı: son hafta, gri: daha eski) ve daha büyük punto ile gösteriliyor. Tam
+// tarih/saat de yanında küçük yazıyla veriliyor, isteyen tam zamanı da görebiliyor.
+function sonGirisGoreceliYaz(ts) {
+  if (!ts) return { metin: 'Henüz giriş yapmadı', renk: '#9ca3af', tamTarih: '—' };
+  const tamTarih = new Date(ts).toLocaleString('tr-TR');
+  const fark = Date.now() - ts;
+  const dk = Math.floor(fark / 60000);
+  const saat = Math.floor(fark / 3600000);
+  const gun = Math.floor(fark / 86400000);
+  let metin, renk;
+  if (fark < 0 || dk < 1) { metin = 'Az önce'; renk = '#10b981'; }
+  else if (dk < 60) { metin = dk + ' dakika önce'; renk = '#10b981'; }
+  else if (saat < 24) { metin = saat + ' saat önce'; renk = '#10b981'; }
+  else if (gun === 1) { metin = 'Dün'; renk = '#fbbf24'; }
+  else if (gun < 7) { metin = gun + ' gün önce'; renk = '#fbbf24'; }
+  else { metin = gun + ' gün önce'; renk = '#9ca3af'; }
+  return { metin, renk, tamTarih };
+}
 function kullaniciListeRenderFiltered() {
   const kullanicilar = window._kullaniciListeCache || [];
   const aramaEl = document.getElementById('kullanici-arama');
@@ -1231,16 +1261,17 @@ function kullaniciListeRenderFiltered() {
   let kullaniciListeHtml = '';
   kullanicilar.forEach(([uid, u]) => {
     if (filtre && !(u.email || '').toLocaleLowerCase('tr-TR').includes(filtre)) return;
-    const sonGirisTarih = u.sonGiris ? new Date(u.sonGiris).toLocaleString('tr-TR') : 'Henüz kaydedilmedi';
+    const { metin: sonGirisMetin, renk: sonGirisRenk, tamTarih: sonGirisTam } = sonGirisGoreceliYaz(u.sonGiris);
     const ilkKayitTarih = u.ilkKayit ? new Date(u.ilkKayit).toLocaleDateString('tr-TR') : '—';
     // YENİ: Bu kullanıcının okunmamış bir mesajı varsa 💬 butonunun üzerinde küçük bir 🔴 nokta
     // gösteriliyor, böylece admin kırmızı "1" rozetinin HANGİ kullanıcıdan geldiğini kolayca bulup
     // yazışmayı açarak (bu da otomatik olarak okundu işaretliyor) rozeti temizleyebiliyor.
     const okunmadiMi = okunmamisUidler.has(uid);
-    kullaniciListeHtml += `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; gap:6px;">
+    kullaniciListeHtml += `<div style="padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; gap:6px;">
         <div style="flex:1; min-width:0;">
           <div style="font-weight:bold; font-size:11px; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(u.email)}${okunmadiMi ? ' <span title="Okunmamış mesaj var" style="color:#ef4444;">●</span>' : ''}</div>
-          <div style="opacity:0.6; font-size:10px;">Son giriş: ${sonGirisTarih} | Kayıt: ${ilkKayitTarih}</div>
+          <div style="margin-top:2px;"><span style="color:${sonGirisRenk}; font-weight:700; font-size:11px;">🕐 ${sonGirisMetin}</span> <span style="opacity:0.45; font-size:9px;" title="Tam tarih">(${sonGirisTam})</span></div>
+          <div style="opacity:0.5; font-size:9px; margin-top:1px;">Kayıt tarihi: ${ilkKayitTarih}</div>
         </div>
         <button onclick="window.adminMesajGonderForm('${uid}','${u.email.replace(/'/g,"\\'")}')" style="background:${okunmadiMi ? '#ef4444' : '#3b82f6'}; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto; flex-shrink:0;">💬</button>
       </div>`;
@@ -1814,7 +1845,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel', 'ios-install-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'bakiyeler-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel', 'ios-install-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
 
 // YENİ: Sağ üstteki bildirim (🔔) ve profil menüleri artık boş bir yere tıklanınca da otomatik
 // kapanıyor. Aynı mantık, "Kapat X" butonu artık gösterilmeyen (bkz. CSS: body:not(.masaustu-modu)
@@ -1830,6 +1861,7 @@ const _disaTiklaKapatListesi = [
   { menuId: 'profil-menu', btnId: 'profil-baslik' },
   { menuId: 'grafik-panel' },
   { menuId: 'borclar-panel' },
+  { menuId: 'bakiyeler-panel' },
   { menuId: 'tekrarlayan-panel' },
   { menuId: 'kart-ayar-panel' },
   { menuId: 'sifre-panel' },
@@ -1967,6 +1999,7 @@ function masaUstuSidebarKur() {
       <button class="mas-nav-item aktif" id="mas-nav-panel">⊞ &nbsp;Panel</button>
       <button class="mas-nav-item" id="mas-nav-raporlar">📊 &nbsp;Raporlar</button>
       <button class="mas-nav-item" id="mas-nav-borclar">💳 &nbsp;Hesap Özetleri</button>
+      <button class="mas-nav-item" id="mas-nav-bakiyeler">💰 &nbsp;Bakiyelerim</button>
       <button class="mas-nav-item" id="mas-nav-duyurular">📢 &nbsp;Duyurular</button>
       <div class="mas-group-label">İşlemler</div>
       <button class="mas-nav-item" id="mas-nav-taksit">🔁 &nbsp;Sabit Giderler</button>
@@ -2149,6 +2182,8 @@ function masaUstuSidebarKur() {
   // açıldığında grafiği güncel moda ve modal boyutuna göre yeniden çiziyoruz.
   document.getElementById('mas-nav-raporlar').addEventListener('click', () => { if (typeof grafikCiz === 'function') requestAnimationFrame(() => requestAnimationFrame(grafikCiz)); }, true);
   panelAc(document.getElementById('mas-nav-borclar'), 'borclar-panel', '💳 Hesap Özetleri');
+  panelAc(document.getElementById('mas-nav-bakiyeler'), 'bakiyeler-panel', '💰 Bakiyelerim');
+  document.getElementById('mas-nav-bakiyeler').addEventListener('click', () => { if (typeof bakiyeleriGoster === 'function') bakiyeleriGoster(); }, true);
   panelAc(document.getElementById('mas-nav-duyurular'), 'duyuru-menu', '📢 Duyurular');
   panelAc(document.getElementById('mas-nav-taksit'), 'tekrarlayan-panel', '🔁 Sabit Giderler');
   // DÜZELTME: Mobildeki karşılığı gibi, panel açılırken tekrarlayan işlemler listesini de yükle.
@@ -3347,6 +3382,75 @@ document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); do
 document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
 document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); if (typeof grafikCiz === 'function') requestAnimationFrame(() => requestAnimationFrame(grafikCiz)); };
 document.getElementById('btn-borclar-menu').onclick = () => { kapatPaneller(); document.getElementById('borclar-panel').classList.remove('hidden'); };
+document.getElementById('btn-bakiyeler-menu').onclick = () => { kapatPaneller(); document.getElementById('bakiyeler-panel').classList.remove('hidden'); bakiyeleriGoster(); };
+
+// ============ BAKİYELERİM (Hesap/Kart bazlı toplam bakiye - kartlar halinde, banka renkleriyle) ============
+// Not: Diğer listelerin aksine burada TÜM ZAMANLARIN verisi toplanıyor (sadece seçili ay değil),
+// çünkü "bakiye" kavramı hesabın açıldığından beri gelir-gider farkıdır. Bu yüzden performans
+// açısından panel her açıldığında BİR KEZ (canlı dinleyici değil, tek seferlik getDocs) çekiliyor.
+const _hesapGorsel = {
+  'Nakit':            { renk1: '#16a34a', renk2: '#15803d', ikon: '💵' },
+  'Garanti':          { renk1: '#00854a', renk2: '#046a38', ikon: 'G' },
+  'Ziraat':           { renk1: '#e30613', renk2: '#a30410', ikon: 'Z' },
+  'Qnb':               { renk1: '#6b2c91', renk2: '#4a1d66', ikon: 'Q' },
+  'Diğer Kredi Kartı': { renk1: '#4b5563', renk2: '#374151', ikon: '💳' }
+};
+const _hesapIsimleriMapBakiye = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
+const _ozelHesapPaleti = [
+  { renk1: '#2563eb', renk2: '#1e40af' },
+  { renk1: '#db2777', renk2: '#9d174d' },
+  { renk1: '#ea580c', renk2: '#9a3412' },
+  { renk1: '#0891b2', renk2: '#0e7490' },
+  { renk1: '#65a30d', renk2: '#3f6212' }
+];
+function hesapGorselGetir(hesap) {
+  if (_hesapGorsel[hesap]) return _hesapGorsel[hesap];
+  let toplam = 0; for (let i = 0; i < hesap.length; i++) toplam += hesap.charCodeAt(i);
+  const p = _ozelHesapPaleti[toplam % _ozelHesapPaleti.length];
+  return { ...p, ikon: hesap.charAt(0).toUpperCase() };
+}
+async function bakiyeleriGoster() {
+  const yukleniyorEl = document.getElementById('bakiyeler-yukleniyor');
+  const listeEl = document.getElementById('bakiyeler-listesi');
+  yukleniyorEl.style.display = '';
+  listeEl.innerHTML = '';
+  try {
+    const uid = TV_MODU ? EFEKTIF_UID : auth.currentUser.uid;
+    const snapshot = await getDocs(query(collection(db, "islemler"), where("uid", "==", uid)));
+    const hesapBakiyeleri = {};
+    // Varsayılan hesaplar her zaman gösterilsin (işlem olmasa bile 0 TL olarak görünsün)
+    Object.keys(_hesapIsimleriMapBakiye).forEach(h => hesapBakiyeleri[h] = 0);
+    (_kullaniciAyarlariCache.hesaplar || []).forEach(h => { if (!(h in hesapBakiyeleri)) hesapBakiyeleri[h] = 0; });
+    snapshot.forEach(d => {
+      const data = d.data();
+      const hsp = data.hesap || 'Nakit';
+      if (!(hsp in hesapBakiyeleri)) hesapBakiyeleri[hsp] = 0;
+      if (data.tur === 'gelir') hesapBakiyeleri[hsp] += data.tutar; else hesapBakiyeleri[hsp] -= data.tutar;
+    });
+    let html = '';
+    Object.keys(hesapBakiyeleri).forEach(hsp => {
+      const bakiye = hesapBakiyeleri[hsp];
+      const isim = _hesapIsimleriMapBakiye[hsp] || hsp;
+      const { renk1, renk2, ikon } = hesapGorselGetir(hsp);
+      const negatif = bakiye < 0;
+      html += `
+      <div style="background:linear-gradient(135deg, ${renk1}, ${renk2}); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; flex-shrink:0;">${ikon}</div>
+          <div style="color:white; font-weight:600; font-size:14px;">${isim}</div>
+        </div>
+        <div style="margin-top:12px; color:rgba(255,255,255,0.8); font-size:11px;">${negatif ? 'Borç' : 'Bakiye'}</div>
+        <div style="color:white; font-size:21px; font-weight:bold;">${negatif ? '-' : ''}${formatla(Math.abs(bakiye))} TL</div>
+      </div>`;
+    });
+    listeEl.innerHTML = html;
+  } catch (e) {
+    console.error("Bakiyeler yüklenirken hata:", e);
+    listeEl.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; color:#fca5a5;">Bakiyeler yüklenirken bir hata oluştu.</div>';
+  } finally {
+    yukleniyorEl.style.display = 'none';
+  }
+}
 
 // --- KART KESİM TARİHİ SİSTEMİ ---
 
