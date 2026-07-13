@@ -1695,6 +1695,17 @@ yeniWorker.postMessage({ type: 'SKIP_WAITING' });
 }
 });
 });
+// DÜZELTME: reg.update() önceden sadece sayfa İLK YÜKLENDİĞİNDE bir kez çağrılıyordu. Bu,
+// uygulamayı (özellikle PWA olarak) günlerce arka planda açık tutan, hiç tam kapatıp yeniden
+// açmayan kullanıcıların yeni sürümü tarayıcının kendi dahili kontrolü tetiklenene kadar (bu
+// bazen 24 saati bulabiliyor, bazı tarayıcılarda sekme gerçek anlamda hiç "navigate"
+// olmadığı için çok daha geç olabiliyor) hiç görmemesi anlamına geliyordu. Artık uygulama açık
+// kaldığı sürece her 20 dakikada bir sunucudaki sw.js kontrol ediliyor; yeni sürüm varsa
+// yukarıdaki 'updatefound' akışı devreye girip otomatik günceller.
+setInterval(() => { reg.update(); }, 20 * 60 * 1000);
+document.addEventListener('visibilitychange', () => {
+if (document.visibilityState === 'visible') reg.update(); // sekme/uygulama tekrar öne gelince de hemen kontrol et
+});
 });
 
 let _swYenilendi = false;
