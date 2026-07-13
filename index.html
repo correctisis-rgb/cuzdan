@@ -454,8 +454,12 @@ body.masaustu-modu .liste-alani small { color: #9ca3af; }
 
 .tutar-gelir { color: #00ff9d; }
 .tutar-gider { color: #ff4d4d; }
-body.masaustu-modu .tutar-gelir { color: #059669; }
-body.masaustu-modu .tutar-gider { color: #dc2626; }
+/* DÜZELTME: "body.masaustu-modu .liste-alani td" kuralının özgüllüğü (0,2,2), bu iki satırın
+   eski özgüllüğünden (0,2,1) daha yüksekti; bu yüzden masaüstünde tüm tutarlar gelir/gider
+   fark etmeksizin gri/siyah (#374151) görünüyordu. Seçiciye ".liste-alani" eklenerek özgüllük
+   (0,3,2)'ye çıkarıldı, böylece renk kuralı artık kazanıyor. */
+body.masaustu-modu .liste-alani .tutar-gelir { color: #059669; }
+body.masaustu-modu .liste-alani .tutar-gider { color: #dc2626; }
 
 /* Nav ay */
 body.masaustu-modu .nav-container { display: flex; align-items: center; gap: 8px; margin: 0; }
