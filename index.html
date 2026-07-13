@@ -1539,6 +1539,23 @@ function kullaniciAyarlariUIYukle(ayarlar) {
   (ayarlar.hesaplar || []).forEach(a => {
     if(!document.querySelector(`#hesap option[value="${a}"]`)) document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`);
   });
+  hesapEtiketGuncelle();
+}
+
+// YENİ: Gelir/gider eklerken "ödeme şekli" (hesap) listesinde her seçeneğin banka/nakit mi
+// yoksa kredi kartı mı olduğu artık bir simgeyle (🏦 / 💳) baştan belli oluyor. hesapTuruGetir()
+// zaten "Bakiyelerim" ekranındaki tür bilgisini okuyor; burada sadece dropdown'daki metne
+// yansıtıyoruz. Temiz (simgesiz) isim ilk çağrıda data-ad özniteliğinde saklanıyor ki tekrar
+// çağrıldığında simgeler üst üste binmesin.
+function hesapEtiketGuncelle() {
+  const sel = document.getElementById('hesap');
+  if (!sel) return;
+  Array.from(sel.options).forEach(opt => {
+    if (!opt.value) return;
+    if (!opt.dataset.ad) opt.dataset.ad = opt.textContent.replace(/^(🏦|💳)\s/, '');
+    const tur = hesapTuruGetir(opt.value);
+    opt.textContent = (tur === 'kredi' ? '💳 ' : '🏦 ') + opt.dataset.ad;
+  });
 }
 
 function temaUygula(tema) {
@@ -3606,12 +3623,14 @@ async function bakiyeleriGoster() {
       html += `
       <div style="position:relative; background:linear-gradient(135deg, ${renk1}, ${renk2}); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
         <button class="btn-bakiye-duzelt" data-hesap="${escapeHTML(hsp)}" data-ham="${hamBakiye}" title="Bakiyeyi Düzelt" style="position:absolute; top:10px; right:10px; width:26px; height:26px; padding:0; margin:0; border-radius:8px; background:rgba(255,255,255,0.22); font-size:12px; text-transform:none;">✏️</button>
-        <button class="btn-hesap-turu-degistir" data-hesap="${escapeHTML(hsp)}" data-tur="${turu}" title="Hesap türünü değiştir (Banka/Nakit ↔ Kredi Kartı)" style="position:absolute; top:10px; right:42px; padding:3px 8px; margin:0; border-radius:8px; background:rgba(255,255,255,0.22); font-size:10px; text-transform:none; white-space:nowrap;">${turu === 'kredi' ? '💳 Kredi' : '🏦 Banka'}</button>
         <div style="display:flex; align-items:center; gap:8px;">
           <div style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; flex-shrink:0;">${ikon}</div>
-          <div style="color:white; font-weight:600; font-size:14px; padding-right:60px;">${isim}</div>
+          <div style="color:white; font-weight:600; font-size:14px; padding-right:30px;">${isim}</div>
         </div>
-        <div style="margin-top:12px; color:rgba(255,255,255,0.8); font-size:11px;">${etiket}</div>
+        <div style="margin-top:12px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <div style="color:rgba(255,255,255,0.8); font-size:11px;">${etiket}</div>
+          <button class="btn-hesap-turu-degistir" data-hesap="${escapeHTML(hsp)}" data-tur="${turu}" title="Hesap türünü değiştir (Banka/Nakit ↔ Kredi Kartı)" style="padding:4px 10px; margin:0; border-radius:20px; background:rgba(255,255,255,0.25); font-size:10px; font-weight:600; text-transform:none; white-space:nowrap;">${turu === 'kredi' ? '💳 Kredi Kartı' : '🏦 Banka/Nakit'}</button>
+        </div>
         <div style="color:${eksiMi ? '#fecaca' : 'white'}; font-size:21px; font-weight:bold;">${eksiMi ? '-' : ''}${formatla(Math.abs(gosterilecek))} TL</div>
       </div>`;
     });
@@ -3633,6 +3652,7 @@ async function bakiyeleriGoster() {
         turler[hesap] = yeniTur;
         _kullaniciAyarlariCache.hesapTurleri = turler;
         kullaniciAyarlariKaydet();
+        hesapEtiketGuncelle();
         bakiyeleriGoster();
       });
     });
@@ -4279,7 +4299,7 @@ document.getElementById('tutar').value = formatla(tutar).replace(/\./g, '');
 if (!document.querySelector(`#kategori option[value="${kategori}"]`)) { document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${kategori}">${kategori}</option>`); }
 document.getElementById('kategori').value = kategori;
 
-if (!document.querySelector(`#hesap option[value="${hesap}"]`)) { document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${hesap}">${hesap}</option>`); }
+if (!document.querySelector(`#hesap option[value="${hesap}"]`)) { document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${hesap}">${hesap}</option>`); hesapEtiketGuncelle(); }
 document.getElementById('hesap').value = hesap;
 
 document.getElementById('tarih').valueAsDate = new Date(tarih);
@@ -4470,6 +4490,7 @@ document.getElementById('btn-hesap-ekle-onayla').onclick = () => {
     _kullaniciAyarlariCache.hesapTurleri = turler;
     kullaniciAyarlariKaydet();
   }
+  hesapEtiketGuncelle();
   hesapEkleModaliniKapat();
 };
 
