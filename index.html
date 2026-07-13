@@ -3708,7 +3708,7 @@ async function bakiyeleriGoster() {
         </div>
         <div style="margin-top:12px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
           <div style="color:rgba(255,255,255,0.8); font-size:11px;">${etiket}</div>
-          <button class="btn-hesap-turu-degistir" data-hesap="${escapeHTML(hsp)}" data-tur="${turu}" title="Hesap türünü değiştir (Banka/Nakit ↔ Kredi Kartı)" style="padding:4px 10px; margin:0; border-radius:20px; background:rgba(255,255,255,0.25); font-size:10px; font-weight:600; text-transform:none; white-space:nowrap;">${turu === 'kredi' ? '💳 Kredi Kartı' : '🏦 Banka/Nakit'}</button>
+          <button class="btn-hesap-turu-degistir" data-hesap="${escapeHTML(hsp)}" data-tur="${turu}" title="Hesap türünü değiştir (Banka/Nakit ↔ Kredi Kartı)" style="width:auto; padding:4px 10px; margin:0; border-radius:20px; background:rgba(255,255,255,0.25); font-size:10px; font-weight:600; text-transform:none; white-space:nowrap; flex-shrink:0;">${turu === 'kredi' ? '💳 Kredi Kartı' : '🏦 Banka/Nakit'}</button>
         </div>
         <div style="color:${eksiMi ? '#fecaca' : 'white'}; font-size:21px; font-weight:bold;">${eksiMi ? '-' : ''}${formatla(Math.abs(gosterilecek))} TL</div>
       </div>`;
@@ -3748,7 +3748,12 @@ async function bakiyeleriGoster() {
         if (!kart) return;
         siruklenenKart = kart;
         siraDegisti = false;
-        kart.setPointerCapture(e.pointerId);
+        // DÜZELTME: setPointerCapture, olayları tutan (bu fonksiyonda dinleyicilerin bağlı olduğu)
+        // elemente yönlendirir. Önceden "kart" üzerinde capture alınıyordu ama pointermove/pointerup
+        // dinleyicileri "tutamak" üzerindeydi — capture sonrası olaylar "kart"a yönlendirildiği için
+        // "tutamak"a hiç ulaşmıyor/düzensiz ulaşıyordu, bu da sürüklerken hissedilen "takılma"ya
+        // sebep oluyordu. Artık capture da dinleyicilerle aynı elemanda (tutamak) alınıyor.
+        tutamak.setPointerCapture(e.pointerId);
         kart.style.transition = 'none';
         kart.style.zIndex = '20';
         kart.style.boxShadow = '0 10px 26px rgba(0,0,0,0.5)';
@@ -3780,7 +3785,7 @@ async function bakiyeleriGoster() {
 
       const birak = (e) => {
         if (!siruklenenKart) return;
-        try { siruklenenKart.releasePointerCapture(e.pointerId); } catch (err) {}
+        try { tutamak.releasePointerCapture(e.pointerId); } catch (err) {}
         siruklenenKart.style.transition = '';
         siruklenenKart.style.transform = '';
         siruklenenKart.style.zIndex = '';
