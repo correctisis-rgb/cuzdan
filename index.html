@@ -3651,6 +3651,43 @@ function hesapSiralamasiKaydet(siraliAnahtarlar) {
   _kullaniciAyarlariCache.hesapSirasi = siraliAnahtarlar;
   kullaniciAyarlariKaydet();
 }
+// YENİ: Ok butonlarına (▲/▼) basıldığında önceden bakiyeleriGoster() tekrar çağrılıyor, bu da
+// Firestore'dan verileri yeniden çekip TÜM listeyi sıfırdan çiziyordu ("yükleniyor" durumu bir
+// anlığına görünüp kayboluyordu, ekran sanki kapanıp açılıyormuş gibi hissettiriyordu). Artık ok
+// tuşları ağa hiç gitmiyor: sadece iki kartın DOM'daki yeri değiştiriliyor ve FLIP (First-Last-
+// Invert-Play) tekniğiyle yumuşak bir kayma animasyonu uygulanıyor. "tasiFn" DOM'u değiştiren
+// (insertBefore) fonksiyondur; öncesi/sonrası konumlar karşılaştırılıp fark, transform ile
+// telafi edilir, ardından transform sıfırlanarak tarayıcının bunu animasyonlu oynatması sağlanır.
+function hesapKartlariniAnimasyonluTasi(listeEl, tasiFn) {
+  const kartlar = Array.from(listeEl.querySelectorAll('.hesap-karti'));
+  const eskiPozisyonlar = new Map();
+  kartlar.forEach(k => eskiPozisyonlar.set(k, k.getBoundingClientRect().top));
+  tasiFn();
+  Array.from(listeEl.querySelectorAll('.hesap-karti')).forEach(k => {
+    const eskiTop = eskiPozisyonlar.get(k);
+    if (eskiTop === undefined) return;
+    const delta = eskiTop - k.getBoundingClientRect().top;
+    if (delta) {
+      k.style.transition = 'none';
+      k.style.transform = `translateY(${delta}px)`;
+      requestAnimationFrame(() => {
+        k.style.transition = 'transform 0.25s ease';
+        k.style.transform = '';
+      });
+    }
+  });
+}
+// Sıra değiştikten sonra ▲/▼ butonlarının pasif (ilk kartta yukarı, son kartta aşağı) durumunu
+// tam yeniden çizim yapmadan günceller.
+function hesapOkButonlariniGuncelle(listeEl) {
+  const kartlar = Array.from(listeEl.querySelectorAll('.hesap-karti'));
+  kartlar.forEach((kart, i) => {
+    const yukariBtn = kart.querySelector('.btn-hesap-yukari');
+    const asagiBtn = kart.querySelector('.btn-hesap-asagi');
+    if (yukariBtn) { yukariBtn.disabled = i === 0; yukariBtn.style.opacity = i === 0 ? '0.3' : '1'; }
+    if (asagiBtn) { asagiBtn.disabled = i === kartlar.length - 1; asagiBtn.style.opacity = i === kartlar.length - 1 ? '0.3' : '1'; }
+  });
+}
 // Gelir/gider eklerken "ödeme şekli" (#hesap) dropdown'undaki seçenekleri, Bakiyelerim'deki
 // aynı sıraya göre yeniden diziyor. Seçili değer korunuyor.
 function hesapDropdownSiralaGoster(siraliAnahtarlar) {
@@ -3740,33 +3777,39 @@ async function bakiyeleriGoster() {
     });
     // DÜZELTME: Sürükle-bırak (pointermove tabanlı) sıralama, transform hesaplamasındaki geri
     // besleme hatası yüzünden titriyordu ve dokunmatik ekranlarda kararsız davranıyordu. Daha
-    // stabil ve öngörülebilir olması için ▲/▼ ok butonlarına geri dönüldü: her tıklama, hesabı
-    // kayıtlı sıradaki bir önceki/sonraki hesapla yer değiştirir ve liste yeniden çizilir.
-    // Titreme veya "yanlış yere bırakma" riski yok, çünkü hiçbir sürükleme/geometri hesaplaması yok.
+    // stabil ve öngörülebilir olması için ▲/▼ ok butonlarına geri dönüldü. Tıklama artık
+    // bakiyeleriGoster()'ı (ve dolayısıyla Firestore'dan yeniden veri çekmeyi) TETİKLEMİYOR —
+    // bu "ekranın kapanıp açılması" hissine yol açıyordu. Bunun yerine sadece iki komşu kart
+    // DOM'da yer değiştiriyor ve hesapKartlariniAnimasyonluTasi ile yumuşak kayma animasyonu
+    // uygulanıyor; sunucuya kayıt arka planda sessizce yapılıyor.
     listeEl.querySelectorAll('.btn-hesap-yukari').forEach(btn => {
       btn.addEventListener('click', () => {
-        const hesap = btn.dataset.hesap;
-        const suankiSira = hesapSiralamasiUygula(siraliAnahtarlar);
-        const idx = suankiSira.indexOf(hesap);
-        if (idx <= 0) return;
-        [suankiSira[idx - 1], suankiSira[idx]] = [suankiSira[idx], suankiSira[idx - 1]];
-        hesapSiralamasiKaydet(suankiSira);
-        hesapDropdownSiralaGoster(suankiSira);
-        transferHesapSecenekleriDoldur(suankiSira);
-        bakiyeleriGoster();
+        const kart = btn.closest('.hesap-karti');
+        const onceki = kart && kart.previousElementSibling;
+        if (!kart || !onceki) return;
+        hesapKartlariniAnimasyonluTasi(listeEl, () => {
+          listeEl.insertBefore(kart, onceki);
+        });
+        const yeniSira = Array.from(listeEl.querySelectorAll('.hesap-karti')).map(k => k.dataset.hesap);
+        hesapSiralamasiKaydet(yeniSira);
+        hesapDropdownSiralaGoster(yeniSira);
+        transferHesapSecenekleriDoldur(yeniSira);
+        hesapOkButonlariniGuncelle(listeEl);
       });
     });
     listeEl.querySelectorAll('.btn-hesap-asagi').forEach(btn => {
       btn.addEventListener('click', () => {
-        const hesap = btn.dataset.hesap;
-        const suankiSira = hesapSiralamasiUygula(siraliAnahtarlar);
-        const idx = suankiSira.indexOf(hesap);
-        if (idx === -1 || idx >= suankiSira.length - 1) return;
-        [suankiSira[idx], suankiSira[idx + 1]] = [suankiSira[idx + 1], suankiSira[idx]];
-        hesapSiralamasiKaydet(suankiSira);
-        hesapDropdownSiralaGoster(suankiSira);
-        transferHesapSecenekleriDoldur(suankiSira);
-        bakiyeleriGoster();
+        const kart = btn.closest('.hesap-karti');
+        const sonraki = kart && kart.nextElementSibling;
+        if (!kart || !sonraki) return;
+        hesapKartlariniAnimasyonluTasi(listeEl, () => {
+          listeEl.insertBefore(sonraki, kart);
+        });
+        const yeniSira = Array.from(listeEl.querySelectorAll('.hesap-karti')).map(k => k.dataset.hesap);
+        hesapSiralamasiKaydet(yeniSira);
+        hesapDropdownSiralaGoster(yeniSira);
+        transferHesapSecenekleriDoldur(yeniSira);
+        hesapOkButonlariniGuncelle(listeEl);
       });
     });
   } catch (e) {
