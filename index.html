@@ -1193,7 +1193,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.0.0";
+const APP_SURUM = "1.0.1";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
@@ -4788,21 +4788,25 @@ const rawValue = document.getElementById('tutar').value;
 const toplamTutar = parseFloat(rawValue.replace(/\./g, '').replace(',', '.'));
 const tarihVal = document.getElementById('tarih').value;
 
-if (!aciklama || isNaN(toplamTutar) || toplamTutar <= 0 || !tarihVal) return alert("Lütfen tutarı ve açıklamayı tam doldurun!");
-if (toplamTutar > 3000000) return alert("Tutar en fazla 3.000.000 TL olabilir.");
+if (!aciklama || isNaN(toplamTutar) || toplamTutar <= 0 || !tarihVal) return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen tutarı ve açıklamayı tam doldurun!', '#f59e0b');
+if (toplamTutar > 3000000) return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b');
 
 const TAKSIT_USTSINIR = 36; // 3 yıl
 const taksitSayisiStr = prompt("Kaç taksit yapılacak? (Sadece sayı girin, en fazla " + TAKSIT_USTSINIR + ")");
 if (!taksitSayisiStr) return;
 const taksitSayisi = parseInt(taksitSayisiStr);
-if (isNaN(taksitSayisi) || taksitSayisi <= 1) return alert("Geçerli bir taksit sayısı girin.");
-if (taksitSayisi > TAKSIT_USTSINIR) return alert(`En fazla ${TAKSIT_USTSINIR} taksit yapabilirsiniz.`);
+if (isNaN(taksitSayisi) || taksitSayisi <= 1) return bilgiGoster('⚠️', 'Geçersiz Taksit Sayısı', 'Geçerli bir taksit sayısı girin.', '#f59e0b');
+if (taksitSayisi > TAKSIT_USTSINIR) return bilgiGoster('⚠️', 'Sınır Aşıldı', `En fazla ${TAKSIT_USTSINIR} taksit yapabilirsiniz.`, '#f59e0b');
 
 const aylikTutar = parseFloat((toplamTutar / taksitSayisi).toFixed(2));
 let baslangicTarihi = new Date(tarihVal);
 baslangicTarihi.setHours(12, 0, 0, 0);
 
-if(confirm(`${formatla(toplamTutar)} TL tutarındaki işlem, ${taksitSayisi} aya ${formatla(aylikTutar)} TL olarak bölünecektir.\nOnaylıyor musunuz?`)) {
+// DÜZELTME: Taksitlendirme onayı önceden tarayıcının native confirm() kutusuyla gösteriliyordu;
+// bu, uygulamanın geri kalanıyla uyumsuz, stilsiz bir sistem penceresiydi. Artık uygulamanın
+// kendi popup sistemi (onayGoster) kullanılıyor; kullanıcı "Onayla" derse asıl işlem (taksitlerin
+// oluşturulması) callback içinde, tıpkı önceki confirm(){...} bloğu gibi çalışıyor.
+onayGoster('📆', `${formatla(toplamTutar)} TL tutarındaki işlem, ${taksitSayisi} aya ${formatla(aylikTutar)} TL olarak bölünecektir. Onaylıyor musunuz?`, async () => {
 for(let i = 0; i < taksitSayisi; i++) {
 let islemTarihi = new Date(baslangicTarihi);
 islemTarihi.setMonth(islemTarihi.getMonth() + i);
@@ -4819,8 +4823,8 @@ tarih: islemTarihi.getTime()
 });
 }
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
-alert("Taksitler başarıyla eklendi!");
-}
+bilgiGoster('✅', 'Başarılı', 'Taksitler başarıyla eklendi!', '#10b981');
+}, '#6366f1', 'Onayla, Ekle');
 };
 
 // --- SESLİ KOMUT ALTYAPISI ---
