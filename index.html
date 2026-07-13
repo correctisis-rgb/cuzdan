@@ -3701,7 +3701,10 @@ async function bakiyeleriGoster() {
       html += `
       <div class="hesap-karti" data-hesap="${escapeHTML(hsp)}" style="position:relative; background:linear-gradient(135deg, ${renk1}, ${renk2}); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
         <button class="btn-bakiye-duzelt" data-hesap="${escapeHTML(hsp)}" data-ham="${hamBakiye}" title="Bakiyeyi Düzelt" style="position:absolute; top:10px; right:10px; width:26px; height:26px; padding:0; margin:0; border-radius:8px; background:rgba(255,255,255,0.22); font-size:12px; text-transform:none;">✏️</button>
-        <div class="hesap-surukle-tutamak" title="Sürükleyerek sırala" style="position:absolute; top:8px; left:8px; width:24px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; background:rgba(255,255,255,0.2); font-size:15px; color:rgba(255,255,255,0.85); cursor:grab; touch-action:none; user-select:none;">⠿</div>
+        <div style="position:absolute; top:8px; left:8px; display:flex; flex-direction:column; gap:3px;">
+          <button class="btn-hesap-yukari" data-hesap="${escapeHTML(hsp)}" title="Yukarı taşı" ${index === 0 ? 'disabled' : ''} style="width:24px; height:22px; padding:0; margin:0; line-height:22px; border-radius:6px; background:rgba(255,255,255,0.2); font-size:11px; color:rgba(255,255,255,0.9); ${index === 0 ? 'opacity:0.3;' : ''}">▲</button>
+          <button class="btn-hesap-asagi" data-hesap="${escapeHTML(hsp)}" title="Aşağı taşı" ${index === siraliAnahtarlar.length - 1 ? 'disabled' : ''} style="width:24px; height:22px; padding:0; margin:0; line-height:22px; border-radius:6px; background:rgba(255,255,255,0.2); font-size:11px; color:rgba(255,255,255,0.9); ${index === siraliAnahtarlar.length - 1 ? 'opacity:0.3;' : ''}">▼</button>
+        </div>
         <div style="display:flex; align-items:center; gap:8px; padding-left:28px;">
           <div style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; flex-shrink:0;">${ikon}</div>
           <div style="color:white; font-weight:600; font-size:14px; padding-right:30px;">${isim}</div>
@@ -3735,90 +3738,36 @@ async function bakiyeleriGoster() {
         bakiyeleriGoster();
       });
     });
-    // YENİ: Kart sırası artık ⠿ tutamağından tutup sürükleyerek değiştiriliyor. Tutamak dışındaki
-    // alana dokunmak listeyi normal şekilde kaydırmaya devam eder (touch-action:none sadece
-    // tutamağın kendisinde olduğu için scroll ile çakışmıyor). Pointer Events kullanıldığı için
-    // aynı kod hem fare hem dokunmatik ekranda çalışıyor.
-    listeEl.querySelectorAll('.hesap-surukle-tutamak').forEach(tutamak => {
-      let siruklenenKart = null;
-      let siraDegisti = false;
-      // DÜZELTME (titreme sorunu): Önceden translateY her pointermove'da kartın O ANKİ
-      // getBoundingClientRect() konumundan yeniden hesaplanıyordu. Ancak getBoundingClientRect()
-      // zaten bir önceki karede uygulanmış transform'u İÇEREN sonucu döndürür; bu değer üzerinden
-      // tekrar "mutlak" bir transform hesaplanıp üzerine yazılınca küçük bir hata birikiyor ve bu
-      // hata her karede büyüyüp küçülerek kartın parmak/imleçle senkronize kalamayıp ileri-geri
-      // salınmasına (titremesine) yol açıyordu — klasik bir geri besleme (feedback loop) hatası.
-      // Çözüm: transform'u kartın kendi rect'inden değil, pointer'ın bir önceki olaydan bu yana
-      // ne kadar hareket ettiğinden (delta) kümülatif olarak hesaplıyoruz. Böylece kartın rect'i
-      // hiç referans alınmıyor ve geri besleme hatası tamamen ortadan kalkıyor.
-      let mevcutTranslateY = 0;
-      let sonPointerY = 0;
-
-      tutamak.addEventListener('pointerdown', (e) => {
-        const kart = tutamak.closest('.hesap-karti');
-        if (!kart) return;
-        siruklenenKart = kart;
-        siraDegisti = false;
-        mevcutTranslateY = 0;
-        sonPointerY = e.clientY;
-        // DÜZELTME: setPointerCapture, olayları tutan (bu fonksiyonda dinleyicilerin bağlı olduğu)
-        // elemente yönlendirir. Önceden "kart" üzerinde capture alınıyordu ama pointermove/pointerup
-        // dinleyicileri "tutamak" üzerindeydi — capture sonrası olaylar "kart"a yönlendirildiği için
-        // "tutamak"a hiç ulaşmıyor/düzensiz ulaşıyordu, bu da sürüklerken hissedilen "takılma"ya
-        // sebep oluyordu. Artık capture da dinleyicilerle aynı elemanda (tutamak) alınıyor.
-        tutamak.setPointerCapture(e.pointerId);
-        kart.style.transition = 'none';
-        kart.style.zIndex = '20';
-        kart.style.boxShadow = '0 10px 26px rgba(0,0,0,0.5)';
-        tutamak.style.cursor = 'grabbing';
-        e.preventDefault();
+    // DÜZELTME: Sürükle-bırak (pointermove tabanlı) sıralama, transform hesaplamasındaki geri
+    // besleme hatası yüzünden titriyordu ve dokunmatik ekranlarda kararsız davranıyordu. Daha
+    // stabil ve öngörülebilir olması için ▲/▼ ok butonlarına geri dönüldü: her tıklama, hesabı
+    // kayıtlı sıradaki bir önceki/sonraki hesapla yer değiştirir ve liste yeniden çizilir.
+    // Titreme veya "yanlış yere bırakma" riski yok, çünkü hiçbir sürükleme/geometri hesaplaması yok.
+    listeEl.querySelectorAll('.btn-hesap-yukari').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const hesap = btn.dataset.hesap;
+        const suankiSira = hesapSiralamasiUygula(siraliAnahtarlar);
+        const idx = suankiSira.indexOf(hesap);
+        if (idx <= 0) return;
+        [suankiSira[idx - 1], suankiSira[idx]] = [suankiSira[idx], suankiSira[idx - 1]];
+        hesapSiralamasiKaydet(suankiSira);
+        hesapDropdownSiralaGoster(suankiSira);
+        transferHesapSecenekleriDoldur(suankiSira);
+        bakiyeleriGoster();
       });
-
-      tutamak.addEventListener('pointermove', (e) => {
-        if (!siruklenenKart) return;
-        const delta = e.clientY - sonPointerY;
-        sonPointerY = e.clientY;
-        mevcutTranslateY += delta;
-        siruklenenKart.style.transform = `translateY(${mevcutTranslateY}px)`;
-
-        const mevcutY = e.clientY;
-        const kardesler = Array.from(listeEl.querySelectorAll('.hesap-karti'));
-        const suankiIndex = kardesler.indexOf(siruklenenKart);
-        for (let i = 0; i < kardesler.length; i++) {
-          if (kardesler[i] === siruklenenKart) continue;
-          const r = kardesler[i].getBoundingClientRect();
-          const orta = r.top + r.height / 2;
-          if ((i < suankiIndex && mevcutY < orta) || (i > suankiIndex && mevcutY > orta)) {
-            if (i < suankiIndex) listeEl.insertBefore(siruklenenKart, kardesler[i]);
-            else listeEl.insertBefore(siruklenenKart, kardesler[i].nextSibling);
-            // Kart DOM içinde yeni bir konuma taşındı; o konumdaki doğal (transform'suz) yeri
-            // artık pointer'a yakın olduğu için transform'u ve kümülatif sayacı sıfırlıyoruz.
-            siruklenenKart.style.transform = 'none';
-            mevcutTranslateY = 0;
-            siraDegisti = true;
-            break;
-          }
-        }
+    });
+    listeEl.querySelectorAll('.btn-hesap-asagi').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const hesap = btn.dataset.hesap;
+        const suankiSira = hesapSiralamasiUygula(siraliAnahtarlar);
+        const idx = suankiSira.indexOf(hesap);
+        if (idx === -1 || idx >= suankiSira.length - 1) return;
+        [suankiSira[idx], suankiSira[idx + 1]] = [suankiSira[idx + 1], suankiSira[idx]];
+        hesapSiralamasiKaydet(suankiSira);
+        hesapDropdownSiralaGoster(suankiSira);
+        transferHesapSecenekleriDoldur(suankiSira);
+        bakiyeleriGoster();
       });
-
-      const birak = (e) => {
-        if (!siruklenenKart) return;
-        try { tutamak.releasePointerCapture(e.pointerId); } catch (err) {}
-        siruklenenKart.style.transition = '';
-        siruklenenKart.style.transform = '';
-        siruklenenKart.style.zIndex = '';
-        siruklenenKart.style.boxShadow = '';
-        tutamak.style.cursor = 'grab';
-        if (siraDegisti) {
-          const yeniSira = Array.from(listeEl.querySelectorAll('.hesap-karti')).map(k => k.dataset.hesap);
-          hesapSiralamasiKaydet(yeniSira);
-          hesapDropdownSiralaGoster(yeniSira);
-          transferHesapSecenekleriDoldur(yeniSira);
-        }
-        siruklenenKart = null;
-      };
-      tutamak.addEventListener('pointerup', birak);
-      tutamak.addEventListener('pointercancel', birak);
     });
   } catch (e) {
     console.error("Bakiyeler yüklenirken hata:", e);
