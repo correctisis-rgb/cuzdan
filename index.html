@@ -247,6 +247,30 @@ input, textarea, select { width: 100%; padding: 8px; margin: 1px 0; border: none
 .container.app-container input, .container.app-container select { padding: 6px; }
 .belirgin-btn { font-size: 17px !important; }
 button { padding: 8px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; color: white; width: 100%; margin-top: 1px; text-transform: uppercase; }
+
+/* YENİ: Hesap ekleme ve bakiye düzeltme gibi uygulama içi popup'lar artık tarayıcının çirkin
+   prompt()/confirm() kutuları yerine bu ortak modal stiliyle gösteriliyor. */
+.app-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; z-index: 10050; padding: 20px; box-sizing: border-box;
+}
+.app-modal {
+  background: linear-gradient(160deg, #262c49 0%, #3c2f5e 100%);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 18px;
+  width: 100%; max-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); text-align: left;
+}
+.app-modal h3 { margin: 0 0 12px 0; font-size: 15px; text-align: center; }
+.app-modal label { display:block; font-size: 11px; opacity: 0.75; margin: 10px 0 4px 0; }
+.hesap-turu-secim { display: flex; gap: 8px; margin-top: 2px; }
+.hesap-turu-pill {
+  flex: 1; padding: 12px 6px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06); text-align: center; cursor: pointer; font-size: 12px;
+  transition: border-color 0.15s, background 0.15s; text-transform: none; font-weight: 500;
+}
+.hesap-turu-pill .pill-ikon { font-size: 20px; display:block; margin-bottom: 4px; }
+.hesap-turu-pill.secili { border-color: #f59e0b; background: rgba(245,158,11,0.18); font-weight: 700; }
+.app-modal .modal-btn-row { display: flex; gap: 8px; margin-top: 16px; }
+.app-modal .modal-btn-row button { margin-top: 0; }
 .container.app-container button { padding: 5px; }
 .close-btn { background: #ff0000 !important; font-size: 10px; padding: 3px !important; margin-bottom: 5px; width: auto !important; }
 /* YENİ: Artık mobilde tüm açılır panellerde boş bir yere tıklayınca otomatik kapanma çalıştığı için
@@ -774,6 +798,43 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 </div>
 </div>
 
+<div id="hesap-ekle-overlay" class="hidden app-modal-overlay">
+  <div id="hesap-ekle-modal" class="app-modal">
+    <h3>➕ Yeni Kart / Hesap Ekle</h3>
+    <label for="hesap-ekle-adi">Hesap Adı</label>
+    <input type="text" id="hesap-ekle-adi" placeholder="Örn: Akbank, İş Bankası..." maxlength="30">
+    <label>Hesap Türü</label>
+    <div class="hesap-turu-secim">
+      <div class="hesap-turu-pill secili" id="pill-banka" data-tur="banka">
+        <span class="pill-ikon">🏦</span>Nakit / Banka Hesabı
+      </div>
+      <div class="hesap-turu-pill" id="pill-kredi" data-tur="kredi">
+        <span class="pill-ikon">💳</span>Kredi Kartı
+      </div>
+    </div>
+    <div style="font-size:10px; opacity:0.6; margin-top:8px; line-height:1.4;">Nakit/Banka hesaplarında gerçek bakiye (eksiye düşerse borç olarak) gösterilir. Kredi kartlarında borç ayrı takip edilir, Bakiyelerim ekranında 0 TL'nin altına düşmez.</div>
+    <div class="modal-btn-row">
+      <button id="btn-hesap-ekle-iptal" style="background:#4b5563;">İptal</button>
+      <button id="btn-hesap-ekle-onayla" style="background:#f59e0b;">Ekle</button>
+    </div>
+  </div>
+</div>
+
+<div id="bakiye-duzelt-overlay" class="hidden app-modal-overlay">
+  <div id="bakiye-duzelt-modal" class="app-modal">
+    <h3>✏️ Bakiye Düzelt</h3>
+    <div id="bakiye-duzelt-hesap-adi" style="font-size:12px; opacity:0.85; margin-bottom:4px; text-align:center; font-weight:600;"></div>
+    <div id="bakiye-duzelt-mevcut" style="font-size:11px; opacity:0.6; margin-bottom:8px; text-align:center;"></div>
+    <label for="bakiye-duzelt-tutar">Gerçek Bakiye (TL)</label>
+    <input type="text" id="bakiye-duzelt-tutar" inputmode="decimal" placeholder="Örn: 1.250,00">
+    <div style="font-size:10px; opacity:0.6; margin-top:8px; line-height:1.4;">Bu hesabın kartta/hesap ekstresinde gördüğünüz GERÇEK bakiyesini girin. Aradaki fark otomatik olarak "Bakiye Düzeltme" adıyla bir işlem olarak kaydedilir; gelir/gider raporlarını ve kategori grafiğini etkilemez.</div>
+    <div class="modal-btn-row">
+      <button id="btn-bakiye-duzelt-iptal" style="background:#4b5563;">İptal</button>
+      <button id="btn-bakiye-duzelt-onayla" style="background:#f59e0b;">Kaydet</button>
+    </div>
+  </div>
+</div>
+
 <div id="sifre-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <input type="password" id="mevcut-sifre" placeholder="Mevcut Şifre">
@@ -1139,6 +1200,13 @@ function presenceBaslat(user) {
       // fark edilemiyordu. Artık başarısız olursa konsola açıkça yazılıyor.
       dbSet(userPresenceRef, { email: user.email, girisTarihi: Date.now() })
         .catch(e => console.error('presenceBaslat: presence/' + user.uid + ' yazılamadı (RTDB kurallarını kontrol edin):', e.message));
+      // DÜZELTME: "Son Giriş" bilgisi eskiden SADECE presenceBaslat() ilk çağrıldığında (yani
+      // sayfa/uygulama ilk açıldığında) yazılıyordu. Bir sekme/PWA günlerce arka planda açık kalıp
+      // ağ bağlantısı kesilip yeniden kurulursa (mobilde çok sık olur), presence "online" olarak
+      // güncelleniyordu ama sonGiris hiç yenilenmiyordu — admin panelinde kullanıcı "şu an aktif"
+      // görünürken "Son Giriş: 18 gün önce" gibi tutarsız bir tarih gösterebiliyordu. Artık her
+      // bağlantı (yeniden) kurulduğunda sonGiris de tazeleniyor.
+      userKaydet(user);
     } else {
       // Bağlantı kesildi - presence'ı temizle (backup)
       // Bu kısım Firebase offline'da çalışmaz ama online'a döndüğünde temizler
@@ -1161,6 +1229,7 @@ function presenceBaslat(user) {
     } else if (document.visibilityState === 'visible' && auth.currentUser) {
       onDisconnect(userPresenceRef).remove();
       dbSet(userPresenceRef, { email: user.email, girisTarihi: Date.now() });
+      userKaydet(user); // DÜZELTME: burada da sonGiris tazelensin, bkz. yukarıdaki not
     }
   });
 
@@ -3515,16 +3584,23 @@ async function bakiyeleriGoster() {
       const isim = _hesapIsimleriMapBakiye[hsp] || hsp;
       const { renk1, renk2, ikon } = hesapGorselGetir(hsp);
       html += `
-      <div style="background:linear-gradient(135deg, ${renk1}, ${renk2}); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
+      <div style="position:relative; background:linear-gradient(135deg, ${renk1}, ${renk2}); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
+        <button class="btn-bakiye-duzelt" data-hesap="${escapeHTML(hsp)}" data-ham="${hamBakiye}" title="Bakiyeyi Düzelt" style="position:absolute; top:10px; right:10px; width:26px; height:26px; padding:0; margin:0; border-radius:8px; background:rgba(255,255,255,0.22); font-size:12px; text-transform:none;">✏️</button>
         <div style="display:flex; align-items:center; gap:8px;">
           <div style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; flex-shrink:0;">${ikon}</div>
-          <div style="color:white; font-weight:600; font-size:14px;">${isim}</div>
+          <div style="color:white; font-weight:600; font-size:14px; padding-right:30px;">${isim}</div>
         </div>
         <div style="margin-top:12px; color:rgba(255,255,255,0.8); font-size:11px;">${etiket}</div>
         <div style="color:${eksiMi ? '#fecaca' : 'white'}; font-size:21px; font-weight:bold;">${eksiMi ? '-' : ''}${formatla(Math.abs(gosterilecek))} TL</div>
       </div>`;
     });
     listeEl.innerHTML = html;
+    // YENİ: "✏️ Bakiye Düzelt" butonları - hesap adı kullanıcı tarafından girilebildiği için
+    // (özel hesaplarda tırnak/apostrof içerebilir) inline onclick yerine güvenli şekilde
+    // data-* özniteliği + event delegation kullanılıyor.
+    listeEl.querySelectorAll('.btn-bakiye-duzelt').forEach(btn => {
+      btn.addEventListener('click', () => bakiyeDuzeltModaliniAc(btn.dataset.hesap, parseFloat(btn.dataset.ham)));
+    });
   } catch (e) {
     console.error("Bakiyeler yüklenirken hata:", e);
     listeEl.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; color:#fca5a5;">Bakiyeler yüklenirken bir hata oluştu.</div>';
@@ -4019,12 +4095,14 @@ veriler.push({ id: d.id, ...data, isPending: d.metadata.hasPendingWrites });
 // etkilemiyorlar (biri düşüp biri arttığı için birbirini götürüyor) ama kategori grafiği, toplam
 // gelir/gider özeti ve kart borç hesaplaması gerçek gelir/gider sanıp yanlış rakamlar
 // göstermesin diye buradan hariç tutuluyorlar (yine de işlem listesinde görünmeye devam ediyorlar,
-// şeffaflık için).
-const transferMi = data.kategori === 'Transfer';
-if(data.tur === 'gelir') { bakiye += data.tutar; if (!transferMi) kategoriToplamlar['Gelir'] += data.tutar; } 
+// şeffaflık için). YENİ: Bakiyelerim > "✏️ Bakiye Düzelt" ile oluşturulan kategori:'Düzeltme'
+// kayıtları da aynı sebeple (gerçek gelir/gider değil, sadece görünen bakiyeyi gerçek duruma
+// eşitleyen manuel bir ayar) aynı şekilde hariç tutuluyor.
+const hesapDisiKategoriMi = data.kategori === 'Transfer' || data.kategori === 'Düzeltme';
+if(data.tur === 'gelir') { bakiye += data.tutar; if (!hesapDisiKategoriMi) kategoriToplamlar['Gelir'] += data.tutar; } 
 else { 
 bakiye -= data.tutar; 
-if (!transferMi) {
+if (!hesapDisiKategoriMi) {
 const kat = data.kategori || 'Genel'; 
 kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar;
 const hsp = data.hesap || 'Nakit';
@@ -4047,8 +4125,8 @@ if (bakiye > eskiBakiye) bakiyeEl.classList.add('bakiye-yukari');
 else if (bakiye < eskiBakiye) bakiyeEl.classList.add('bakiye-asagi');
 
 // Gelir/Gider özeti güncelle (transferler hariç, yukarıdaki DÜZELTME notuna bkz.)
-const toplamGelir = veriler.filter(d => d.tur === 'gelir' && d.kategori !== 'Transfer').reduce((t, d) => t + d.tutar, 0);
-const toplamGider = veriler.filter(d => d.tur === 'gider' && d.kategori !== 'Transfer').reduce((t, d) => t + d.tutar, 0);
+const toplamGelir = veriler.filter(d => d.tur === 'gelir' && d.kategori !== 'Transfer' && d.kategori !== 'Düzeltme').reduce((t, d) => t + d.tutar, 0);
+const toplamGider = veriler.filter(d => d.tur === 'gider' && d.kategori !== 'Transfer' && d.kategori !== 'Düzeltme').reduce((t, d) => t + d.tutar, 0);
 const ozetGelir = document.getElementById('ozet-gelir');
 const ozetGider = document.getElementById('ozet-gider');
 if (ozetGelir) ozetGelir.innerText = formatla(toplamGelir);
@@ -4313,23 +4391,104 @@ if (!cats.includes(yeni)) { cats.push(yeni); _kullaniciAyarlariCache.kategoriler
 }
 };
 
-document.getElementById('btn-ekle-hesap').onclick = () => {
-const yeni = prompt("Yeni Kart/Hesap Adı:");
-if(yeni && yeni.trim() !== "") {
-document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
-document.getElementById('hesap').value = yeni;
-if(auth.currentUser) {
-const accs = _kullaniciAyarlariCache.hesaplar || [];
-if (!accs.includes(yeni)) { accs.push(yeni); _kullaniciAyarlariCache.hesaplar = accs; kullaniciAyarlariKaydet(); }
-// Bu hesap bir kredi kartı mı yoksa banka/nakit hesabı mı? Bakiyelerim ekranındaki gösterim
-// (gerçek bakiye mi, yoksa borç mantığı mı) buna göre belirleniyor.
-const krediMi = confirm(`"${yeni}" bir KREDİ KARTI mı?\n\nTamam = Evet, kredi kartı (borç ekranda gösterilmez)\nİptal = Hayır, banka/nakit hesabı (gerçek bakiye gösterilir)`);
-const turler = _kullaniciAyarlariCache.hesapTurleri || {};
-turler[yeni] = krediMi ? 'kredi' : 'banka';
-_kullaniciAyarlariCache.hesapTurleri = turler;
-kullaniciAyarlariKaydet();
+// YENİ: Hesap ekleme artık tarayıcının prompt()/confirm() kutuları yerine uygulama içi popup
+// (#hesap-ekle-overlay) ile yapılıyor. Hesap adı ve türü (Kredi Kartı / Nakit-Banka Hesabı, tek
+// seçilebilir "pill" butonlar) aynı ekranda soruluyor.
+let _seciliHesapTuru = 'banka';
+function hesapEkleModaliniAc() {
+  document.getElementById('hesap-ekle-adi').value = '';
+  _seciliHesapTuru = 'banka';
+  document.getElementById('pill-banka').classList.add('secili');
+  document.getElementById('pill-kredi').classList.remove('secili');
+  document.getElementById('hesap-ekle-overlay').classList.remove('hidden');
+  document.getElementById('hesap-ekle-adi').focus();
 }
+function hesapEkleModaliniKapat() {
+  document.getElementById('hesap-ekle-overlay').classList.add('hidden');
 }
+document.getElementById('btn-ekle-hesap').onclick = hesapEkleModaliniAc;
+document.getElementById('btn-hesap-ekle-iptal').onclick = hesapEkleModaliniKapat;
+// Overlay'in boş (karanlık) alanına tıklayınca da kapansın, ama modal kartın içine tıklayınca kapanmasın
+document.getElementById('hesap-ekle-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'hesap-ekle-overlay') hesapEkleModaliniKapat();
+});
+document.querySelectorAll('.hesap-turu-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.hesap-turu-pill').forEach(p => p.classList.remove('secili'));
+    pill.classList.add('secili');
+    _seciliHesapTuru = pill.dataset.tur;
+  });
+});
+document.getElementById('btn-hesap-ekle-onayla').onclick = () => {
+  const yeni = document.getElementById('hesap-ekle-adi').value.trim();
+  if (!yeni) { document.getElementById('hesap-ekle-adi').focus(); return; }
+  if (document.querySelector(`#hesap option[value="${yeni}"]`)) { alert('Bu isimde bir hesap zaten var.'); return; }
+  document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
+  document.getElementById('hesap').value = yeni;
+  if (auth.currentUser) {
+    const accs = _kullaniciAyarlariCache.hesaplar || [];
+    if (!accs.includes(yeni)) { accs.push(yeni); _kullaniciAyarlariCache.hesaplar = accs; }
+    // Bu hesap kredi kartı mı yoksa banka/nakit hesabı mı? Bakiyelerim ekranındaki gösterim
+    // (gerçek bakiye mi, yoksa 0'da sabit borç mantığı mı) buna göre belirleniyor.
+    const turler = _kullaniciAyarlariCache.hesapTurleri || {};
+    turler[yeni] = _seciliHesapTuru;
+    _kullaniciAyarlariCache.hesapTurleri = turler;
+    kullaniciAyarlariKaydet();
+  }
+  hesapEkleModaliniKapat();
+};
+
+// YENİ: Bakiyelerim ekranındaki "✏️" butonu ile hesabın gerçek bakiyesi manuel olarak
+// düzeltilebiliyor (örn. kartta/ekstrede görünen gerçek rakam uygulamadakiyle tutmuyorsa).
+// Girilen hedef bakiye ile mevcut hesaplanan (ham) bakiye arasındaki FARK, kategori:'Düzeltme'
+// etiketiyle bir gelir/gider işlemi olarak kaydediliyor — Transfer'de olduğu gibi bu kategori
+// gelir/gider raporlarından ve kategori grafiğinden hariç tutuluyor (bkz. verileriGetir).
+let _duzeltilecekHesap = null;
+function bakiyeDuzeltModaliniAc(hesap, hamBakiye) {
+  _duzeltilecekHesap = hesap;
+  document.getElementById('bakiye-duzelt-hesap-adi').innerText = _hesapIsimleriMapBakiye[hesap] || hesap;
+  document.getElementById('bakiye-duzelt-mevcut').innerText = `Hesaplanan mevcut bakiye: ${hamBakiye < 0 ? '-' : ''}${formatla(Math.abs(hamBakiye))} TL`;
+  document.getElementById('bakiye-duzelt-tutar').value = formatla(hamBakiye);
+  document.getElementById('bakiye-duzelt-overlay').classList.remove('hidden');
+  document.getElementById('bakiye-duzelt-tutar').focus();
+  document.getElementById('bakiye-duzelt-tutar').select();
+}
+function bakiyeDuzeltModaliniKapat() {
+  document.getElementById('bakiye-duzelt-overlay').classList.add('hidden');
+  _duzeltilecekHesap = null;
+}
+document.getElementById('btn-bakiye-duzelt-iptal').onclick = bakiyeDuzeltModaliniKapat;
+document.getElementById('bakiye-duzelt-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'bakiye-duzelt-overlay') bakiyeDuzeltModaliniKapat();
+});
+document.getElementById('btn-bakiye-duzelt-onayla').onclick = async () => {
+  if (!_duzeltilecekHesap) return;
+  const raw = document.getElementById('bakiye-duzelt-tutar').value;
+  const hedefBakiye = parseFloat(raw.replace(/\./g, '').replace(',', '.'));
+  if (isNaN(hedefBakiye)) { alert('Lütfen geçerli bir tutar girin.'); return; }
+  const hamBakiye = _sonHesapBakiyeleri[_duzeltilecekHesap] || 0;
+  const fark = Math.round((hedefBakiye - hamBakiye) * 100) / 100; // kuruş yuvarlama hatalarını önle
+  if (fark === 0) { bakiyeDuzeltModaliniKapat(); return; }
+  const btn = document.getElementById('btn-bakiye-duzelt-onayla');
+  btn.disabled = true;
+  try {
+    await addDoc(collection(db, "islemler"), {
+      uid: auth.currentUser.uid,
+      aciklama: 'Bakiye Düzeltme',
+      tutar: Math.abs(fark),
+      tur: fark > 0 ? 'gelir' : 'gider',
+      kategori: 'Düzeltme',
+      hesap: _duzeltilecekHesap,
+      tarih: Date.now()
+    });
+    bakiyeDuzeltModaliniKapat();
+    bakiyeleriGoster();
+  } catch (e) {
+    console.error('Bakiye düzeltme hatası:', e);
+    alert('Bakiye düzeltilirken bir hata oluştu.');
+  } finally {
+    btn.disabled = false;
+  }
 };
 
 document.getElementById('btn-sil-kategori').onclick = () => {
