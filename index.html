@@ -3456,6 +3456,19 @@ const _hesapGorsel = {
   'Diğer Kredi Kartı': { renk1: '#4b5563', renk2: '#374151', ikon: '💳' }
 };
 const _hesapIsimleriMapBakiye = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
+// DÜZELTME: Kredi kartı ile banka/nakit hesabı ayrımı. Önceden TÜM hesaplar (Nakit dahil) borç
+// gibi davranıyordu: bakiye eksiye düştüğünde ekranda hep 0 TL gösteriliyordu ("kumbara mantığı").
+// Bu, banka hesapları arası transferlerde kafa karıştırıyordu (örn. borçlu bir hesaba para
+// transfer edilince ekranda hâlâ 0 TL görünüyor, sanki transfer hiç olmamış gibi duruyordu).
+// Artık her hesabın bir TÜRÜ var: 'banka' (Nakit + banka hesapları) → gerçek bakiye gösterilir,
+// eksiye düşebilir; 'kredi' (kredi kartları) → eski kumbara mantığı korunur, borç ekranda ayrı
+// "Hesap Özetleri" panelinde zaten gösteriliyor. Varsayılan hesap türleri:
+const _hesapTuruVarsayilan = { 'Nakit': 'banka', 'Garanti': 'banka', 'Ziraat': 'banka', 'Qnb': 'banka', 'Diğer Kredi Kartı': 'kredi' };
+function hesapTuruGetir(hesap) {
+  if (_hesapTuruVarsayilan[hesap]) return _hesapTuruVarsayilan[hesap];
+  const ozelTurler = (_kullaniciAyarlariCache && _kullaniciAyarlariCache.hesapTurleri) || {};
+  return ozelTurler[hesap] || 'banka'; // bilinmeyen/özel hesaplarda varsayılan: gerçek bakiye göster
+}
 const _ozelHesapPaleti = [
   { renk1: '#2563eb', renk2: '#1e40af' },
   { renk1: '#db2777', renk2: '#9d174d' },
@@ -3491,11 +3504,14 @@ async function bakiyeleriGoster() {
     transferHesapSecenekleriDoldur(Object.keys(hesapBakiyeleri));
     let html = '';
     Object.keys(hesapBakiyeleri).forEach(hsp => {
-      // KUMBARA MANTIĞI: Bakiyelerim ekranı borç göstermiyor (borç zaten "Hesap Özetleri/Borçlar"
-      // panelinde ayrı gösteriliyor). Burada sadece o hesaba yüklenen paranın harcanmamış kısmı
-      // (artıdaki para) gösteriliyor; harcama, yüklenen tutarı geçse bile ekranda asla eksi
-      // görünmüyor, 0 TL'de sabitleniyor.
-      const bakiye = Math.max(0, hesapBakiyeleri[hsp]);
+      const turu = hesapTuruGetir(hsp);
+      const hamBakiye = hesapBakiyeleri[hsp];
+      // KREDİ KARTI: eski kumbara mantığı korunuyor — yüklenen paranın harcanmamış kısmı
+      // gösteriliyor, borç ekranda eksi olarak görünmüyor (borç "Hesap Özetleri" panelinde ayrı).
+      // BANKA/NAKİT HESABI: gerçek bakiye gösteriliyor, eksideyse "Borç" etiketiyle kırmızı renkte.
+      const eksiMi = turu !== 'kredi' && hamBakiye < 0;
+      const gosterilecek = turu === 'kredi' ? Math.max(0, hamBakiye) : hamBakiye;
+      const etiket = eksiMi ? 'Borç' : 'Bakiye';
       const isim = _hesapIsimleriMapBakiye[hsp] || hsp;
       const { renk1, renk2, ikon } = hesapGorselGetir(hsp);
       html += `
@@ -3504,8 +3520,8 @@ async function bakiyeleriGoster() {
           <div style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; flex-shrink:0;">${ikon}</div>
           <div style="color:white; font-weight:600; font-size:14px;">${isim}</div>
         </div>
-        <div style="margin-top:12px; color:rgba(255,255,255,0.8); font-size:11px;">Bakiye</div>
-        <div style="color:white; font-size:21px; font-weight:bold;">${formatla(bakiye)} TL</div>
+        <div style="margin-top:12px; color:rgba(255,255,255,0.8); font-size:11px;">${etiket}</div>
+        <div style="color:${eksiMi ? '#fecaca' : 'white'}; font-size:21px; font-weight:bold;">${eksiMi ? '-' : ''}${formatla(Math.abs(gosterilecek))} TL</div>
       </div>`;
     });
     listeEl.innerHTML = html;
@@ -3544,7 +3560,11 @@ document.getElementById('btn-transfer-yap').onclick = async () => {
   if (!kaynak || !hedef) return alert('Lütfen hesapları seçin.');
   if (kaynak === hedef) return alert('Kaynak ve hedef hesap aynı olamaz.');
   if (isNaN(tutar) || tutar <= 0) return alert('Lütfen geçerli bir tutar girin.');
-  const mevcutBakiye = Math.max(0, _sonHesapBakiyeleri[kaynak] || 0);
+  // Kredi kartından yapılan transferlerde eski kumbara mantığı (0'da sabit) korunuyor; banka/nakit
+  // hesaplarında ise gerçek (eksi olabilen) bakiye üzerinden kontrol yapılıyor.
+  const kaynakTuru = hesapTuruGetir(kaynak);
+  const hamKaynakBakiye = _sonHesapBakiyeleri[kaynak] || 0;
+  const mevcutBakiye = kaynakTuru === 'kredi' ? Math.max(0, hamKaynakBakiye) : hamKaynakBakiye;
   if (tutar > mevcutBakiye) {
     const devamEt = confirm(`${_hesapIsimleriMapBakiye[kaynak] || kaynak} hesabında ${formatla(mevcutBakiye)} TL var. Yine de ${formatla(tutar)} TL transfer etmek istiyor musun?`);
     if (!devamEt) return;
@@ -4301,6 +4321,13 @@ document.getElementById('hesap').value = yeni;
 if(auth.currentUser) {
 const accs = _kullaniciAyarlariCache.hesaplar || [];
 if (!accs.includes(yeni)) { accs.push(yeni); _kullaniciAyarlariCache.hesaplar = accs; kullaniciAyarlariKaydet(); }
+// Bu hesap bir kredi kartı mı yoksa banka/nakit hesabı mı? Bakiyelerim ekranındaki gösterim
+// (gerçek bakiye mi, yoksa borç mantığı mı) buna göre belirleniyor.
+const krediMi = confirm(`"${yeni}" bir KREDİ KARTI mı?\n\nTamam = Evet, kredi kartı (borç ekranda gösterilmez)\nİptal = Hayır, banka/nakit hesabı (gerçek bakiye gösterilir)`);
+const turler = _kullaniciAyarlariCache.hesapTurleri || {};
+turler[yeni] = krediMi ? 'kredi' : 'banka';
+_kullaniciAyarlariCache.hesapTurleri = turler;
+kullaniciAyarlariKaydet();
 }
 }
 };
