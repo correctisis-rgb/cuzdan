@@ -798,43 +798,6 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 </div>
 </div>
 
-<div id="hesap-ekle-overlay" class="hidden app-modal-overlay">
-  <div id="hesap-ekle-modal" class="app-modal">
-    <h3>➕ Yeni Kart / Hesap Ekle</h3>
-    <label for="hesap-ekle-adi">Hesap Adı</label>
-    <input type="text" id="hesap-ekle-adi" placeholder="Örn: Akbank, İş Bankası..." maxlength="30">
-    <label>Hesap Türü</label>
-    <div class="hesap-turu-secim">
-      <div class="hesap-turu-pill secili" id="pill-banka" data-tur="banka">
-        <span class="pill-ikon">🏦</span>Nakit / Banka Hesabı
-      </div>
-      <div class="hesap-turu-pill" id="pill-kredi" data-tur="kredi">
-        <span class="pill-ikon">💳</span>Kredi Kartı
-      </div>
-    </div>
-    <div style="font-size:10px; opacity:0.6; margin-top:8px; line-height:1.4;">Nakit/Banka hesaplarında gerçek bakiye (eksiye düşerse borç olarak) gösterilir. Kredi kartlarında borç ayrı takip edilir, Bakiyelerim ekranında 0 TL'nin altına düşmez.</div>
-    <div class="modal-btn-row">
-      <button id="btn-hesap-ekle-iptal" style="background:#4b5563;">İptal</button>
-      <button id="btn-hesap-ekle-onayla" style="background:#f59e0b;">Ekle</button>
-    </div>
-  </div>
-</div>
-
-<div id="bakiye-duzelt-overlay" class="hidden app-modal-overlay">
-  <div id="bakiye-duzelt-modal" class="app-modal">
-    <h3>✏️ Bakiye Düzelt</h3>
-    <div id="bakiye-duzelt-hesap-adi" style="font-size:12px; opacity:0.85; margin-bottom:4px; text-align:center; font-weight:600;"></div>
-    <div id="bakiye-duzelt-mevcut" style="font-size:11px; opacity:0.6; margin-bottom:8px; text-align:center;"></div>
-    <label for="bakiye-duzelt-tutar">Gerçek Bakiye (TL)</label>
-    <input type="text" id="bakiye-duzelt-tutar" inputmode="decimal" placeholder="Örn: 1.250,00">
-    <div style="font-size:10px; opacity:0.6; margin-top:8px; line-height:1.4;">Bu hesabın kartta/hesap ekstresinde gördüğünüz GERÇEK bakiyesini girin. Aradaki fark otomatik olarak "Bakiye Düzeltme" adıyla bir işlem olarak kaydedilir; gelir/gider raporlarını ve kategori grafiğini etkilemez.</div>
-    <div class="modal-btn-row">
-      <button id="btn-bakiye-duzelt-iptal" style="background:#4b5563;">İptal</button>
-      <button id="btn-bakiye-duzelt-onayla" style="background:#f59e0b;">Kaydet</button>
-    </div>
-  </div>
-</div>
-
 <div id="sifre-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(255,255,255,0.1); border-radius:10px;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <input type="password" id="mevcut-sifre" placeholder="Mevcut Şifre">
@@ -1035,6 +998,45 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
      taşıdık; artık hem mobilde hem masaüstünde her zaman görünür oluyorlar. -->
 <!-- "Silindi / Geri Al" toast'ı da aynı sebeple .app-container içinden buraya taşındı -->
 <div id="toast" style="display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(30,30,30,0.95); color:white; padding:10px 16px; border-radius:12px; font-size:13px; z-index:9999; box-shadow:0 4px 15px rgba(0,0,0,0.4); align-items:center; gap:10px; min-width:220px; justify-content:space-between;"><span id="toast-mesaj"></span><button id="toast-geri-al" style="background:#f59e0b; color:black; font-size:11px; padding:3px 8px; border-radius:6px; width:auto; margin:0; font-weight:bold;">GERİ AL</button></div>
+<!-- DÜZELTME: "Yeni Hesap Ekle" ve "Bakiye Düzelt" popup'ları da aynı sebeple (masaüstü modunda
+     .app-container display:none oluyor) buraya, .app-container'ın DIŞINA taşındı. Önceden
+     app-container içindeydiler ve bu yüzden masaüstü uygulamasında hiç görünmüyorlardı. -->
+<div id="hesap-ekle-overlay" class="hidden app-modal-overlay">
+  <div id="hesap-ekle-modal" class="app-modal">
+    <h3>➕ Yeni Kart / Hesap Ekle</h3>
+    <label for="hesap-ekle-adi">Hesap Adı</label>
+    <input type="text" id="hesap-ekle-adi" placeholder="Örn: Akbank, İş Bankası..." maxlength="30">
+    <label>Hesap Türü</label>
+    <div class="hesap-turu-secim">
+      <div class="hesap-turu-pill secili" id="pill-banka" data-tur="banka">
+        <span class="pill-ikon">🏦</span>Nakit / Banka Hesabı
+      </div>
+      <div class="hesap-turu-pill" id="pill-kredi" data-tur="kredi">
+        <span class="pill-ikon">💳</span>Kredi Kartı
+      </div>
+    </div>
+    <div style="font-size:10px; opacity:0.6; margin-top:8px; line-height:1.4;">Nakit/Banka hesaplarında gerçek bakiye (eksiye düşerse borç olarak) gösterilir. Kredi kartlarında borç ayrı takip edilir, Bakiyelerim ekranında 0 TL'nin altına düşmez.</div>
+    <div class="modal-btn-row">
+      <button id="btn-hesap-ekle-iptal" style="background:#4b5563;">İptal</button>
+      <button id="btn-hesap-ekle-onayla" style="background:#f59e0b;">Ekle</button>
+    </div>
+  </div>
+</div>
+
+<div id="bakiye-duzelt-overlay" class="hidden app-modal-overlay">
+  <div id="bakiye-duzelt-modal" class="app-modal">
+    <h3>✏️ Bakiye Düzelt</h3>
+    <div id="bakiye-duzelt-hesap-adi" style="font-size:12px; opacity:0.85; margin-bottom:4px; text-align:center; font-weight:600;"></div>
+    <div id="bakiye-duzelt-mevcut" style="font-size:11px; opacity:0.6; margin-bottom:8px; text-align:center;"></div>
+    <label for="bakiye-duzelt-tutar">Gerçek Bakiye (TL)</label>
+    <input type="text" id="bakiye-duzelt-tutar" inputmode="decimal" placeholder="Örn: 1.250,00">
+    <div style="font-size:10px; opacity:0.6; margin-top:8px; line-height:1.4;">Bu hesabın kartta/hesap ekstresinde gördüğünüz GERÇEK bakiyesini girin. Aradaki fark otomatik olarak "Bakiye Düzeltme" adıyla bir işlem olarak kaydedilir; gelir/gider raporlarını ve kategori grafiğini etkilemez.</div>
+    <div class="modal-btn-row">
+      <button id="btn-bakiye-duzelt-iptal" style="background:#4b5563;">İptal</button>
+      <button id="btn-bakiye-duzelt-onayla" style="background:#f59e0b;">Kaydet</button>
+    </div>
+  </div>
+</div>
 <!-- Hesap Makinesi popup (Tutar alanının yanındaki 🧮 butonuyla açılır) -->
 <div id="hesap-makinesi-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1e1b2e; color:white; border-radius:15px; padding:14px; width:82%; max-width:250px; z-index:10001; box-shadow:0 8px 30px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.1);">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
