@@ -3547,9 +3547,16 @@ const _hesapIsimleriMapBakiye = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', '
 // "Hesap Özetleri" panelinde zaten gösteriliyor. Varsayılan hesap türleri:
 const _hesapTuruVarsayilan = { 'Nakit': 'banka', 'Garanti': 'banka', 'Ziraat': 'banka', 'Qnb': 'banka', 'Diğer Kredi Kartı': 'kredi' };
 function hesapTuruGetir(hesap) {
-  if (_hesapTuruVarsayilan[hesap]) return _hesapTuruVarsayilan[hesap];
+  // DÜZELTME: Kullanıcının elle seçtiği tür (ozelTurler) artık sabit varsayılandan ÖNCE
+  // kontrol ediliyor. Önceden sabit varsayılan (_hesapTuruVarsayilan) her zaman kazanıyordu,
+  // bu yüzden kullanıcı "Bakiyelerim" ekranındaki yeni tür değiştirme düğmesiyle bile
+  // Garanti/Ziraat/Qnb gibi hazır hesapların türünü değiştiremiyordu. Eski özel (custom)
+  // hesaplarda zaten bir sorun yoktu (varsayılanları hiç olmadığı için doğrudan kullanıcı
+  // tercihine düşüyordu); asıl kırılan şey hazır hesaplardaki override'dı, o da düzeltildi.
   const ozelTurler = (_kullaniciAyarlariCache && _kullaniciAyarlariCache.hesapTurleri) || {};
-  return ozelTurler[hesap] || 'banka'; // bilinmeyen/özel hesaplarda varsayılan: gerçek bakiye göster
+  if (ozelTurler[hesap]) return ozelTurler[hesap];
+  if (_hesapTuruVarsayilan[hesap]) return _hesapTuruVarsayilan[hesap];
+  return 'banka'; // bilinmeyen/özel hesaplarda, hiç seçim yapılmamışsa varsayılan: gerçek bakiye göster
 }
 const _ozelHesapPaleti = [
   { renk1: '#2563eb', renk2: '#1e40af' },
@@ -3599,9 +3606,10 @@ async function bakiyeleriGoster() {
       html += `
       <div style="position:relative; background:linear-gradient(135deg, ${renk1}, ${renk2}); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
         <button class="btn-bakiye-duzelt" data-hesap="${escapeHTML(hsp)}" data-ham="${hamBakiye}" title="Bakiyeyi Düzelt" style="position:absolute; top:10px; right:10px; width:26px; height:26px; padding:0; margin:0; border-radius:8px; background:rgba(255,255,255,0.22); font-size:12px; text-transform:none;">✏️</button>
+        <button class="btn-hesap-turu-degistir" data-hesap="${escapeHTML(hsp)}" data-tur="${turu}" title="Hesap türünü değiştir (Banka/Nakit ↔ Kredi Kartı)" style="position:absolute; top:10px; right:42px; padding:3px 8px; margin:0; border-radius:8px; background:rgba(255,255,255,0.22); font-size:10px; text-transform:none; white-space:nowrap;">${turu === 'kredi' ? '💳 Kredi' : '🏦 Banka'}</button>
         <div style="display:flex; align-items:center; gap:8px;">
           <div style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; flex-shrink:0;">${ikon}</div>
-          <div style="color:white; font-weight:600; font-size:14px; padding-right:30px;">${isim}</div>
+          <div style="color:white; font-weight:600; font-size:14px; padding-right:60px;">${isim}</div>
         </div>
         <div style="margin-top:12px; color:rgba(255,255,255,0.8); font-size:11px;">${etiket}</div>
         <div style="color:${eksiMi ? '#fecaca' : 'white'}; font-size:21px; font-weight:bold;">${eksiMi ? '-' : ''}${formatla(Math.abs(gosterilecek))} TL</div>
@@ -3613,6 +3621,20 @@ async function bakiyeleriGoster() {
     // data-* özniteliği + event delegation kullanılıyor.
     listeEl.querySelectorAll('.btn-bakiye-duzelt').forEach(btn => {
       btn.addEventListener('click', () => bakiyeDuzeltModaliniAc(btn.dataset.hesap, parseFloat(btn.dataset.ham)));
+    });
+    // YENİ: Hesap türü rozeti - önceden (bu özellik eklenmeden önce) oluşturulmuş özel
+    // hesaplarda veya yanlış seçilmiş hazır hesaplarda türü geriye dönük düzeltmeyi sağlar.
+    // Tıklanınca banka/kredi arasında geçiş yapar ve kartı anında yeniden çizer.
+    listeEl.querySelectorAll('.btn-hesap-turu-degistir').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const hesap = btn.dataset.hesap;
+        const yeniTur = btn.dataset.tur === 'kredi' ? 'banka' : 'kredi';
+        const turler = _kullaniciAyarlariCache.hesapTurleri || {};
+        turler[hesap] = yeniTur;
+        _kullaniciAyarlariCache.hesapTurleri = turler;
+        kullaniciAyarlariKaydet();
+        bakiyeleriGoster();
+      });
     });
   } catch (e) {
     console.error("Bakiyeler yüklenirken hata:", e);
