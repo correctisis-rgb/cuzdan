@@ -1108,6 +1108,17 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
   </div>
 </div>
 
+<!-- Giriş popup (prompt() yerine) -->
+<div id="giris-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1e1b2e; color:white; border-radius:15px; padding:18px; width:85%; max-width:340px; z-index:10001; box-shadow:0 8px 30px rgba(0,0,0,0.6); text-align:center; border:1px solid rgba(255,255,255,0.1);">
+  <div id="giris-popup-ikon" style="font-size:28px; margin-bottom:8px;"></div>
+  <div id="giris-popup-baslik" style="font-weight:bold; font-size:14px; margin-bottom:10px; line-height:1.4;"></div>
+  <input type="text" id="giris-popup-input" style="width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); color:white; font-size:14px; margin-bottom:14px; text-align:center;">
+  <div style="display:flex; gap:8px;">
+    <button id="giris-popup-iptal" style="flex:1; background:rgba(255,255,255,0.15); border-radius:8px;">İptal</button>
+    <button id="giris-popup-onayla" style="flex:1; background:#6366f1; border-radius:8px;">Tamam</button>
+  </div>
+</div>
+
 <div id="kullanici-cevap-popup" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; color:black; border-radius:15px; padding:16px; width:85%; max-width:320px; z-index:10000; box-shadow:0 8px 30px rgba(0,0,0,0.5); text-align:center;">
   <div style="font-size:24px; margin-bottom:6px;">📬</div>
   <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#10b981;">Admin Cevapladı</div>
@@ -2051,7 +2062,7 @@ isInitialLoad = false;
 });
 }
 
-window.silDuyuru = (id) => { if(confirm("Silmek istediğine emin misin?")) deleteDoc(doc(db, "duyurular", id)); };
+window.silDuyuru = (id) => { onayGoster('🗑️', 'Bu duyuruyu silmek istediğine emin misin?', () => deleteDoc(doc(db, "duyurular", id))); };
 window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'bakiyeler-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel', 'ios-install-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
 
 // YENİ: Sağ üstteki bildirim (🔔) ve profil menüleri artık boş bir yere tıklanınca da otomatik
@@ -2142,6 +2153,29 @@ function onayGoster(ikon, metin, onEvet, evetRenk='#ef4444', evetYazi='Evet, Sil
     document.getElementById('onay-popup').classList.add('hidden');
     onEvet();
   };
+}
+
+// YENİ: Tarayıcının native prompt() penceresi yerine kullanılan tek satırlık veri girişi popup'ı.
+// onOnayla sadece "Tamam" butonuna basılınca ya da Enter'a basılınca çağrılır (prompt()'ta
+// olduğu gibi "iptal" durumunda hiçbir şey çalışmaz) - bu yüzden çağıran kodun eskiden yazdığı
+// "if(deger) {...}" kontrolleri callback içinde aynen korunabiliyor.
+function girisGoster(ikon, baslik, placeholder, onOnayla, opts={}) {
+  const input = document.getElementById('giris-popup-input');
+  document.getElementById('giris-popup-ikon').innerText = ikon;
+  document.getElementById('giris-popup-baslik').innerText = baslik;
+  input.placeholder = placeholder || '';
+  input.type = opts.tur || 'text';
+  input.inputMode = opts.inputMode || (opts.tur === 'number' ? 'numeric' : 'text');
+  input.value = opts.baslangicDeger || '';
+  document.getElementById('giris-popup-onayla').innerText = opts.onayYazi || 'Tamam';
+  document.getElementById('giris-popup').classList.remove('hidden');
+  setTimeout(() => { input.focus(); if (input.value) input.select(); }, 50);
+
+  const kapat = () => document.getElementById('giris-popup').classList.add('hidden');
+  document.getElementById('giris-popup-iptal').onclick = () => { kapat(); input.onkeydown = null; };
+  const onaylaCalistir = () => { const deger = input.value; kapat(); input.onkeydown = null; onOnayla(deger); };
+  document.getElementById('giris-popup-onayla').onclick = onaylaCalistir;
+  input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); onaylaCalistir(); } };
 }
 
 // --- MASAÜSTÜ / MOBİL GÖRÜNÜM ---
@@ -2426,8 +2460,9 @@ function masaUstuSidebarKur() {
     if(du) {
       du.onclick = () => {
         navSec(du);
-        const mesaj = prompt('Duyuru metnini girin:');
-        if(mesaj) addDoc(collection(db,'duyurular'),{mesaj,tarih:Date.now()}).then(()=>bilgiToastGoster('✅ Duyuru yayınlandı!'));
+        girisGoster('📢', 'Duyuru metnini girin:', 'Örn: Sistem bakımı bu akşam...', (mesaj) => {
+          if(mesaj && mesaj.trim() !== '') addDoc(collection(db,'duyurular'),{mesaj,tarih:Date.now()}).then(()=>bilgiToastGoster('✅ Duyuru yayınlandı!'));
+        });
       };
     }
     if(ms) {
@@ -3353,7 +3388,7 @@ console.log("Çevrimdışı mod: Önbellek verileri kullanılıyor.");
 if (user.uid === ADMIN_ID) {
 const adminAlan = document.getElementById('admin-alan');
 adminAlan.innerHTML = `<div id="aktif-kullanici-sayisi" style="background:rgba(16,185,129,0.2); border:1px solid #10b981; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:bold; margin-top:5px; text-align:center;">🟢 Yükleniyor...</div><button id="btn-kullanici-yonetim" style="background:#0ea5e9; margin-top:5px;">👥 KULLANICI YÖNETİMİ</button><button id="btn-duyuru-yayinla" style="background:#8b5cf6; margin-top:5px;">📢 DUYURU YAYINla</button><button id="btn-mesajlari-ac" style="background:#3b82f6; margin-top:5px;">📩 MESAJLARI GÖR</button>`;
-document.getElementById('btn-duyuru-yayinla').onclick = () => { const mesaj = prompt("Duyuru metnini girin:"); if(mesaj) addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); };
+document.getElementById('btn-duyuru-yayinla').onclick = () => { girisGoster('📢', 'Duyuru metnini girin:', 'Örn: Sistem bakımı bu akşam...', (mesaj) => { if(mesaj && mesaj.trim() !== '') addDoc(collection(db, "duyurular"), { mesaj, tarih: Date.now() }); }); };
 document.getElementById('btn-mesajlari-ac').onclick = mesajlariGetir;
 document.getElementById('btn-kullanici-yonetim').onclick = () => { kapatPaneller(); document.getElementById('kullanici-panel').classList.remove('hidden'); kullanicilariDinle(); };
 presenceDinle();
@@ -3424,7 +3459,7 @@ document.getElementById('mesaj-badge').style.display = 'none';
 localStorage.setItem('son_okunan_mesaj', Date.now());
 }
 
-window.silMesaj = async (id) => { if(confirm("Silmek istediğine emin misin?")) { await deleteDoc(doc(db, "bildirimler", id)); mesajlariGetir(); } };
+window.silMesaj = (id) => { onayGoster('🗑️', 'Bu mesajı silmek istediğine emin misin?', async () => { await deleteDoc(doc(db, "bildirimler", id)); mesajlariGetir(); }); };
 
 // Bir öneriyi "uygulandı" olarak işaretlemek, kullanıcının rütbe/yıldız rozetini otomatik
 // yükseltir (bkz. bildirimRutbeDinle) — kullanıcı hiçbir şey yapmadan, sadece admin panelden
@@ -3873,23 +3908,7 @@ function transferHesapSecenekleriDoldur(hesapAnahtarlari) {
   hedefSel.innerHTML = opts;
   if (hesapAnahtarlari.length > 1) hedefSel.selectedIndex = 1;
 }
-document.getElementById('btn-transfer-yap').onclick = async () => {
-  const kaynak = document.getElementById('transfer-kaynak').value;
-  const hedef = document.getElementById('transfer-hedef').value;
-  const rawTutar = document.getElementById('transfer-tutar').value;
-  const tutar = parseFloat(rawTutar.replace(/\./g, '').replace(',', '.'));
-  if (!kaynak || !hedef) return alert('Lütfen hesapları seçin.');
-  if (kaynak === hedef) return alert('Kaynak ve hedef hesap aynı olamaz.');
-  if (isNaN(tutar) || tutar <= 0) return alert('Lütfen geçerli bir tutar girin.');
-  // Kredi kartından yapılan transferlerde eski kumbara mantığı (0'da sabit) korunuyor; banka/nakit
-  // hesaplarında ise gerçek (eksi olabilen) bakiye üzerinden kontrol yapılıyor.
-  const kaynakTuru = hesapTuruGetir(kaynak);
-  const hamKaynakBakiye = _sonHesapBakiyeleri[kaynak] || 0;
-  const mevcutBakiye = kaynakTuru === 'kredi' ? Math.max(0, hamKaynakBakiye) : hamKaynakBakiye;
-  if (tutar > mevcutBakiye) {
-    const devamEt = confirm(`${_hesapIsimleriMapBakiye[kaynak] || kaynak} hesabında ${formatla(mevcutBakiye)} TL var. Yine de ${formatla(tutar)} TL transfer etmek istiyor musun?`);
-    if (!devamEt) return;
-  }
+async function transferiUygula(kaynak, hedef, tutar) {
   const kaynakIsim = _hesapIsimleriMapBakiye[kaynak] || kaynak;
   const hedefIsim = _hesapIsimleriMapBakiye[hedef] || hedef;
   const uid = auth.currentUser.uid;
@@ -3908,6 +3927,28 @@ document.getElementById('btn-transfer-yap').onclick = async () => {
   } finally {
     btnTransfer.disabled = false;
   }
+}
+
+document.getElementById('btn-transfer-yap').onclick = () => {
+  const kaynak = document.getElementById('transfer-kaynak').value;
+  const hedef = document.getElementById('transfer-hedef').value;
+  const rawTutar = document.getElementById('transfer-tutar').value;
+  const tutar = parseFloat(rawTutar.replace(/\./g, '').replace(',', '.'));
+  if (!kaynak || !hedef) return alert('Lütfen hesapları seçin.');
+  if (kaynak === hedef) return alert('Kaynak ve hedef hesap aynı olamaz.');
+  if (isNaN(tutar) || tutar <= 0) return alert('Lütfen geçerli bir tutar girin.');
+  // Kredi kartından yapılan transferlerde eski kumbara mantığı (0'da sabit) korunuyor; banka/nakit
+  // hesaplarında ise gerçek (eksi olabilen) bakiye üzerinden kontrol yapılıyor.
+  const kaynakTuru = hesapTuruGetir(kaynak);
+  const hamKaynakBakiye = _sonHesapBakiyeleri[kaynak] || 0;
+  const mevcutBakiye = kaynakTuru === 'kredi' ? Math.max(0, hamKaynakBakiye) : hamKaynakBakiye;
+  if (tutar > mevcutBakiye) {
+    // DÜZELTME: Bu onay da artık native confirm() yerine uygulamanın kendi popup'ı (onayGoster)
+    // ile soruluyor; "Devam Et" derse transfer aynı şekilde gerçekleşiyor.
+    onayGoster('⚠️', `${_hesapIsimleriMapBakiye[kaynak] || kaynak} hesabında ${formatla(mevcutBakiye)} TL var. Yine de ${formatla(tutar)} TL transfer etmek istiyor musun?`, () => transferiUygula(kaynak, hedef, tutar), '#7c3aed', 'Devam Et');
+    return;
+  }
+  transferiUygula(kaynak, hedef, tutar);
 };
 
 // --- KART KESİM TARİHİ SİSTEMİ ---
@@ -4624,7 +4665,7 @@ function loadCustomData(user) {
 }
 
 document.getElementById('btn-ekle-kategori').onclick = () => {
-const yeni = prompt("Yeni Kategori Adı:");
+girisGoster('🏷️', 'Yeni Kategori Adı:', 'Örn: Market, Ulaşım...', (yeni) => {
 if(yeni && yeni.trim() !== "") {
 document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
 document.getElementById('kategori').value = yeni;
@@ -4634,6 +4675,7 @@ const cats = _kullaniciAyarlariCache.kategoriler || [];
 if (!cats.includes(yeni)) { cats.push(yeni); _kullaniciAyarlariCache.kategoriler = cats; kullaniciAyarlariKaydet(); }
 }
 }
+});
 };
 
 // YENİ: Hesap ekleme artık tarayıcının prompt()/confirm() kutuları yerine uygulama içi popup
@@ -4742,7 +4784,7 @@ const select = document.getElementById('kategori');
 const seciliDeger = select.value;
 const sabitKategoriler = ['Genel', 'Maaş', 'Market', 'Fatura', 'Ulaşım', 'Sağlık', 'Eğlence', 'Diğer'];
 if (sabitKategoriler.includes(seciliDeger)) { alert("Varsayılan kategoriler silinemez."); return; }
-if (!confirm(`"${seciliDeger}" kategorisini silmek istediğine emin misin?`)) return;
+onayGoster('🗑️', `"${seciliDeger}" kategorisini silmek istediğine emin misin?`, () => {
 select.querySelector(`option[value="${seciliDeger}"]`).remove();
 select.value = 'Genel';
 const filtreOpt = document.querySelector(`#filtre-kategori option[value="${seciliDeger}"]`);
@@ -4752,6 +4794,7 @@ const cats = (_kullaniciAyarlariCache.kategoriler || []).filter(c => c !== secil
 _kullaniciAyarlariCache.kategoriler = cats;
 kullaniciAyarlariKaydet();
 }
+});
 };
 
 document.getElementById('btn-sil-hesap').onclick = () => {
@@ -4759,7 +4802,7 @@ const select = document.getElementById('hesap');
 const seciliDeger = select.value;
 const sabitHesaplar = ['Nakit', 'Diğer Kredi Kartı'];
 if (sabitHesaplar.includes(seciliDeger)) { alert("Varsayılan ödeme şekilleri silinemez."); return; }
-if (!confirm(`"${seciliDeger}" hesabını silmek istediğine emin misin?`)) return;
+onayGoster('🗑️', `"${seciliDeger}" hesabını silmek istediğine emin misin?`, () => {
 select.querySelector(`option[value="${seciliDeger}"]`).remove();
 select.value = 'Nakit';
 if (auth.currentUser) {
@@ -4767,6 +4810,7 @@ const accs = (_kullaniciAyarlariCache.hesaplar || []).filter(a => a !== seciliDe
 _kullaniciAyarlariCache.hesaplar = accs;
 kullaniciAyarlariKaydet();
 }
+});
 };
 
 // --- YENİ: Taksit Sistemi ---
@@ -4792,7 +4836,12 @@ if (!aciklama || isNaN(toplamTutar) || toplamTutar <= 0 || !tarihVal) return bil
 if (toplamTutar > 3000000) return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b');
 
 const TAKSIT_USTSINIR = 36; // 3 yıl
-const taksitSayisiStr = prompt("Kaç taksit yapılacak? (Sadece sayı girin, en fazla " + TAKSIT_USTSINIR + ")");
+
+// DÜZELTME: Taksit sayısı sorusu önceden tarayıcının native prompt() kutusuyla gösteriliyordu;
+// artık uygulamanın kendi popup sistemi (girisGoster) kullanılıyor. Kullanıcı "Tamam" derse
+// devamındaki kontroller ve taksitlendirme onayı (onayGoster) callback içinde, tıpkı önceki
+// prompt()/confirm() akışı gibi sırayla çalışıyor.
+girisGoster('💸', `Kaç taksit yapılacak? (Sadece sayı girin, en fazla ${TAKSIT_USTSINIR})`, 'Örn: 12', (taksitSayisiStr) => {
 if (!taksitSayisiStr) return;
 const taksitSayisi = parseInt(taksitSayisiStr);
 if (isNaN(taksitSayisi) || taksitSayisi <= 1) return bilgiGoster('⚠️', 'Geçersiz Taksit Sayısı', 'Geçerli bir taksit sayısı girin.', '#f59e0b');
@@ -4802,10 +4851,6 @@ const aylikTutar = parseFloat((toplamTutar / taksitSayisi).toFixed(2));
 let baslangicTarihi = new Date(tarihVal);
 baslangicTarihi.setHours(12, 0, 0, 0);
 
-// DÜZELTME: Taksitlendirme onayı önceden tarayıcının native confirm() kutusuyla gösteriliyordu;
-// bu, uygulamanın geri kalanıyla uyumsuz, stilsiz bir sistem penceresiydi. Artık uygulamanın
-// kendi popup sistemi (onayGoster) kullanılıyor; kullanıcı "Onayla" derse asıl işlem (taksitlerin
-// oluşturulması) callback içinde, tıpkı önceki confirm(){...} bloğu gibi çalışıyor.
 onayGoster('📆', `${formatla(toplamTutar)} TL tutarındaki işlem, ${taksitSayisi} aya ${formatla(aylikTutar)} TL olarak bölünecektir. Onaylıyor musunuz?`, async () => {
 for(let i = 0; i < taksitSayisi; i++) {
 let islemTarihi = new Date(baslangicTarihi);
@@ -4825,6 +4870,7 @@ tarih: islemTarihi.getTime()
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
 bilgiGoster('✅', 'Başarılı', 'Taksitler başarıyla eklendi!', '#10b981');
 }, '#6366f1', 'Onayla, Ekle');
+}, {tur:'number', inputMode:'numeric'});
 };
 
 // --- SESLİ KOMUT ALTYAPISI ---
@@ -4907,8 +4953,7 @@ else if (metin.includes('finans') || metin.includes('qnb')) hesapSelect.value = 
 else if (metin.includes('kart')) hesapSelect.value = 'Diğer Kredi Kartı';
 else if (metin.includes('nakit') || metin.includes('peşin')) hesapSelect.value = 'Nakit';
 
-const onay = confirm(`Mikrofon ile işlem algılandı, onaylıyor musunuz?\n\nTür: ${tur.toUpperCase()}\nAçıklama: ${document.getElementById('aciklama').value}\nTutar: ${bulunanTutar} TL\nKategori: ${bulunanKategori}\nHesap: ${hesapSelect.options[hesapSelect.selectedIndex].text}`);
-if (onay) { await ekle(tur); }
+onayGoster('🎙️', `Mikrofon ile işlem algılandı, onaylıyor musunuz?\n\nTür: ${tur.toUpperCase()}\nAçıklama: ${document.getElementById('aciklama').value}\nTutar: ${bulunanTutar} TL\nKategori: ${bulunanKategori}\nHesap: ${hesapSelect.options[hesapSelect.selectedIndex].text}`, async () => { await ekle(tur); }, '#6366f1', 'Onayla, Ekle');
 };
 }
 </script>
