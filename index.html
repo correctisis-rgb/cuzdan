@@ -1177,7 +1177,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 // YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification, signInAnonymously, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref as dbRef, set as dbSet, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", databaseURL: "https://cuzdan-99641-default-rtdb.firebaseio.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
@@ -3060,7 +3060,27 @@ function tvOturumuTemizle() {
   document.getElementById('tv-modu-banner').classList.add('hidden');
   document.getElementById('masaustu-form-sutun').style.display = '';
   ['btn-duyuru-ac', 'profil-baslik'].forEach(id => { const el = document.getElementById(id); if (el) el.style.visibility = ''; });
-  if (auth.currentUser && auth.currentUser.isAnonymous) signOut(auth);
+  // DÜZELTME (Authentication > Users listesinin şişmesi sorunu): Önceden bağlantı bittiğinde
+  // (sahip uzaktan çıkış yaptırdığında, TV kendi "Çıkış Yap" düğmesine bastığında veya QR
+  // ekranından onaysız geri dönüldüğünde) sadece signOut() çağrılıyordu. signOut() oturumu
+  // kapatır ama Firebase Authentication'daki anonim HESABIN KENDİSİNİ SİLMEZ — bu yüzden her
+  // yeni TV/PC denemesi, Authentication > Users listesinde kalıcı bir "(anonymous)" satırı
+  // bırakıyordu ve zamanla liste şişiyordu. Artık bu üç durumun hepsinde anonim hesap
+  // deleteUser() ile TAMAMEN siliniyor; sadece pasif bırakılmıyor.
+  // NOT/SINIRLAMA: Bir client SDK'sı yalnızca KENDİ o anki oturumunu silebilir, sahibi TV'yi
+  // uzaktan silemez (bu, Admin SDK/Cloud Function gerektirir). Yani bu silme, TV o an
+  // çevrimiçiyse (bu fonksiyon TV tarayıcısında çalışırken) devreye girer. TV bir daha hiç
+  // açılmazsa (örn. tarayıcı verileri silindi, cihaz atıldı) o hesap orada kalır — bunun için
+  // tamamen sunucusuz bir çözüm yok, gerekirse arada bir Authentication panelinden elle
+  // silinebilir ya da ileride zamanlanmış bir Cloud Function eklenebilir.
+  const anonKullanici = auth.currentUser;
+  if (anonKullanici && anonKullanici.isAnonymous) {
+    deleteUser(anonKullanici).catch(e => {
+      console.log('Anonim hesap silinemedi, yedek olarak çıkış yapılıyor:', e.message);
+      signOut(auth).catch(() => {});
+    });
+  }
+  localStorage.removeItem('tv_cihaz_uid');
 }
 
 document.getElementById('btn-tv-modu-cikis').onclick = async () => {
