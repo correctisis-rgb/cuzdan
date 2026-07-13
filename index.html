@@ -28,12 +28,19 @@ window.addEventListener('appinstalled', () => {
 <meta charset="UTF-8">
 <meta name="viewport" id="viewport-meta" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Akıllı Cüzdan | Cloud</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<!-- DÜZELTME (PERFORMANS): Bu 5 script daha önce defer/async olmadan senkron şekilde yükleniyordu;
+     tarayıcı bunları indirip çalıştırana kadar sayfanın geri kalanını ayrıştırmayı (parse) durduruyordu
+     — yani kullanıcı ilk açılışta boş/beyaz ekranda bekliyordu. "defer" ile indirme artık HTML
+     ayrıştırmasını bloklamıyor (paralelde iniyor); tarayıcı yine de bu script'leri belgede
+     göründükleri sırayla (jsPDF -> autotable, hepsi ana modül script'inden önce) çalıştırmayı garanti
+     ediyor, bu yüzden hiçbir kod değişikliği gerekmedi.
+-->
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" defer></script>
 <!-- YENİ: QR ile TV/Bilgisayar girişi özelliği için - QR üretimi (qrcodejs) ve QR okuma (jsQR) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
 <style>
 html, body { 
 height: 100dvh; 
@@ -2104,7 +2111,13 @@ document.addEventListener('mousedown', (e) => {
 
 document.getElementById('btn-duyuru-ac').onclick = (e) => {
 document.getElementById('bildirim-badge').style.display = 'none';
-onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (s) => { if(!s.empty) localStorage.setItem('sonOkunanDuyuruID', s.docs[0].id); });
+// DÜZELTME (PERFORMANS/SIZINTI): Burada önceden her tıklamada YENİ bir onSnapshot açılıyordu ve
+// hiçbir zaman unsubscribe edilmiyordu — kullanıcı zile ne kadar çok tıklarsa o kadar çok kalıcı,
+// hiç kapanmayan Firestore dinleyicisi birikiyordu (bellek sızıntısı + gereksiz okuma). Bu satırın
+// tek işi 'sonOkunanDuyuruID'yi güncellemekti; bu değer zaten uygulama açıkken sürekli çalışan ve
+// düzgün şekilde unsubscribe edilen duyurulariDinle()'nin kendi onSnapshot'ı tarafından her yeni
+// duyuruda otomatik güncelleniyor (bkz. duyurulariDinle). Yani bu satır tamamen gereksizdi, davranış
+// değişikliği olmadan kaldırıldı.
 // DÜZELTME: Önceden kapatPaneller() menüyü önce zorla gizleyip, hemen ardından toggle('hidden')
 // tekrar 'hidden' sınıfını kaldırdığı için menü her tıklamada AÇILIYORDU; aynı ikona ikinci kez
 // basmak menüyü asla kapatamıyordu. Şimdi menünün o anki durumu tıklamadan önce okunuyor ve
