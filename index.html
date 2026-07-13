@@ -691,6 +691,11 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
     <div class="tema-sec-btn" id="tema-yesil" onclick="temaDegistir('yesil')" style="background:linear-gradient(135deg,#0a1f0a,#2d7a2d);" title="Orman Yeşili"></div>
   </div>
 </div>
+<div style="margin:4px 0 2px 0; padding:5px; background:rgba(0,0,0,0.1); border-radius:8px;">
+  <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#555; font-weight:bold; cursor:pointer;">
+    <input type="checkbox" id="ayar-ses-bildirimleri" checked style="width:auto; margin:0;"> 🔔 Bildirim Sesleri (Onay / Uyarı)
+  </label>
+</div>
 <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
 <button id="btn-gorunum-degistir">🖥️ Masaüstü Sitesi İste</button>
 <div id="admin-alan"></div>
@@ -1211,7 +1216,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.0.3";
+const APP_SURUM = "1.0.4";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
@@ -1219,6 +1224,14 @@ const bildirimSesi = new Audio('bildirim.mp3');
 // "onay.mp3" başarılı ekleme onayı, "uyari.mp3" ise geçersiz/limit aşımı gibi durumlarda kullanılıyor.
 const onaySesi = new Audio('onay.mp3');
 const uyariSesi = new Audio('uyari.mp3');
+
+// YENİ: Kullanıcı "Bildirim Sesleri"ni Profil menüsünden kapatabiliyor (varsayılan: açık).
+// onay/uyarı sesi çalınacak her yerde doğrudan .play() yerine bu yardımcı fonksiyon kullanılıyor;
+// böylece kapatma tercihi tek bir noktadan garanti altına alınıyor.
+function sesCal(sesNesnesi) {
+  if (_kullaniciAyarlariCache && _kullaniciAyarlariCache.sesBildirimleri === false) return;
+  try { sesNesnesi.currentTime = 0; sesNesnesi.play().catch(() => {}); } catch(e) {}
+}
 
 // --- AKTİF KULLANICI PRESENCE SİSTEMİ ---
 function presenceBaslat(user) {
@@ -1531,19 +1544,19 @@ document.getElementById('btn-tum-mesajlari-okundu-yap').onclick = async () => {
 
 // --- TEMA SİSTEMİ ---
 // --- KULLANICI AYARLARI (Firestore tabanlı) ---
-let _kullaniciAyarlariCache = { tema: 'mor', kategoriler: [], hesaplar: [], sifreGecmisi: [] };
+let _kullaniciAyarlariCache = { tema: 'mor', kategoriler: [], hesaplar: [], sifreGecmisi: [], sesBildirimleri: true };
 
 async function kullaniciAyarlariYukle(uid) {
   try {
     const docSnap = await getDoc(doc(db, "kullanici_ayarlari", uid));
     if (docSnap.exists()) {
-      _kullaniciAyarlariCache = { tema: 'mor', kategoriler: [], hesaplar: [], sifreGecmisi: [], ...docSnap.data() };
+      _kullaniciAyarlariCache = { tema: 'mor', kategoriler: [], hesaplar: [], sifreGecmisi: [], sesBildirimleri: true, ...docSnap.data() };
     } else {
       // localStorage'dan eski verileri taşı
       const eskiTema = localStorage.getItem('tema_' + uid) || 'mor';
       const eskiCats = JSON.parse(localStorage.getItem('custom_cats_' + uid) || '[]');
       const eskiAccs = JSON.parse(localStorage.getItem('custom_accs_' + uid) || '[]');
-      _kullaniciAyarlariCache = { tema: eskiTema, kategoriler: eskiCats, hesaplar: eskiAccs, sifreGecmisi: [] };
+      _kullaniciAyarlariCache = { tema: eskiTema, kategoriler: eskiCats, hesaplar: eskiAccs, sifreGecmisi: [], sesBildirimleri: true };
       await setDoc(doc(db, "kullanici_ayarlari", uid), { ..._kullaniciAyarlariCache, uid });
       // Eski localStorage'ı temizle
       localStorage.removeItem('tema_' + uid);
@@ -1575,6 +1588,8 @@ function kullaniciAyarlariUIYukle(ayarlar) {
   hesapEtiketGuncelle();
   const dropdownAnahtarlari = Array.from(document.getElementById('hesap').options).map(o => o.value).filter(Boolean);
   hesapDropdownSiralaGoster(hesapSiralamasiUygula(dropdownAnahtarlari));
+  const sesCbx = document.getElementById('ayar-ses-bildirimleri');
+  if (sesCbx) sesCbx.checked = ayarlar.sesBildirimleri !== false;
 }
 
 // YENİ: Gelir/gider eklerken "ödeme şekli" (hesap) listesinde her seçeneğin banka/nakit mi
@@ -1618,6 +1633,13 @@ function temaYukle(uid) {
 }
 
 window.temaDegistir = temaDegistir;
+
+// YENİ: "Bildirim Sesleri" aç/kapa anahtarı. Değişiklik anında hem hafızadaki (cache) ayara hem
+// de Firestore'a kaydediliyor; kapalıyken sesCal() hiçbir ses çalmıyor.
+document.getElementById('ayar-ses-bildirimleri').addEventListener('change', (e) => {
+  _kullaniciAyarlariCache.sesBildirimleri = e.target.checked;
+  kullaniciAyarlariKaydet();
+});
 
 // --- ADMIN MESAJ DİNLEYİCİ (anlık popup + rozet) ---
 let adminMesajDinleniyor = false;
@@ -2152,6 +2174,11 @@ function escapeHTML(str) {
 }
 
 // --- CUSTOM POPUP YARDIMCILARI ---
+// YENİ: bilgiGoster tüm ekranlarda ortak kullanıldığı için, uyarı/hata rengiyle (turuncu #f59e0b /
+// kırmızı #ef4444) açılan her popup'ta otomatik olarak uyari.mp3 çalınıyor — ör. ana ekranda
+// gelir/gider eklerken boş veri girme uyarısı da dahil, tek tek her ekrana elle eklemeye gerek
+// kalmadan uygulama genelinde geçerli oluyor. Kullanıcı bu sesleri Profil menüsündeki
+// "🔔 Bildirim Sesleri" anahtarıyla kapatabilir (sesCal bunu kontrol ediyor).
 function bilgiGoster(ikon, baslik, metin, renk='#6366f1') {
   document.getElementById('bilgi-popup-ikon').innerText = ikon;
   document.getElementById('bilgi-popup-baslik').innerText = baslik;
@@ -2159,6 +2186,7 @@ function bilgiGoster(ikon, baslik, metin, renk='#6366f1') {
   document.getElementById('bilgi-popup-metin').innerText = metin;
   document.getElementById('bilgi-popup').classList.remove('hidden');
   document.getElementById('bilgi-popup-tamam').onclick = () => document.getElementById('bilgi-popup').classList.add('hidden');
+  if (renk === '#f59e0b' || renk === '#ef4444') sesCal(uyariSesi);
 }
 
 function onayGoster(ikon, metin, onEvet, evetRenk='#ef4444', evetYazi='Evet, Sil') {
@@ -2632,8 +2660,8 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
   const gun = parseInt(document.getElementById('tkr-gun').value);
   const abonelik = document.getElementById('tkr-abonelik').checked;
 
-  if (!aciklama || isNaN(tutar) || tutar <= 0) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen açıklama ve tutarı doldurun!', '#f59e0b'); }
-  if (tutar > 3000000) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b'); }
+  if (!aciklama || isNaN(tutar) || tutar <= 0) { return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen açıklama ve tutarı doldurun!', '#f59e0b'); }
+  if (tutar > 3000000) { return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b'); }
 
   const veri = { uid: auth.currentUser.uid, aciklama, tutar, kategori, hesap, gun, abonelik, aktif: true };
 
@@ -2642,14 +2670,14 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
       await updateDoc(doc(db, "tekrarlayanlar", tkrDuzenlenecekId), veri);
       tkrDuzenlenecekId = null;
       document.getElementById('btn-tkr-kaydet').innerText = "+ Tekrarlayan İşlem Ekle";
-      onaySesi.play().catch(() => {});
+      sesCal(onaySesi);
       bilgiGoster('✏️', 'Güncellendi!', 'Değişiklik bir sonraki otomatik eklemede geçerli olacak. Geçmiş kayıtlar değişmedi.', '#10b981');
     } else {
       veri.sonEklenenAy = null;
       veri.olusturmaTarihi = Date.now();
       await addDoc(collection(db, "tekrarlayanlar"), veri);
       const bugunGun = new Date().getDate();
-      onaySesi.play().catch(() => {});
+      sesCal(onaySesi);
       if (bugunGun >= gun) {
         await tekrarlayanOtomatikEkle(auth.currentUser.uid);
         bilgiGoster('✅', 'Kural Kaydedildi!', `Bu ay için ${gun}. gün zaten geçtiği için işlem bu aya otomatik eklendi. Sonraki aylarda her ayın ${gun}. günü otomatik eklenecek.`, '#10b981');
@@ -2660,7 +2688,7 @@ document.getElementById('btn-tkr-kaydet').onclick = async () => {
     document.getElementById('tkr-aciklama').value = '';
     document.getElementById('tkr-tutar').value = '';
     document.getElementById('tkr-abonelik').checked = false;
-  } catch(e) { uyariSesi.play().catch(() => {}); bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
+  } catch(e) { bilgiGoster('❌', 'Hata', e.message, '#ef4444'); }
 };
 
 function ayFarki(ts) {
@@ -2796,7 +2824,7 @@ async function tekrarlayanOtomatikEkle(uid) {
       otomatikEklenenSayisi++;
     }
     // YENİ: Bu ay ilk kez otomatik olarak eklenen sabit gider/abonelik varsa kullanıcıyı sesli uyar.
-    if (otomatikEklenenSayisi > 0) onaySesi.play().catch(() => {});
+    if (otomatikEklenenSayisi > 0) sesCal(onaySesi);
   } catch(e) { console.log("Tekrarlayan otomatik ekleme hatası:", e); }
 }
 
@@ -4861,8 +4889,8 @@ const rawValue = document.getElementById('tutar').value;
 const toplamTutar = parseFloat(rawValue.replace(/\./g, '').replace(',', '.'));
 const tarihVal = document.getElementById('tarih').value;
 
-if (!aciklama || isNaN(toplamTutar) || toplamTutar <= 0 || !tarihVal) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen tutarı ve açıklamayı tam doldurun!', '#f59e0b'); }
-if (toplamTutar > 3000000) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b'); }
+if (!aciklama || isNaN(toplamTutar) || toplamTutar <= 0 || !tarihVal) { return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen tutarı ve açıklamayı tam doldurun!', '#f59e0b'); }
+if (toplamTutar > 3000000) { return bilgiGoster('⚠️', 'Tutar Çok Yüksek', 'Tutar en fazla 3.000.000 TL olabilir.', '#f59e0b'); }
 
 const TAKSIT_USTSINIR = 36; // 3 yıl
 
@@ -4873,8 +4901,8 @@ const TAKSIT_USTSINIR = 36; // 3 yıl
 girisGoster('💸', `Kaç taksit yapılacak? (Sadece sayı girin, en fazla ${TAKSIT_USTSINIR})`, 'Örn: 12', (taksitSayisiStr) => {
 if (!taksitSayisiStr) return;
 const taksitSayisi = parseInt(taksitSayisiStr);
-if (isNaN(taksitSayisi) || taksitSayisi <= 1) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Geçersiz Taksit Sayısı', 'Geçerli bir taksit sayısı girin.', '#f59e0b'); }
-if (taksitSayisi > TAKSIT_USTSINIR) { uyariSesi.play().catch(() => {}); return bilgiGoster('⚠️', 'Sınır Aşıldı', `En fazla ${TAKSIT_USTSINIR} taksit yapabilirsiniz.`, '#f59e0b'); }
+if (isNaN(taksitSayisi) || taksitSayisi <= 1) { return bilgiGoster('⚠️', 'Geçersiz Taksit Sayısı', 'Geçerli bir taksit sayısı girin.', '#f59e0b'); }
+if (taksitSayisi > TAKSIT_USTSINIR) { return bilgiGoster('⚠️', 'Sınır Aşıldı', `En fazla ${TAKSIT_USTSINIR} taksit yapabilirsiniz.`, '#f59e0b'); }
 
 const aylikTutar = parseFloat((toplamTutar / taksitSayisi).toFixed(2));
 let baslangicTarihi = new Date(tarihVal);
@@ -4897,7 +4925,7 @@ tarih: islemTarihi.getTime()
 });
 }
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
-onaySesi.play().catch(() => {});
+sesCal(onaySesi);
 bilgiGoster('✅', 'Başarılı', 'Taksitler başarıyla eklendi!', '#10b981');
 }, '#6366f1', 'Onayla, Ekle');
 }, {tur:'number', inputMode:'numeric'});
