@@ -1544,6 +1544,8 @@ function kullaniciAyarlariUIYukle(ayarlar) {
     if(!document.querySelector(`#hesap option[value="${a}"]`)) document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`);
   });
   hesapEtiketGuncelle();
+  const dropdownAnahtarlari = Array.from(document.getElementById('hesap').options).map(o => o.value).filter(Boolean);
+  hesapDropdownSiralaGoster(hesapSiralamasiUygula(dropdownAnahtarlari));
 }
 
 // YENİ: Gelir/gider eklerken "ödeme şekli" (hesap) listesinde her seçeneğin banka/nakit mi
@@ -1817,13 +1819,24 @@ btn.innerText = "📷 FİŞİ OKUT";
 let unsubDuyuru = null; 
 const formatla = (sayi) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(sayi);
 
-document.getElementById('tutar').oninput = (e) => {
-let val = e.target.value.replace(/[^0-9,]/g, '');
-let parts = val.split(',');
-let tamKisim = parts[0].replace(/\./g, '');
-tamKisim = tamKisim.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-e.target.value = parts.length > 1 ? tamKisim + ',' + parts[1].substring(0, 2) : tamKisim;
-};
+// YENİ: Binlik ayraçlı tutar girişi (1.234,56 gibi) artık sadece ana Tutar alanında değil,
+// Transfer ve Bakiye Düzelt alanlarında da kullanılıyor. Ortak mantık tek fonksiyona alındı.
+function tutarGirisiFormatla(e) {
+  let val = e.target.value;
+  // DÜZELTME: Bu formatlayıcı artık "Bakiye Düzelt" alanında da kullanılıyor, o alan negatif
+  // (borç) değer alabiliyor. Eksi işaretini de koruyoruz ki düzenleme sırasında silinmesin.
+  const eksiMi = val.trim().startsWith('-');
+  val = val.replace(/[^0-9,]/g, '');
+  let parts = val.split(',');
+  let tamKisim = parts[0].replace(/\./g, '');
+  tamKisim = tamKisim.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  let sonuc = parts.length > 1 ? tamKisim + ',' + parts[1].substring(0, 2) : tamKisim;
+  e.target.value = (eksiMi && sonuc) ? '-' + sonuc : sonuc;
+}
+
+document.getElementById('tutar').oninput = tutarGirisiFormatla;
+document.getElementById('transfer-tutar').oninput = tutarGirisiFormatla;
+document.getElementById('bakiye-duzelt-tutar').oninput = tutarGirisiFormatla;
 
 // --- HESAP MAKİNESİ (Tutar alanı yanındaki 🧮 butonu) ---
 (function () {
@@ -1833,7 +1846,17 @@ e.target.value = parts.length > 1 ? tamKisim + ',' + parts[1].substring(0, 2) : 
   let yeniGiris = true;   // true ise bir sonraki rakam ekranı sıfırlayıp başlar
 
   const ekranEl = () => document.getElementById('hm-ekran');
-  const guncelle = () => { ekranEl().innerText = deger; };
+  // YENİ: Hesap makinesi ekranı da artık binlik ayraçlı gösteriliyor (1.234,56 gibi).
+  // İç hesaplama değeri (deger) noktasız kalır, sadece ekrana yazarken biçimlendirilir.
+  const gosterimFormatla = (s) => {
+    const eksi = s.startsWith('-');
+    const temiz = eksi ? s.slice(1) : s;
+    let [tam, ondalik] = temiz.split(',');
+    tam = tam.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const sonuc = ondalik !== undefined ? tam + ',' + ondalik : tam;
+    return (eksi ? '-' : '') + sonuc;
+  };
+  const guncelle = () => { ekranEl().innerText = gosterimFormatla(deger); };
   const sayiyaCevir = (s) => parseFloat(String(s).replace(',', '.')) || 0;
   const sayiyiYaz = (n) => {
     if (!isFinite(n)) return 'Hata';
@@ -1858,8 +1881,10 @@ e.target.value = parts.length > 1 ? tamKisim + ',' + parts[1].substring(0, 2) : 
   };
 
   document.querySelectorAll('.hm-btn').forEach(btn => {
-    btn.onclick = () => {
-      const tus = btn.dataset.hm;
+    btn.onclick = () => tusIsle(btn.dataset.hm);
+  });
+
+  function tusIsle(tus) {
       if (tus === 'C') { sifirla(); return; }
       if (tus === 'back') {
         deger = deger.length > 1 ? deger.slice(0, -1) : '0';
@@ -1907,7 +1932,26 @@ e.target.value = parts.length > 1 ? tamKisim + ',' + parts[1].substring(0, 2) : 
       if (yeniGiris) { deger = (tus === '0') ? '0' : tus; yeniGiris = false; }
       else { deger = (deger === '0') ? tus : deger + tus; }
       guncelle();
+  }
+
+  // YENİ: Bilgisayardan kullanırken hesap makinesi artık klavyeden de çalışıyor.
+  // Sadece hesap makinesi popup'ı açıkken (ve odak bir metin girişinde değilken) dinleniyor,
+  // böylece uygulamanın başka yerlerinde yazı yazarken yanlışlıkla tetiklenmiyor.
+  document.addEventListener('keydown', (e) => {
+    const popup = document.getElementById('hesap-makinesi-popup');
+    if (!popup || popup.classList.contains('hidden')) return;
+    const tusMap = {
+      '0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9',
+      '+':'+', '-':'-', '*':'*', 'x':'*', 'X':'*', '/':'/',
+      ',':',', '.':',',
+      'Enter':'=', '=':'=',
+      'Backspace':'back', 'Delete':'C', 'Escape':'C',
+      '%':'%'
     };
+    const tus = tusMap[e.key];
+    if (tus === undefined) return;
+    e.preventDefault();
+    tusIsle(tus);
   });
 
   document.getElementById('btn-hm-kullan').onclick = () => {
@@ -3592,6 +3636,34 @@ function hesapGorselGetir(hesap) {
   const p = _ozelHesapPaleti[toplam % _ozelHesapPaleti.length];
   return { ...p, ikon: hesap.charAt(0).toUpperCase() };
 }
+// YENİ: "Bakiyelerim" kartlarının sırası artık kullanıcı tarafından yukarı/aşağı ok
+// düğmeleriyle değiştirilebiliyor ve bu sıra hem panel yeniden açıldığında hem de gelir/gider
+// eklerken "ödeme şekli" listesinde korunuyor. Sıra, _kullaniciAyarlariCache.hesapSirasi
+// içinde bir hesap-adı dizisi olarak saklanıyor; henüz sırada olmayan (yeni eklenmiş) hesaplar
+// listenin sonuna, karşılaşma sırasına göre ekleniyor.
+function hesapSiralamasiUygula(anahtarlar) {
+  const kayitliSira = _kullaniciAyarlariCache.hesapSirasi || [];
+  const siraliOlanlar = kayitliSira.filter(h => anahtarlar.includes(h));
+  const siradaOlmayanlar = anahtarlar.filter(h => !siraliOlanlar.includes(h));
+  return [...siraliOlanlar, ...siradaOlmayanlar];
+}
+function hesapSiralamasiKaydet(siraliAnahtarlar) {
+  _kullaniciAyarlariCache.hesapSirasi = siraliAnahtarlar;
+  kullaniciAyarlariKaydet();
+}
+// Gelir/gider eklerken "ödeme şekli" (#hesap) dropdown'undaki seçenekleri, Bakiyelerim'deki
+// aynı sıraya göre yeniden diziyor. Seçili değer korunuyor.
+function hesapDropdownSiralaGoster(siraliAnahtarlar) {
+  const sel = document.getElementById('hesap');
+  if (!sel) return;
+  const mevcutSecim = sel.value;
+  const optMap = {};
+  Array.from(sel.options).forEach(opt => { if (opt.value) optMap[opt.value] = opt; });
+  siraliAnahtarlar.forEach(h => { if (optMap[h]) sel.appendChild(optMap[h]); });
+  // Dropdown'da olup sıra listesinde olmayan (nadir bir durum) seçenekler zaten yerinde kalır.
+  if (mevcutSecim) sel.value = mevcutSecim;
+}
+
 async function bakiyeleriGoster() {
   const yukleniyorEl = document.getElementById('bakiyeler-yukleniyor');
   const listeEl = document.getElementById('bakiyeler-listesi');
@@ -3611,9 +3683,11 @@ async function bakiyeleriGoster() {
       if (data.tur === 'gelir') hesapBakiyeleri[hsp] += data.tutar; else hesapBakiyeleri[hsp] -= data.tutar;
     });
     _sonHesapBakiyeleri = hesapBakiyeleri; // transfer formunun bakiye kontrolü için ham (kırpılmamış) değerler saklanıyor
-    transferHesapSecenekleriDoldur(Object.keys(hesapBakiyeleri));
+    const siraliAnahtarlar = hesapSiralamasiUygula(Object.keys(hesapBakiyeleri));
+    transferHesapSecenekleriDoldur(siraliAnahtarlar);
+    hesapDropdownSiralaGoster(siraliAnahtarlar);
     let html = '';
-    Object.keys(hesapBakiyeleri).forEach(hsp => {
+    siraliAnahtarlar.forEach((hsp, index) => {
       const turu = hesapTuruGetir(hsp);
       const hamBakiye = hesapBakiyeleri[hsp];
       // KREDİ KARTI: eski kumbara mantığı korunuyor — yüklenen paranın harcanmamış kısmı
@@ -3627,7 +3701,11 @@ async function bakiyeleriGoster() {
       html += `
       <div style="position:relative; background:linear-gradient(135deg, ${renk1}, ${renk2}); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
         <button class="btn-bakiye-duzelt" data-hesap="${escapeHTML(hsp)}" data-ham="${hamBakiye}" title="Bakiyeyi Düzelt" style="position:absolute; top:10px; right:10px; width:26px; height:26px; padding:0; margin:0; border-radius:8px; background:rgba(255,255,255,0.22); font-size:12px; text-transform:none;">✏️</button>
-        <div style="display:flex; align-items:center; gap:8px;">
+        <div class="hesap-sira-kontrol" style="position:absolute; top:10px; left:10px; display:flex; flex-direction:column; gap:3px;">
+          <button class="btn-hesap-yukari" data-hesap="${escapeHTML(hsp)}" title="Yukarı taşı" ${index === 0 ? 'disabled' : ''} style="width:22px; height:16px; padding:0; margin:0; border-radius:4px; background:rgba(255,255,255,${index === 0 ? '0.08' : '0.28'}); font-size:9px; line-height:1; text-transform:none; opacity:${index === 0 ? '0.4' : '1'};">▲</button>
+          <button class="btn-hesap-asagi" data-hesap="${escapeHTML(hsp)}" title="Aşağı taşı" ${index === siraliAnahtarlar.length - 1 ? 'disabled' : ''} style="width:22px; height:16px; padding:0; margin:0; border-radius:4px; background:rgba(255,255,255,${index === siraliAnahtarlar.length - 1 ? '0.08' : '0.28'}); font-size:9px; line-height:1; text-transform:none; opacity:${index === siraliAnahtarlar.length - 1 ? '0.4' : '1'};">▼</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; padding-left:28px;">
           <div style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; flex-shrink:0;">${ikon}</div>
           <div style="color:white; font-weight:600; font-size:14px; padding-right:30px;">${isim}</div>
         </div>
@@ -3660,6 +3738,26 @@ async function bakiyeleriGoster() {
         bakiyeleriGoster();
       });
     });
+    // YENİ: Yukarı/aşağı okları - kartın Bakiyelerim'deki sırasını değiştirir. Bu sıra hem
+    // panel yeniden açıldığında hem de gelir/gider eklerken "ödeme şekli" listesinde korunur.
+    listeEl.querySelectorAll('.btn-hesap-yukari').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const i = siraliAnahtarlar.indexOf(btn.dataset.hesap);
+        if (i <= 0) return;
+        [siraliAnahtarlar[i - 1], siraliAnahtarlar[i]] = [siraliAnahtarlar[i], siraliAnahtarlar[i - 1]];
+        hesapSiralamasiKaydet(siraliAnahtarlar);
+        bakiyeleriGoster();
+      });
+    });
+    listeEl.querySelectorAll('.btn-hesap-asagi').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const i = siraliAnahtarlar.indexOf(btn.dataset.hesap);
+        if (i === -1 || i >= siraliAnahtarlar.length - 1) return;
+        [siraliAnahtarlar[i], siraliAnahtarlar[i + 1]] = [siraliAnahtarlar[i + 1], siraliAnahtarlar[i]];
+        hesapSiralamasiKaydet(siraliAnahtarlar);
+        bakiyeleriGoster();
+      });
+    });
   } catch (e) {
     console.error("Bakiyeler yüklenirken hata:", e);
     listeEl.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; color:#fca5a5;">Bakiyeler yüklenirken bir hata oluştu.</div>';
@@ -3682,7 +3780,14 @@ document.getElementById('btn-transfer-goster').onclick = () => {
 function transferHesapSecenekleriDoldur(hesapAnahtarlari) {
   const kaynakSel = document.getElementById('transfer-kaynak');
   const hedefSel = document.getElementById('transfer-hedef');
-  const opts = hesapAnahtarlari.map(h => `<option value="${h}">${_hesapIsimleriMapBakiye[h] || h}</option>`).join('');
+  // DÜZELTME: Transfer ekranındaki hesap seçimlerinde de "Bakiyelerim"deki gibi banka/nakit (🏦)
+  // ya da kredi kartı (💳) simgesi gösteriliyor, böylece hangi hesabın hangi türde olduğu
+  // transfer yaparken de baştan belli oluyor.
+  const opts = hesapAnahtarlari.map(h => {
+    const tur = hesapTuruGetir(h);
+    const simge = tur === 'kredi' ? '💳' : '🏦';
+    return `<option value="${h}">${simge} ${_hesapIsimleriMapBakiye[h] || h}</option>`;
+  }).join('');
   kaynakSel.innerHTML = opts;
   hedefSel.innerHTML = opts;
   if (hesapAnahtarlari.length > 1) hedefSel.selectedIndex = 1;
