@@ -1,6 +1,23 @@
 <!DOCTYPE html>
 <html lang="tr" style="height: 100%; overflow: hidden;">
 <head>
+<!-- YENİ: "beforeinstallprompt" olayı, sayfanın geri kalanı (özellikle 160K+ karakterlik ana modül
+     script'i) yüklenip çalışmaya başlamadan ÖNCE tetiklenebiliyor. Dinleyici sadece ana script
+     içinde kurulduğunda bu olay kaçırılabiliyor ve buton, gerçek native yükleme yerine "tarayıcı
+     menüsünü kullan" uyarısına düşüyordu. Bu küçük script en başta çalışıp olayı global bir
+     değişkende yakalıyor; ana script daha sonra bu değeri okuyarak gerçek yükleme penceresini
+     (deferredPrompt.prompt()) her zaman güvenilir şekilde açabiliyor. -->
+<script>
+window.__pwaDeferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  window.__pwaDeferredPrompt = e;
+  window.dispatchEvent(new Event('pwaPromptReady'));
+});
+window.addEventListener('appinstalled', () => {
+  window.__pwaDeferredPrompt = null;
+});
+</script>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -3035,38 +3052,45 @@ document.getElementById('btn-bagli-cihazlar').onclick = () => { kapatPaneller();
   const iOSMu = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS
 
-  let deferredPrompt = null;
-
   if (zatenYuklu()) {
     btn.style.display = 'none';
-  } else if (iOSMu()) {
+    return;
+  }
+
+  if (iOSMu()) {
     // iOS'ta beforeinstallprompt desteklenmez, kullanıcıya elle talimat gösteriyoruz.
     btn.style.display = '';
     btn.onclick = () => {
       kapatPaneller();
       document.getElementById('ios-install-panel').classList.remove('hidden');
     };
-  } else {
-    // Android/Chrome/Edge vb. - native install prompt
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      btn.style.display = '';
-    });
-    btn.onclick = async () => {
-      if (!deferredPrompt) {
-        alert('Uygulama zaten yüklü olabilir ya da bu tarayıcı doğrudan yüklemeyi desteklemiyor. Tarayıcı menüsünden "Ana Ekrana Ekle / Uygulamayı Yükle" seçeneğini deneyebilirsiniz.');
-        return;
-      }
-      kapatPaneller();
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      if (outcome === 'accepted') {
-        btn.style.display = 'none';
-      }
-    };
+    return;
   }
+
+  // Android/Chrome/Edge vb. - native install prompt
+  // DÜZELTME: "beforeinstallprompt" olayı sayfa açar açılmaz (bu kod çalışmadan önce) tetiklenmiş
+  // olabileceğinden, olayı burada dinlemek yerine <head>'de en başta yakalanmış olan
+  // window.__pwaDeferredPrompt değerini okuyoruz. Olay bu script çalışırken/sonrasında tetiklenirse
+  // de "pwaPromptReady" event'i ile haberdar oluyoruz. Böylece buton ne zaman tıklanırsa tıklansın,
+  // yakalanmış bir prompt varsa GERÇEK native yükleme penceresi açılıyor; tarif/talimat değil.
+  const promptHazir = () => { btn.style.display = ''; };
+  if (window.__pwaDeferredPrompt) promptHazir();
+  window.addEventListener('pwaPromptReady', promptHazir);
+
+  btn.onclick = async () => {
+    const dp = window.__pwaDeferredPrompt;
+    if (!dp) {
+      alert('Uygulama zaten yüklü olabilir ya da tarayıcı henüz yükleme için hazır değil. Birkaç saniye sonra tekrar dene, ya da tarayıcı menüsünden "Ana Ekrana Ekle / Uygulamayı Yükle" seçeneğini kullan.');
+      return;
+    }
+    kapatPaneller();
+    dp.prompt();
+    const { outcome } = await dp.userChoice;
+    window.__pwaDeferredPrompt = null;
+    if (outcome === 'accepted') {
+      btn.style.display = 'none';
+    }
+  };
 
   window.addEventListener('appinstalled', () => {
     btn.style.display = 'none';
@@ -3429,18 +3453,21 @@ async function bakiyeleriGoster() {
     });
     let html = '';
     Object.keys(hesapBakiyeleri).forEach(hsp => {
-      const bakiye = hesapBakiyeleri[hsp];
+      // KUMBARA MANTIĞI: Bakiyelerim ekranı borç göstermiyor (borç zaten "Hesap Özetleri/Borçlar"
+      // panelinde ayrı gösteriliyor). Burada sadece o hesaba yüklenen paranın harcanmamış kısmı
+      // (artıdaki para) gösteriliyor; harcama, yüklenen tutarı geçse bile ekranda asla eksi
+      // görünmüyor, 0 TL'de sabitleniyor.
+      const bakiye = Math.max(0, hesapBakiyeleri[hsp]);
       const isim = _hesapIsimleriMapBakiye[hsp] || hsp;
       const { renk1, renk2, ikon } = hesapGorselGetir(hsp);
-      const negatif = bakiye < 0;
       html += `
       <div style="background:linear-gradient(135deg, ${renk1}, ${renk2}); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
         <div style="display:flex; align-items:center; gap:8px;">
           <div style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; flex-shrink:0;">${ikon}</div>
           <div style="color:white; font-weight:600; font-size:14px;">${isim}</div>
         </div>
-        <div style="margin-top:12px; color:rgba(255,255,255,0.8); font-size:11px;">${negatif ? 'Borç' : 'Bakiye'}</div>
-        <div style="color:white; font-size:21px; font-weight:bold;">${negatif ? '-' : ''}${formatla(Math.abs(bakiye))} TL</div>
+        <div style="margin-top:12px; color:rgba(255,255,255,0.8); font-size:11px;">Bakiye</div>
+        <div style="color:white; font-size:21px; font-weight:bold;">${formatla(bakiye)} TL</div>
       </div>`;
     });
     listeEl.innerHTML = html;
