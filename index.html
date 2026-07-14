@@ -1225,7 +1225,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification, signInAnonymously, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref as dbRef, set as dbSet, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref as dbRef, set as dbSet, update as dbUpdate, runTransaction, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = { apiKey: "AIzaSyDExT8MXCnvDCckai4MPZaHyWlVb5wifVw", authDomain: "cuzdan-99641.firebaseapp.com", databaseURL: "https://cuzdan-99641-default-rtdb.firebaseio.com", projectId: "cuzdan-99641", storageBucket: "cuzdan-99641.firebasestorage.app", messagingSenderId: "412964017852", appId: "1:412964017852:web:4e8e888a81ddd29d44a2b9", measurementId: "G-4KRR9PSYXP" };
 const app = initializeApp(firebaseConfig);
@@ -1239,7 +1239,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.0.6";
+const APP_SURUM = "1.0.7";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
@@ -1309,37 +1309,44 @@ function presenceBaslat(user) {
 }
 
 async function userKaydet(user) {
-  // DÜZELTME: Burada önceden "if (!navigator.onLine) return;" ile erken çıkış vardı. Ancak
-  // presence (aktif/online) yazımı (presenceBaslat içindeki dbSet çağrıları) navigator.onLine
-  // kontrolü YAPMIYORDU. navigator.onLine tarayıcı API'si güvenilmez — özellikle PWA'larda
-  // uygulama arka plandan öne gelince veya bazı ağ/router durumlarında gerçekte internet
-  // bağlantısı olduğu halde yanlışlıkla false dönebiliyor. Sonuç: kullanıcı gerçekten online ve
-  // "aktif kullanıcılar" listesinde görünüyorken, bu satır yüzünden sonGiris hiç güncellenmiyor,
-  // admin panelinde "19 gün önce" gibi eski/yanlış bir tarih donup kalıyordu. Zaten bu fonksiyon
-  // (presenceBaslat üzerinden) sadece RTDB'ye GERÇEKTEN bağlanıldığında (".info/connected"===true)
-  // çağrıldığı için bu kontrol hem gereksizdi hem de yanlış negatiflere açıktı; kaldırıldı.
-  // Gerçekten offline ise zaten RTDB SDK'sı yazmayı local cache'e kuyruğa alıp bağlantı
-  // kurulduğunda otomatik senkronize eder, hata fırlatmaz.
+  // DÜZELTME (2. tur): İlk düzeltmede navigator.onLine erken-çıkışı kaldırılmıştı ama sorun
+  // devam etti. Asıl kalan sorun şuydu: fonksiyon önce "onValue(...,{onlyOnce:true})" ile
+  // users/$uid altını OKUYUP, okuma tamamlandıktan SONRA "set()" ile TÜM kaydı (email+sonGiris+
+  // ilkKayit) yeniden yazıyordu. Presence ("aktif kullanıcılar" listesi) ise hiç okuma yapmadan
+  // doğrudan yazıyor. Eğer RTDB güvenlik kurallarında "users/$uid" için read/write izinleri
+  // presence/$uid'den farklı tanımlanmışsa (çoğu projede öyledir — presence herkese/oturuma özgü
+  // daha gevşek, users ise daha kısıtlı olabilir), bu ÖN OKUMA adımı sessizce başarısız olabiliyor
+  // ve arkasından gelmesi gereken yazma hiç tetiklenmiyordu — kullanıcı "online" görünmeye devam
+  // ederken sonGiris hiç güncellenmiyordu (tam bildirilen belirti).
+  //
+  // Çözüm: artık hiçbir ön okumaya gerek kalmadan doğrudan "update()" ile sadece email+sonGiris
+  // alanları yazılıyor (update, set'in aksine kaydın diğer alanlarını silmiyor, bu yüzden önce
+  // okuyup ilkKayit'i koruma ihtiyacı da ortadan kalkıyor). "ilkKayit" ise ayrı, atomik bir
+  // runTransaction() ile SADECE hiç yoksa bir kereliğine yazılıyor - bu da read+write'ı tek,
+  // bölünemez bir sunucu-taraflı işleme indiriyor.
   const userRef = dbRef(rtdb, 'users/' + user.uid);
-  // Mevcut kaydı oku - ilkKayit tarihini korumak için
-  onValue(userRef, (snap) => {
-    const mevcutData = snap.val();
-    const ilkKayit = mevcutData ? mevcutData.ilkKayit : Date.now();
-    dbSet(userRef, {
-      email: user.email,
-      sonGiris: Date.now(),
-      ilkKayit: ilkKayit
-    }).catch(e => {
-      // DÜZELTME: Bu yazma daha önce hatasız/sessizce başarısız olabiliyordu (ör. Realtime
-      // Database güvenlik kuralları izin vermiyorsa) — hiçbir uyarı olmadığı için admin panelindeki
-      // "Kullanıcı Yönetimi" listesi sadece yazma işlemi BAŞARILI olan kullanıcıları gösteriyordu,
-      // diğerleri hiç görünmüyordu. Artık böyle bir hata olursa konsola açıkça logluyoruz ki
-      // Realtime Database kurallarında "users/$uid" yoluna yazma izni eksikse fark edilebilsin.
-      console.error('userKaydet: Realtime Database\'e yazılamadı (users/' + user.uid + '):', e.message);
-    });
-  }, (e) => {
-    console.error('userKaydet: Realtime Database okunamadı (users/' + user.uid + '):', e.message);
-  }, { onlyOnce: true });
+  const ilkKayitRef = dbRef(rtdb, 'users/' + user.uid + '/ilkKayit');
+
+  try {
+    await runTransaction(ilkKayitRef, (mevcutDeger) => (mevcutDeger === null ? Date.now() : mevcutDeger));
+  } catch (e) {
+    console.error('userKaydet: ilkKayit yazılamadı (users/' + user.uid + '/ilkKayit) - RTDB kurallarını kontrol edin:', e.message);
+  }
+
+  try {
+    await dbUpdate(userRef, { email: user.email, sonGiris: Date.now() });
+    // DÜZELTME: Başarı durumu da konsola loglanıyor ki "sessiz başarısızlık" ihtimali gelecekte
+    // devtools > Console açılarak saniyeler içinde teşhis edilebilsin (hata yoksa bu satır görünür,
+    // hata varsa aşağıdaki catch bloğu görünür - ikisi asla birlikte olmaz).
+    console.log('userKaydet: sonGiris güncellendi ✅', user.email, new Date().toLocaleString('tr-TR'));
+  } catch (e) {
+    // DÜZELTME: Bu yazma daha önce hatasız/sessizce başarısız olabiliyordu (ör. Realtime
+    // Database güvenlik kuralları izin vermiyorsa) — hiçbir uyarı olmadığı için admin panelindeki
+    // "Kullanıcı Yönetimi" listesi sadece yazma işlemi BAŞARILI olan kullanıcıları gösteriyordu,
+    // diğerleri hiç görünmüyordu. Artık böyle bir hata olursa konsola açıkça logluyoruz ki
+    // Realtime Database kurallarında "users/$uid" yoluna yazma izni eksikse fark edilebilsin.
+    console.error('userKaydet: sonGiris yazılamadı (users/' + user.uid + ') - RTDB kurallarında "users/$uid" için write izni olduğundan emin olun:', e.message);
+  }
 }
 
 function presenceDinle() {
