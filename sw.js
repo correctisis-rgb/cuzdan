@@ -1,4 +1,4 @@
-const CACHE_NAME = 'akilli-cuzdan-v3'; // DÜZELTME: sürüm numarası artırıldı (v2 -> v3, aşağıdaki clone/race düzeltmesi için), yeni deploy'larda da artırılmalı
+const CACHE_NAME = 'akilli-cuzdan-v4'; // DÜZELTME: sürüm numarası artırıldı (v3 -> v4, 206 partial response düzeltmesi için), yeni deploy'larda da artırılmalı
 const ASSETS = [
     './',
     './index.html',
@@ -73,7 +73,11 @@ self.addEventListener('fetch', (event) => {
                     // yakalanmamış (unhandled) bir promise reddi olarak konsolu kirletiyordu.
                     // .catch() ile bu tür hatalar artık sessizce yutuluyor (önbellekleme best-
                     // effort'tur, başarısız olması sayfanın çalışmasını engellememeli).
-                    if (event.request.method === 'GET') {
+                    // DÜZELTME: 206 (Partial Content) durum kodlu yanıtlar Cache API tarafından
+                    // desteklenmiyor ("Partial response (status code 206) is unsupported" hatası).
+                    // Bazı kaynaklar (ör. Range header ile istenen dosyalar) 206 dönebiliyor;
+                    // bu yüzden sadece tam (status === 200) yanıtlar önbelleğe yazılıyor.
+                    if (event.request.method === 'GET' && networkResponse.status === 200) {
                         caches.open(CACHE_NAME)
                             .then((cache) => cache.put(event.request, cacheKopyasi))
                             .catch((e) => console.warn('SW: sayfa önbelleğe yazılamadı:', e.message));
@@ -93,7 +97,11 @@ self.addEventListener('fetch', (event) => {
                 // da vardı; aynı şekilde clone() İLK İŞ olarak senkron yapılıyor ve önbelleğe
                 // yazma hatası artık sessizce yutuluyor.
                 const cacheKopyasi = fetchResponse.clone();
-                if (event.request.method === 'GET') {
+                // DÜZELTME: 206 (Partial Content) durum kodlu yanıtlar Cache API tarafından
+                // desteklenmiyor ("Partial response (status code 206) is unsupported" hatası).
+                // Tesseract.js'in .wasm dosyasını Range istekleriyle çekmesi bu duruma yol
+                // açabiliyor; bu yüzden sadece tam (status === 200) yanıtlar önbelleğe yazılıyor.
+                if (event.request.method === 'GET' && fetchResponse.status === 200) {
                     caches.open(CACHE_NAME)
                         .then((cache) => cache.put(event.request, cacheKopyasi))
                         .catch((e) => console.warn('SW: statik varlık önbelleğe yazılamadı:', e.message));
