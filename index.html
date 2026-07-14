@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.2.8";
+const APP_SURUM = "1.2.9";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -5476,15 +5476,21 @@ dinlemeyiDurdurTasarim();
 
 recognition.onspeechend = () => {
 recognition.stop();
-dinlemeyiDurdurTasarim();
 };
 
 recognition.onerror = (event) => {
 bilgiGoster('❌', 'Hata', 'Ses tanınamadı veya mikrofon izni verilmedi: ' + event.error, '#ef4444');
+};
+
+// Motor gerçekten kapandığında (sonuç geldiğinde, hata olduğunda veya
+// konuşma bittiğinde) HER ZAMAN burası tetiklenir. Buton/mikrofon
+// durumunu senkron tutmak için sıfırlama işlemini sadece burada yapıyoruz.
+recognition.onend = () => {
 dinlemeyiDurdurTasarim();
 };
 
 recognition.onresult = async (event) => {
+dinlemeyiDurdurTasarim();
 const metin = event.results[0][0].transcript.toLowerCase();
 const sayilar = metin.match(/\d+/g);
 let bulunanTutar = 0;
