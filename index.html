@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.2.9";
+const APP_SURUM = "1.3.0";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -3857,13 +3857,25 @@ document.getElementById('btn-giris-yap').onclick = async () => {
     // Admin veya sistem güncellenmeden önce kayıt olmuş eski kullanıcı ise doğrulama zorunlu değil
     let eskiKullaniciMi = false;
     if (uc.user.uid !== ADMIN_ID) {
-      try {
-        const eskiKayitSnap = await new Promise((resolve) => {
-          onValue(dbRef(rtdb, 'users/' + uc.user.uid + '/ilkKayit'), (s) => resolve(s.val()), { onlyOnce: true });
-        });
-        // 2026-06-30'dan önce kayıt olmuşsa (sistem güncellemesinden önce) muaf tut
-        if (eskiKayitSnap && eskiKayitSnap < 1751241600000) eskiKullaniciMi = true;
-      } catch(e) {}
+      const CUTOFF = 1751241600000; // 2026-06-30
+      // ÖNCELİK 1: Firebase Auth'un kendi metadata.creationTime bilgisi — RTDB'ye
+      // bağımlı değil, her hesapta garanti var. RTDB'deki "ilkKayit" alanı eskiden
+      // güvenilir şekilde yazılamadığı (permission_denied ile sessizce başarısız
+      // olabildiği) için, gerçek kaynak olarak öncelikle buna bakıyoruz.
+      const authOlusturmaZamani = uc.user.metadata && uc.user.metadata.creationTime
+        ? new Date(uc.user.metadata.creationTime).getTime()
+        : null;
+      if (authOlusturmaZamani && authOlusturmaZamani < CUTOFF) {
+        eskiKullaniciMi = true;
+      } else {
+        // ÖNCELİK 2 (geri uyumluluk / yedek): RTDB'deki ilkKayit alanı
+        try {
+          const eskiKayitSnap = await new Promise((resolve) => {
+            onValue(dbRef(rtdb, 'users/' + uc.user.uid + '/ilkKayit'), (s) => resolve(s.val()), { onlyOnce: true });
+          });
+          if (eskiKayitSnap && eskiKayitSnap < CUTOFF) eskiKullaniciMi = true;
+        } catch(e) {}
+      }
     }
 
     if (!uc.user.emailVerified && uc.user.uid !== ADMIN_ID && !eskiKullaniciMi) {
