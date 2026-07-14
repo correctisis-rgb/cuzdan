@@ -684,6 +684,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
 <button id="btn-qr-okut" style="background:#7c3aed; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">📷 QR Kod Okut</button>
 <button id="btn-bagli-cihazlar" style="background:#4b5563; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">🖥️ Bağlı Cihazlar</button>
+<button id="btn-hakkinda-menu" style="background:#8b5cf6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">ℹ️ Uygulama Hakkında</button>
 <button id="btn-anaekrana-ekle" style="background:#16a34a; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white; display:none;">📲 Ana Ekrana Ekle</button>
 <div style="margin:4px 0 2px 0; padding:5px; background:rgba(0,0,0,0.1); border-radius:8px;">
   <div style="font-size:10px; color:#555; margin-bottom:4px; font-weight:bold;">🎨 TEMA SEÇ</div>
@@ -701,6 +702,33 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <button id="btn-cikis" style="background:#666; width:100%; padding:5px; border-radius:5px;">Çıkış Yap</button>
 <button id="btn-gorunum-degistir">🖥️ Masaüstü Sitesi İste</button>
 <div id="admin-alan"></div>
+</div>
+
+<div id="hakkinda-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:left; max-height:420px; overflow-y:auto;">
+<button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
+<div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">ℹ️ UYGULAMA HAKKINDA</div>
+<div style="font-size:12px; line-height:1.6; opacity:0.9;">
+  <div style="font-weight:bold; margin-bottom:4px;">💰 Akıllı Cüzdan</div>
+  <div style="opacity:0.75; margin-bottom:10px;">Gelir-gider takibi, taksit, abonelik ve raporlarla akıllı bütçe yönetimi.</div>
+
+  <div style="font-weight:bold; margin-top:8px; margin-bottom:3px;">Neler yapabilirsin?</div>
+  <ul style="margin:0 0 10px 18px; padding:0;">
+    <li>Gelir/gider ekle, sesli komutla otomatik algılat</li>
+    <li>Kategori ve hesaplarını (banka, kredi kartı, nakit) yönet</li>
+    <li>Büyük harcamaları taksitlere böl</li>
+    <li>Kira, fatura, abonelik gibi düzenli ödemeleri otomatik işlet</li>
+    <li>Grafik, PDF ve Excel raporlarıyla harcamalarını analiz et</li>
+    <li>QR kod ile telefon-bilgisayar/TV arasında bağlan</li>
+    <li>İnternet olmadan da işlem ekle, bağlantı gelince senkronize olsun</li>
+  </ul>
+
+  <div style="font-weight:bold; margin-top:8px; margin-bottom:3px;">Gizlilik</div>
+  <div style="opacity:0.75; margin-bottom:10px;">Verilerin güvenli şekilde bulutta saklanır ve sadece senin hesabınla ilişkilendirilir.</div>
+
+  <div style="text-align:center; margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.15); opacity:0.6; font-size:11px;">
+    Sürüm <span id="hakkinda-versiyon">-</span>
+  </div>
+</div>
 </div>
 
 <div id="ios-install-panel" class="hidden" onclick="if(event.target===this) this.classList.add('hidden')" style="position:fixed; left:0; right:0; bottom:0; top:0; background:rgba(0,0,0,0.5); z-index:100; display:flex; align-items:flex-end; justify-content:center;">
@@ -1237,10 +1265,11 @@ localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 const auth = getAuth(app);
 
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
-// (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
+// (örn. "1.0.0" -> "1.2.2"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.2.1";
+const APP_SURUM = "1.2.2";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
+document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
 // YENİ: Taksit / Sabit Gider gibi tekrarlayan-işlem kayıtları eklendiğinde çalınan onay/uyarı sesleri.
@@ -2189,7 +2218,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { onayGoster('🗑️', 'Bu duyuruyu silmek istediğine emin misin?', () => deleteDoc(doc(db, "duyurular", id))); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'ozel-rapor-panel', 'bakiyeler-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel', 'ios-install-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'ozel-rapor-panel', 'bakiyeler-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel', 'hakkinda-panel', 'ios-install-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
 
 // YENİ: Sağ üstteki bildirim (🔔) ve profil menüleri artık boş bir yere tıklanınca da otomatik
 // kapanıyor. Aynı mantık, "Kapat X" butonu artık gösterilmeyen (bkz. CSS: body:not(.masaustu-modu)
@@ -2213,7 +2242,8 @@ const _disaTiklaKapatListesi = [
   { menuId: 'kahve-panel' },
   { menuId: 'mesajlar-panel' },
   { menuId: 'kullanici-panel' },
-  { menuId: 'bagli-cihazlar-panel' }
+  { menuId: 'bagli-cihazlar-panel' },
+  { menuId: 'hakkinda-panel' }
 ];
 document.addEventListener('mousedown', (e) => {
   // Masaüstü modunda bu paneller ayrı bir modal + karartma (backdrop) sistemiyle açılıyor;
@@ -2388,6 +2418,7 @@ function masaUstuSidebarKur() {
       <button class="mas-nav-item" id="mas-nav-ozel-rapor">📅 &nbsp;Özel Dönem Raporu</button>
       <div class="mas-group-label">Hesap</div>
       <button class="mas-nav-item" id="mas-nav-bagli-cihazlar">🖥️ &nbsp;Bağlı Cihazlar</button>
+      <button class="mas-nav-item" id="mas-nav-hakkinda">ℹ️ &nbsp;Hakkında</button>
       <button class="mas-nav-item" id="mas-nav-bildirim">🔔 &nbsp;Sorun Bildir</button>
       <button class="mas-nav-item" id="mas-nav-sifre">🔒 &nbsp;Şifre Değiştir</button>
       <button class="mas-nav-item" id="mas-nav-kahve">☕ &nbsp;Kahve Ismarla</button>
@@ -2580,6 +2611,7 @@ function masaUstuSidebarKur() {
   // erişilemiyordu. panelAc ile diğer panellerle aynı şekilde bağlandı.
   panelAc(document.getElementById('mas-nav-bagli-cihazlar'), 'bagli-cihazlar-panel', '🖥️ Bağlı Cihazlar');
   document.getElementById('mas-nav-bagli-cihazlar').addEventListener('click', () => { if (typeof bagliCihazlarGoster === 'function') bagliCihazlarGoster(); }, true);
+  panelAc(document.getElementById('mas-nav-hakkinda'), 'hakkinda-panel', 'ℹ️ Uygulama Hakkında');
   panelAc(document.getElementById('mas-nav-bildirim'), 'bildirim-panel', '🔔 Sorun Bildir');
   panelAc(document.getElementById('mas-nav-sifre'), 'sifre-panel', '🔒 Şifre Değiştir');
   panelAc(document.getElementById('mas-nav-kahve'), 'kahve-panel', '☕ Kahve Ismarla');
@@ -3837,6 +3869,7 @@ document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); do
 document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
 document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); if (typeof grafikCiz === 'function') requestAnimationFrame(() => requestAnimationFrame(grafikCiz)); };
 document.getElementById('btn-borclar-menu').onclick = () => { kapatPaneller(); document.getElementById('borclar-panel').classList.remove('hidden'); if (typeof taksitOzetiYukle === 'function') taksitOzetiYukle(TV_MODU ? EFEKTIF_UID : auth.currentUser.uid); };
+document.getElementById('btn-hakkinda-menu').onclick = () => { kapatPaneller(); document.getElementById('hakkinda-panel').classList.remove('hidden'); };
 document.getElementById('btn-ozel-rapor-menu').onclick = () => {
 kapatPaneller();
 document.getElementById('ozel-rapor-panel').classList.remove('hidden');
