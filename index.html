@@ -1269,7 +1269,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <script type="module">
 // YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, getDoc, setDoc, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification, signInAnonymously, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref as dbRef, set as dbSet, update as dbUpdate, runTransaction, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.2.5";
+const APP_SURUM = "1.2.6";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -1463,23 +1463,46 @@ function presenceDinle() {
   });
 }
 
+// PERFORMANS DÜZELTMESİ: Bu fonksiyon önceden, RTDB /users düğümündeki HER değişiklikte
+// (herhangi bir kullanıcı online/offline olduğunda tetiklenen bir presence sistemi — admin
+// paneli açıkken saniyede defalarca ateşlenebilir) 4 Firestore koleksiyonunun (islemler,
+// bildirimler, kart_ayarlari, tekrarlayanlar) TAMAMINI baştan sona okuyordu; bu, veri
+// büyüdükçe hem çok yavaşlayacak hem de okuma (read) maliyetini gereksiz yere katlayacak bir
+// tasarımdı. Artık bu pahalı tarama en fazla 5 dakikada bir yapılıyor ve sonucu
+// önbelleğe alınıp tekrar kullanılıyor; presence değişince sadece önbellekteki liste ile
+// anlık RTDB verisi birleştiriliyor, Firestore'a tekrar gidilmiyor.
+let _ekstraUidCache = null;
+let _ekstraUidCacheZamani = 0;
+const EKSTRA_UID_CACHE_SURESI_MS = 5 * 60 * 1000;
+async function ekstraUidleriGetir() {
+  const simdi = Date.now();
+  if (_ekstraUidCache && (simdi - _ekstraUidCacheZamani) < EKSTRA_UID_CACHE_SURESI_MS) {
+    return _ekstraUidCache;
+  }
+  const set = new Set();
+  try {
+    for (const koleksiyon of ['islemler', 'bildirimler', 'kart_ayarlari', 'tekrarlayanlar']) {
+      const snap = await getDocs(collection(db, koleksiyon));
+      snap.forEach(d => { if (d.data().uid) set.add(d.data().uid); });
+    }
+    _ekstraUidCache = set;
+    _ekstraUidCacheZamani = simdi;
+  } catch(e) {}
+  return _ekstraUidCache || set;
+}
+
 function kullanicilariDinle() {
   const usersRef = dbRef(rtdb, 'users');
-  const simdi = Date.now();
   const yirmiDortSaat = 24 * 60 * 60 * 1000;
 
   // onlyOnce:true yerine canlı dinle
   onValue(usersRef, async (usersSnap) => {
+    const simdi = Date.now();
     const usersData = usersSnap.val() || {};
 
-    // Tüm Firestore koleksiyonlarından distinct uid topla
-    const tumUidler = new Set(Object.keys(usersData));
-    try {
-      for (const koleksiyon of ['islemler', 'bildirimler', 'kart_ayarlari', 'tekrarlayanlar']) {
-        const snap = await getDocs(collection(db, koleksiyon));
-        snap.forEach(d => { if (d.data().uid) tumUidler.add(d.data().uid); });
-      }
-    } catch(e) {}
+    // Tüm Firestore koleksiyonlarından distinct uid topla (önbellekli, bkz. yukarı)
+    const ekstraUidler = await ekstraUidleriGetir();
+    const tumUidler = new Set([...Object.keys(usersData), ...ekstraUidler]);
     const toplamKullanici = tumUidler.size;
 
     let son24h = 0;
@@ -2206,13 +2229,13 @@ function duyurulariDinle() {
 if (unsubDuyuru) unsubDuyuru();
 let isInitialLoad = true;
 
-unsubDuyuru = onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc")), (snapshot) => {
+unsubDuyuru = onSnapshot(query(collection(db, "duyurular"), orderBy("tarih", "desc"), limit(50)), (snapshot) => {
 const isAdmin = auth.currentUser && auth.currentUser.uid === ADMIN_ID;
 let html = "";
 snapshot.forEach(d => {
 const data = d.data();
 html += `<div style="font-size:11px; padding:5px 0; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
-                           <span>${data.mesaj}</span>
+                           <span>${escapeHTML(data.mesaj)}</span>
                            ${isAdmin ? `<button onclick="window.silDuyuru('${d.id}')" style="background:none; border:none; color:red; cursor:pointer;">❌</button>` : ''}
                         </div>`;
 });
@@ -3681,7 +3704,11 @@ async function mesajlariGetir() {
 if(!navigator.onLine) { bilgiGoster('📡', 'Bağlantı Yok', 'Mesajları görmek için internete bağlanın.', '#f59e0b'); return; }
 kapatPaneller();
 document.getElementById('mesajlar-panel').classList.remove('hidden');
-const snapshot = await getDocs(query(collection(db, "bildirimler"), orderBy("tarih", "desc")));
+// PERFORMANS DÜZELTMESİ: Limitsiz sorgu, ticket sayısı arttıkça (hiç silinmeyen eski/çözülmüş
+// kayıtlar dahil) giderek daha fazla belge okuyup daha yavaş hale gelecekti. En güncel 300
+// kayıtla sınırlıyoruz; admin panelinin ihtiyacı olan güncel/aktif ticket'lar için fazlasıyla
+// yeterli, eskileri gerekirse ayrı bir arşiv görünümüyle ele alınabilir.
+const snapshot = await getDocs(query(collection(db, "bildirimler"), orderBy("tarih", "desc"), limit(300)));
 let html = "";
 snapshot.forEach((d) => {
   const data = d.data();
@@ -3719,9 +3746,13 @@ window.uygulandiToggle = async (id, suAnUygulandiMi) => {
 };
 
 window.cevapVer = async (id) => {
-  const snap = await getDocs(query(collection(db, "bildirimler")));
-  let email = '', mesaj = '';
-  snap.forEach(d => { if(d.id === id) { email = d.data().email; mesaj = d.data().mesaj; } });
+  // PERFORMANS DÜZELTMESİ: Tek bir mesajı bulmak için TÜM "bildirimler" koleksiyonunu
+  // okuyup id eşleşmesi arıyordu (koleksiyon büyüdükçe giderek yavaşlayan ve gereksiz
+  // yere maliyetli bir tam tarama). id zaten elde olduğu için doğrudan tekil belge
+  // okuması (getDoc) yeterli ve çok daha hızlı/ucuz.
+  const snap = await getDoc(doc(db, "bildirimler", id));
+  const data = snap.exists() ? snap.data() : {};
+  const email = data.email || '', mesaj = data.mesaj || '';
   document.getElementById('popup-mesaj-icerik').innerHTML = `<b>${escapeHTML(email)}</b><br>${escapeHTML(mesaj)}`;
   document.getElementById('popup-cevap-input').value = '';
   document.getElementById('admin-mesaj-popup').classList.remove('hidden');
@@ -3730,12 +3761,14 @@ window.cevapVer = async (id) => {
     if (!cevap) return bilgiGoster('⚠️', 'Eksik Bilgi', 'Cevap boş olamaz!', '#f59e0b');
     await updateDoc(doc(db, "bildirimler", id), { cevap, cevapTarih: Date.now() });
     // Kullanıcıya bildirim gönder
-    const mesajDoc = await getDocs(query(collection(db, "bildirimler")));
-    mesajDoc.forEach(d => { if(d.id === id) {
-      addDoc(collection(db, "kullanici_bildirimleri"), {
-        uid: d.data().uid, mesaj: `Admin cevapladı: ${cevap}`, tarih: Date.now(), okundu: false, gonderen: 'admin'
+    // PERFORMANS DÜZELTMESİ: Burada da aynı şekilde tüm koleksiyonu tarayıp id arıyordu;
+    // gönderdiğimiz "id" zaten belli, doğrudan tekil okuma yeterli.
+    const mesajSnap = await getDoc(doc(db, "bildirimler", id));
+    if (mesajSnap.exists()) {
+      await addDoc(collection(db, "kullanici_bildirimleri"), {
+        uid: mesajSnap.data().uid, mesaj: `Admin cevapladı: ${cevap}`, tarih: Date.now(), okundu: false, gonderen: 'admin'
       });
-    }});
+    }
     document.getElementById('admin-mesaj-popup').classList.add('hidden');
     mesajlariGetir();
     bilgiGoster('✅', 'Başarılı', 'Cevap gönderildi!', '#10b981');
