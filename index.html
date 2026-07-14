@@ -1239,7 +1239,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.0.8";
+const APP_SURUM = "1.0.9";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
@@ -1304,11 +1304,28 @@ function presenceBaslat(user) {
     }
   });
 
-  // Kullanıcı bilgilerini kaydet
-  userKaydet(user);
+  // Kullanıcı bilgilerini kaydet - gerçek giriş anı olduğu için throttle'dan muaf (zorla=true)
+  userKaydet(user, true);
 }
 
-async function userKaydet(user) {
+// DÜZELTME: userKaydet() eskiden her çağrıldığında (sekmeler arası geçiş, RTDB yeniden bağlanma
+// vb. dahil) doğrudan RTDB'ye yazıyordu. Aynı bilgisayarda sekmeler arası hızlı geçiş yapan bir
+// kullanıcı için bu, saniyeler içinde onlarca gereksiz yazma isteği anlamına gelebiliyordu (bkz.
+// konsoldaki art arda "sonGiris güncellendi" logları). Şimdi bir "soğuma süresi" (throttle)
+// eklendi: son başarılı yazımdan bu yana SON_GIRIS_THROTTLE_MS geçmediyse yazma atlanıyor. Gerçek
+// giriş anında (presenceBaslat ilk çağrıldığında) zorla=true ile çağrılarak throttle'dan muaf
+// tutuluyor, böylece giriş her zaman anında kaydediliyor.
+const SON_GIRIS_THROTTLE_MS = 20 * 60 * 1000; // 20 dakika
+let sonGirisSonYazmaZamani = 0;
+
+async function userKaydet(user, zorla = false) {
+  if (!zorla) {
+    const simdi = Date.now();
+    if (simdi - sonGirisSonYazmaZamani < SON_GIRIS_THROTTLE_MS) {
+      console.log('userKaydet: atlandı (throttle - son yazımdan ' + Math.round((simdi - sonGirisSonYazmaZamani) / 1000) + ' sn geçti, 20 dk dolmadı)');
+      return;
+    }
+  }
   // DÜZELTME (2. tur): İlk düzeltmede navigator.onLine erken-çıkışı kaldırılmıştı ama sorun
   // devam etti. Asıl kalan sorun şuydu: fonksiyon önce "onValue(...,{onlyOnce:true})" ile
   // users/$uid altını OKUYUP, okuma tamamlandıktan SONRA "set()" ile TÜM kaydı (email+sonGiris+
@@ -1343,6 +1360,7 @@ async function userKaydet(user) {
   const userRef = dbRef(rtdb, 'users/' + user.uid);
   try {
     await dbUpdate(userRef, { email: user.email, sonGiris: Date.now() });
+    sonGirisSonYazmaZamani = Date.now(); // DÜZELTME: throttle penceresi sadece başarılı yazımdan sonra sıfırlanır
     // DÜZELTME: Başarı durumu da konsola loglanıyor ki "sessiz başarısızlık" ihtimali gelecekte
     // devtools > Console açılarak saniyeler içinde teşhis edilebilsin (hata yoksa bu satır görünür,
     // hata varsa aşağıdaki catch bloğu görünür - ikisi asla birlikte olmaz).
@@ -1548,8 +1566,12 @@ window.adminKullaniciMesajKapat = () => {
 // DÜZELTME: Admin, bir kullanıcının cevap yazdığını ancak o kullanıcının yazışma penceresini
 // tekrar açarsa görebiliyordu. "👥 KULLANICI YÖNETİMİ" butonuna, okunmamış kullanıcı cevabı
 // sayısını gösteren küçük bir kırmızı rozet ekliyoruz ki cevaplar gözden kaçmasın.
+// DÜZELTME: Diğer dinleyiciler gibi bu da unsubscribe edilmiyordu; admin çıkış yaptığında aynı
+// "permission-denied" hatasına yol açabiliyordu. Şimdi çıkışta kapatılabilsin diye saklanıyor.
+let _adminYaniMesajUnsub = null;
 function adminYaniMesajRozetDinle() {
-  onSnapshot(collection(db, 'bildirimler'), (snap) => {
+  if (_adminYaniMesajUnsub) { _adminYaniMesajUnsub(); _adminYaniMesajUnsub = null; }
+  _adminYaniMesajUnsub = onSnapshot(collection(db, 'bildirimler'), (snap) => {
     let sayac = 0;
     // YENİ: sadece toplam sayıyı değil, hangi kullanıcı(lar)ın mesajı okunmadıysa onların uid'lerini
     // de topluyoruz; hem "tümünü okundu yap" butonu hem de kullanıcı listesindeki 🔴 işaretleri
@@ -1691,11 +1713,14 @@ document.getElementById('ayar-ses-bildirimleri').addEventListener('change', (e) 
 
 // --- ADMIN MESAJ DİNLEYİCİ (anlık popup + rozet) ---
 let adminMesajDinleniyor = false;
+// DÜZELTME: Aynı sızıntı burada da vardı, adminMesajDinleniyor bayrağı yeniden çağrıyı
+// engelliyordu ama çıkışta dinleyiciyi kapatmıyordu. Şimdi unsubscribe fonksiyonu saklanıyor.
+let _adminMesajUnsub = null;
 function adminMesajDinle() {
   if (adminMesajDinleniyor) return;
   adminMesajDinleniyor = true;
   const sonOkunan = parseInt(localStorage.getItem('son_okunan_mesaj') || '0');
-  onSnapshot(query(collection(db, "bildirimler"), orderBy("tarih", "desc")), (snap) => {
+  _adminMesajUnsub = onSnapshot(query(collection(db, "bildirimler"), orderBy("tarih", "desc")), (snap) => {
     let okunmayanVar = false;
     snap.docChanges().forEach(change => {
       if (change.type === "added") {
@@ -1737,8 +1762,15 @@ function adminMesajDinle() {
 }
 
 // --- KULLANICI: Admin cevaplarını / doğrudan mesajlarını dinle ---
+// DÜZELTME: Bu dinleyici daha önce hiçbir unsubscribe değişkeninde tutulmuyordu. Kullanıcı
+// signOut() yaptığında bu Firestore onSnapshot bağlantısı açık kalmaya devam ediyor, auth null
+// olduğu için güvenlik kuralları isteği reddediyor ve konsola "Missing or insufficient
+// permissions" hatası düşüyordu. Şimdi dönen unsubscribe fonksiyonu saklanıyor ve çıkışta
+// (onAuthStateChanged'in else/çıkış dalında) çağrılıyor.
+let _kullaniciBildirimUnsub = null;
 function kullaniciBildirimDinle(uid) {
-  onSnapshot(query(collection(db, "kullanici_bildirimleri"), where("uid","==",uid)), (snap) => {
+  if (_kullaniciBildirimUnsub) { _kullaniciBildirimUnsub(); _kullaniciBildirimUnsub = null; }
+  _kullaniciBildirimUnsub = onSnapshot(query(collection(db, "kullanici_bildirimleri"), where("uid","==",uid)), (snap) => {
     snap.docChanges().forEach(async change => {
       if (change.type === "added") {
         const data = change.doc.data();
@@ -3513,6 +3545,15 @@ kisayolIsleAc();
 ekranGoster('auth-screen'); 
 if (unsubDuyuru) { unsubDuyuru(); unsubDuyuru = null; }
 if (_bildirimRutbeUnsub) { _bildirimRutbeUnsub(); _bildirimRutbeUnsub = null; }
+// DÜZELTME: Aşağıdaki dört dinleyici (kullanıcının kendi mesaj dinleyicisi + üç admin dinleyicisi)
+// çıkışta hiç kapatılmıyordu. signOut() sonrası auth null olunca bu Firestore onSnapshot
+// bağlantıları "Missing or insufficient permissions" hatası fırlatmaya devam ediyordu (konsoldaki
+// hataların kaynağı buydu). Şimdi hepsi çıkışta açıkça kapatılıyor.
+if (_kullaniciBildirimUnsub) { _kullaniciBildirimUnsub(); _kullaniciBildirimUnsub = null; }
+if (unsubIslemler) { unsubIslemler(); unsubIslemler = null; }
+if (_adminMesajUnsub) { _adminMesajUnsub(); _adminMesajUnsub = null; adminMesajDinleniyor = false; }
+if (_adminYaniMesajUnsub) { _adminYaniMesajUnsub(); _adminYaniMesajUnsub = null; }
+if (_adminKullaniciMesajUnsub && _adminKullaniciMesajUnsub.length) { _adminKullaniciMesajUnsub.forEach(u => u()); _adminKullaniciMesajUnsub = []; }
 const rutbeKutuCikis = document.getElementById('bildirim-rutbe-kutu');
 const rutbeEtiketCikis = document.getElementById('profil-rutbe-etiket');
 if (rutbeKutuCikis) rutbeKutuCikis.style.display = 'none';
