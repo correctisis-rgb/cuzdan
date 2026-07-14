@@ -1239,7 +1239,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.0.7";
+const APP_SURUM = "1.0.8";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
@@ -1320,19 +1320,27 @@ async function userKaydet(user) {
   // ederken sonGiris hiç güncellenmiyordu (tam bildirilen belirti).
   //
   // Çözüm: artık hiçbir ön okumaya gerek kalmadan doğrudan "update()" ile sadece email+sonGiris
-  // alanları yazılıyor (update, set'in aksine kaydın diğer alanlarını silmiyor, bu yüzden önce
-  // okuyup ilkKayit'i koruma ihtiyacı da ortadan kalkıyor). "ilkKayit" ise ayrı, atomik bir
-  // runTransaction() ile SADECE hiç yoksa bir kereliğine yazılıyor - bu da read+write'ı tek,
-  // bölünemez bir sunucu-taraflı işleme indiriyor.
-  const userRef = dbRef(rtdb, 'users/' + user.uid);
-  const ilkKayitRef = dbRef(rtdb, 'users/' + user.uid + '/ilkKayit');
-
-  try {
-    await runTransaction(ilkKayitRef, (mevcutDeger) => (mevcutDeger === null ? Date.now() : mevcutDeger));
-  } catch (e) {
-    console.error('userKaydet: ilkKayit yazılamadı (users/' + user.uid + '/ilkKayit) - RTDB kurallarını kontrol edin:', e.message);
+  // alanları yazılıyor. "ilkKayit" artık esas olarak KAYIT OLMA anında (bkz. btn-kayit-ol
+  // handler'ı) doğrudan set() ile yazılıyor; buradaki transaction sadece bu özellik eklenmeden
+  // ÖNCE oluşturulmuş eski hesaplar için bir "geriye dönük tamamlama" denemesi. RTDB kurallarında
+  // bu path'e read izni kısıtlıysa (transaction read gerektirir) bu deneme permission_denied ile
+  // başarısız olabilir; bu ARTIK gerçek bir hata değil (çoğu hesapta ilkKayit zaten kayıt anında
+  // ayarlanmış durumda), bu yüzden konsolu kırmızı hatayla kirletmiyoruz. Ayrıca aynı hesap için
+  // bu denemeyi her girişte TEKRARLAMAMAK için (hem gereksiz ağ isteği hem log gürültüsü) bir kez
+  // denendikten sonra localStorage'a işaretleniyor.
+  const ILK_KAYIT_DENEME_ANAHTARI = 'ilkKayitDenendi_' + user.uid;
+  if (!localStorage.getItem(ILK_KAYIT_DENEME_ANAHTARI)) {
+    const ilkKayitRef = dbRef(rtdb, 'users/' + user.uid + '/ilkKayit');
+    try {
+      await runTransaction(ilkKayitRef, (mevcutDeger) => (mevcutDeger === null ? Date.now() : mevcutDeger));
+    } catch (e) {
+      console.debug('userKaydet: ilkKayit geriye dönük tamamlama denemesi başarısız (muhtemelen zaten mevcut veya RTDB kuralları read izni vermiyor - bu genelde sorun değildir):', e.message);
+    } finally {
+      try { localStorage.setItem(ILK_KAYIT_DENEME_ANAHTARI, '1'); } catch (e) {}
+    }
   }
 
+  const userRef = dbRef(rtdb, 'users/' + user.uid);
   try {
     await dbUpdate(userRef, { email: user.email, sonGiris: Date.now() });
     // DÜZELTME: Başarı durumu da konsola loglanıyor ki "sessiz başarısızlık" ihtimali gelecekte
@@ -3694,6 +3702,18 @@ document.getElementById('btn-kayit-ol').onclick = async () => {
   if (!sifrePolitikasiKontrol(girilenSifre)) { bilgiGoster('⚠️', 'Zayıf Şifre', sifreHataMesaji, '#f59e0b'); return; }
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, girilenSifre);
+    // YENİ: "İlk kayıt tarihi" artık burada, hesabın gerçekten oluşturulduğu anda, tek seferlik
+    // ve doğrudan yazılıyor. Önceden bu SADECE ilk girişte (userKaydet içindeki bir transaction ile)
+    // ayarlanmaya çalışılıyordu; RTDB kurallarında "users/$uid/ilkKayit" için okuma izni kısıtlıysa
+    // (transaction, önce okuyup sonra yazdığı için read gerektirir) bu her seferinde sessizce/
+    // konsolda "permission_denied" hatasıyla başarısız oluyordu. Kayıt anında auth token en taze
+    // haldeyken doğrudan set() ile yazmak bu bağımlılığı ortadan kaldırıyor. Best-effort: burada
+    // başarısız olsa bile kayıt akışını durdurmuyoruz, sadece konsola logluyoruz.
+    try {
+      await dbSet(dbRef(rtdb, 'users/' + userCredential.user.uid), { email, ilkKayit: Date.now(), sonGiris: Date.now() });
+    } catch (e) {
+      console.error('Kayıt: users/' + userCredential.user.uid + ' ilk kayıt bilgisi yazılamadı:', e.message);
+    }
     const actionCodeSettings = { url: 'https://correctisis-rgb.github.io/cuzdan/', handleCodeInApp: false };
     await sendEmailVerification(userCredential.user, actionCodeSettings);
     await signOut(auth);
