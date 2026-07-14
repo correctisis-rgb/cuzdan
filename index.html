@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.2.7";
+const APP_SURUM = "1.2.8";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -3779,15 +3779,41 @@ window.cevapVer = async (id) => {
 const BF_LIMIT = 5;
 const BF_SURE = 5 * 60 * 1000; // 5 dakika
 
+// HATA DÜZELTMESİ: "btoa(email)" ve ardından "JSON.parse(...)" hiçbir try/catch içinde
+// değildi ve doğrudan "Giriş Yap" butonunun onclick'inde, ana try/catch bloğu BAŞLAMADAN
+// ÖNCE çalıştırılıyordu. İki ayrı gerçek çökme senaryosu vardı:
+//  1) btoa() sadece Latin-1 karakter kabul eder; e-posta alanına yanlışlıkla Türkçe
+//     karakter (ör. klavye/otomatik tamamlama hatasıyla "ğ, ı, ş, ç") girilirse
+//     "InvalidCharacterError" fırlatır.
+//  2) localStorage'daki değer bir şekilde bozuksa (ör. farklı bir uygulama sürümü,
+//     tarayıcı/uzantı müdahalesi, depolama hatası) JSON.parse SyntaxError fırlatır.
+// Her iki durumda da hata yakalanmadığı için "Giriş Yap" butonuna basıldığında HİÇBİR ŞEY
+// olmuyordu (konsolda sessiz bir hata dışında) — kullanıcı hesabına giriş yapamaz hale
+// geliyordu. Şimdi bu iki adım güvenli yardımcı fonksiyonlarla sarmalanıyor; herhangi bir
+// sorunda güvenli varsayılana (kilitsiz/temiz durum) dönülüyor, giriş akışı asla çökmüyor.
+function bfAnahtarGetir(email) {
+  try { return 'bf_' + btoa(email); }
+  catch(e) { return 'bf_' + encodeURIComponent(email); }
+}
+function bfKayitOku(key) {
+  try {
+    const ham = localStorage.getItem(key);
+    if (!ham) return { sayi: 0, zaman: 0 };
+    const ayristirilmis = JSON.parse(ham);
+    if (ayristirilmis && typeof ayristirilmis === 'object') return ayristirilmis;
+    return { sayi: 0, zaman: 0 };
+  } catch(e) { return { sayi: 0, zaman: 0 }; }
+}
+
 function bruteForceBasarili(email) {
-  localStorage.removeItem('bf_' + btoa(email));
+  try { localStorage.removeItem(bfAnahtarGetir(email)); } catch(e) {}
 }
 
 let kilitGeriSayimTimer = null;
 
 function kilitMesajiGoster(email) {
-  const key = 'bf_' + btoa(email);
-  const kayit = JSON.parse(localStorage.getItem(key) || '{"sayi":0,"zaman":0}');
+  const key = bfAnahtarGetir(email);
+  const kayit = bfKayitOku(key);
   const geriSayimEl = document.getElementById('bf-kilitleme-mesaji');
   if (!geriSayimEl) return;
 
@@ -3818,8 +3844,8 @@ document.getElementById('btn-giris-yap').onclick = async () => {
   const geriSayimEl = document.getElementById('bf-kilitleme-mesaji');
 
   // Kilit kontrolü
-  const key = 'bf_' + btoa(email);
-  const kayit = JSON.parse(localStorage.getItem(key) || '{"sayi":0,"zaman":0}');
+  const key = bfAnahtarGetir(email);
+  const kayit = bfKayitOku(key);
   if (kayit.kilitli && Date.now() - kayit.zaman < BF_SURE) {
     kilitMesajiGoster(email);
     return;
@@ -3852,7 +3878,7 @@ document.getElementById('btn-giris-yap').onclick = async () => {
     if (kilitGeriSayimTimer) clearInterval(kilitGeriSayimTimer);
   } catch(hata) {
     if (hata.code === 'auth/invalid-credential' || hata.code === 'auth/wrong-password' || hata.code === 'auth/user-not-found') {
-      const k = JSON.parse(localStorage.getItem(key) || '{"sayi":0,"zaman":0}');
+      const k = bfKayitOku(key);
       k.sayi = (k.sayi || 0) + 1;
       k.zaman = Date.now();
       if (k.sayi >= BF_LIMIT) {
@@ -4474,14 +4500,27 @@ document.getElementById('hesap').addEventListener('change', () => {
 
 document.getElementById('btn-excel-aktar').onclick = () => {
 if (mevcutAyVerileri.length === 0) { bilgiGoster('⚠️', 'Veri Yok', 'Bu aya ait aktarılacak işlem bulunamadı.', '#f59e0b'); return; }
+// HATA/GÜVENLİK DÜZELTMESİ: Önceden sadece "aciklama" alanındaki ";" karakteri temizleniyordu;
+// "kategori" veya "hesap" adında ";" olursa o satırın tüm sütunları sağa kayıyor, veri sessizce
+// bozuluyordu (kullanıcının kategori/hesap silme hatasıyla aynı kökten: kullanıcı girdisi
+// içindeki özel karakterler doğrulanmadan bir ayraçlı formata gömülüyordu). Ayrıca "=", "+",
+// "-", "@" ile başlayan bir alan Excel'de formül olarak çalıştırılabiliyordu (CSV/Formula
+// Injection). Bu yardımcı fonksiyon her iki sorunu da tek noktadan çözüyor: alanı çift
+// tırnak içine alıp (RFC 4180) iç tırnakları ikiye katlıyor, formül karakteriyle başlıyorsa
+// başına tek tırnak ekleyerek metne çeviriyor.
+const csvAlan = (deger) => {
+  let s = (deger === null || deger === undefined) ? '' : String(deger);
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
+  s = s.replace(/"/g, '""');
+  return `"${s}"`;
+};
 let csvContent = "\uFEFF"; 
 csvContent += "Tarih;Açıklama;Kategori;Hesap;Tür;Tutar (TL)\n";
 mevcutAyVerileri.forEach(islem => {
 const islemTarihi = new Date(islem.tarih).toLocaleDateString('tr-TR');
 const turMetni = islem.tur === 'gelir' ? 'Gelir (+)' : 'Gider (-)';
-const temizAciklama = islem.aciklama.replace(/;/g, ','); 
 const hesapAlani = islem.hesap || 'Nakit';
-csvContent += `${islemTarihi};${temizAciklama};${islem.kategori};${hesapAlani};${turMetni};${formatla(islem.tutar)}\n`;
+csvContent += `${csvAlan(islemTarihi)};${csvAlan(islem.aciklama)};${csvAlan(islem.kategori)};${csvAlan(hesapAlani)};${csvAlan(turMetni)};${csvAlan(formatla(islem.tutar))}\n`;
 });
 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
 const url = URL.createObjectURL(blob);
