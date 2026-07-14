@@ -1,20 +1,49 @@
 {
+  "id": "/cuzdan/",
   "name": "Akıllı Cüzdan",
   "short_name": "Akıllı Cüzdan",
+  "description": "Gelir-gider takibi, taksit, abonelik ve raporlarla akıllı bütçe yönetimi.",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#1c2137",
   "theme_color": "#764ba2",
+  "lang": "tr",
+  "dir": "ltr",
+  "categories": ["finance", "productivity"],
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot-1.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "screenshot-wide-1.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide"
     }
   ],
   "shortcuts": [
@@ -24,11 +53,7 @@
       "description": "Uygulamayı doğrudan ana ekranda açar",
       "url": "./?action=bakiye-gor",
       "icons": [
-        {
-          "src": "icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
       ]
     },
     {
@@ -37,11 +62,7 @@
       "description": "Doğrudan gider ekleme formuna gider",
       "url": "./?action=gider-ekle",
       "icons": [
-        {
-          "src": "icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
       ]
     }
   ]
