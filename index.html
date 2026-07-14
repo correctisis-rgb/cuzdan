@@ -1239,7 +1239,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.0.5";
+const APP_SURUM = "1.0.6";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
@@ -1309,7 +1309,17 @@ function presenceBaslat(user) {
 }
 
 async function userKaydet(user) {
-  if (!navigator.onLine) return;
+  // DÜZELTME: Burada önceden "if (!navigator.onLine) return;" ile erken çıkış vardı. Ancak
+  // presence (aktif/online) yazımı (presenceBaslat içindeki dbSet çağrıları) navigator.onLine
+  // kontrolü YAPMIYORDU. navigator.onLine tarayıcı API'si güvenilmez — özellikle PWA'larda
+  // uygulama arka plandan öne gelince veya bazı ağ/router durumlarında gerçekte internet
+  // bağlantısı olduğu halde yanlışlıkla false dönebiliyor. Sonuç: kullanıcı gerçekten online ve
+  // "aktif kullanıcılar" listesinde görünüyorken, bu satır yüzünden sonGiris hiç güncellenmiyor,
+  // admin panelinde "19 gün önce" gibi eski/yanlış bir tarih donup kalıyordu. Zaten bu fonksiyon
+  // (presenceBaslat üzerinden) sadece RTDB'ye GERÇEKTEN bağlanıldığında (".info/connected"===true)
+  // çağrıldığı için bu kontrol hem gereksizdi hem de yanlış negatiflere açıktı; kaldırıldı.
+  // Gerçekten offline ise zaten RTDB SDK'sı yazmayı local cache'e kuyruğa alıp bağlantı
+  // kurulduğunda otomatik senkronize eder, hata fırlatmaz.
   const userRef = dbRef(rtdb, 'users/' + user.uid);
   // Mevcut kaydı oku - ilkKayit tarihini korumak için
   onValue(userRef, (snap) => {
