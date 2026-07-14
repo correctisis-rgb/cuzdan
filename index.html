@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.2.6";
+const APP_SURUM = "1.2.7";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -5303,9 +5303,16 @@ const seciliDeger = select.value;
 const sabitKategoriler = ['Genel', 'Maaş', 'Market', 'Fatura', 'Ulaşım', 'Sağlık', 'Eğlence', 'Diğer'];
 if (sabitKategoriler.includes(seciliDeger)) { bilgiGoster('⚠️', 'İşlem Yapılamaz', "Varsayılan kategoriler silinemez.", '#f59e0b'); return; }
 onayGoster('🗑️', `"${seciliDeger}" kategorisini silmek istediğine emin misin?`, () => {
-select.querySelector(`option[value="${seciliDeger}"]`).remove();
+// GÜVENLİK/HATA DÜZELTMESİ: seciliDeger'i querySelector içine string olarak gömmek hem
+// CSS-selector injection riski taşıyordu hem de (kategori adında " gibi bir karakter varsa,
+// ör. eski bir XSS denemesinden kalma kayıtlarda) geçersiz seçici oluşturup querySelector'ın
+// hata fırlatmasına ve silme işleminin sessizce yarıda kesilmesine yol açıyordu. Artık
+// option listesini value'ya göre gezerek buluyoruz — hiçbir karakter sorun çıkarmaz.
+const opt = Array.from(select.options).find(o => o.value === seciliDeger);
+if (opt) opt.remove();
 select.value = 'Genel';
-const filtreOpt = document.querySelector(`#filtre-kategori option[value="${seciliDeger}"]`);
+const filtreSelect = document.getElementById('filtre-kategori');
+const filtreOpt = filtreSelect ? Array.from(filtreSelect.options).find(o => o.value === seciliDeger) : null;
 if (filtreOpt) filtreOpt.remove();
 if (auth.currentUser) {
 const cats = (_kullaniciAyarlariCache.kategoriler || []).filter(c => c !== seciliDeger);
@@ -5321,7 +5328,10 @@ const seciliDeger = select.value;
 const sabitHesaplar = ['Nakit', 'Diğer Kredi Kartı'];
 if (sabitHesaplar.includes(seciliDeger)) { bilgiGoster('⚠️', 'İşlem Yapılamaz', "Varsayılan ödeme şekilleri silinemez.", '#f59e0b'); return; }
 onayGoster('🗑️', `"${seciliDeger}" hesabını silmek istediğine emin misin?`, () => {
-select.querySelector(`option[value="${seciliDeger}"]`).remove();
+// GÜVENLİK/HATA DÜZELTMESİ: Yukarıdaki kategori silme ile aynı sorun — querySelector'a
+// string gömmek yerine option listesini value'ya göre güvenli şekilde arıyoruz.
+const opt = Array.from(select.options).find(o => o.value === seciliDeger);
+if (opt) opt.remove();
 select.value = 'Nakit';
 if (auth.currentUser) {
 const accs = (_kullaniciAyarlariCache.hesaplar || []).filter(a => a !== seciliDeger);
