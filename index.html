@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.2.4";
+const APP_SURUM = "1.2.5";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -1540,7 +1540,7 @@ function kullaniciListeRenderFiltered() {
           <div style="margin-top:2px;"><span style="color:${sonGirisRenk}; font-weight:700; font-size:11px;">🕐 ${sonGirisMetin}</span> <span style="opacity:0.45; font-size:9px;" title="Tam tarih">(${sonGirisTam})</span></div>
           <div style="opacity:0.5; font-size:9px; margin-top:1px;">Kayıt tarihi: ${ilkKayitTarih}</div>
         </div>
-        <button onclick="window.adminMesajGonderForm('${uid}','${u.email.replace(/'/g,"\\'")}')" style="background:${okunmadiMi ? '#ef4444' : '#3b82f6'}; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto; flex-shrink:0;">💬</button>
+        <button onclick="window.adminMesajGonderForm('${uid}','${escapeHTML(u.email || '').replace(/'/g,"\\'")}')" style="background:${okunmadiMi ? '#ef4444' : '#3b82f6'}; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto; flex-shrink:0;">💬</button>
       </div>`;
   });
 
@@ -1707,11 +1707,11 @@ async function kullaniciAyarlariKaydet() {
 
 function kullaniciAyarlariUIYukle(ayarlar) {
   (ayarlar.kategoriler || []).forEach(c => {
-    if(!document.querySelector(`#kategori option[value="${c}"]`)) document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
-    if(!document.querySelector(`#filtre-kategori option[value="${c}"]`)) document.getElementById('filtre-kategori').insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+    optionEkleGuvenli('kategori', c);
+    optionEkleGuvenli('filtre-kategori', c);
   });
   (ayarlar.hesaplar || []).forEach(a => {
-    if(!document.querySelector(`#hesap option[value="${a}"]`)) document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`);
+    optionEkleGuvenli('hesap', a);
   });
   hesapEtiketGuncelle();
   const dropdownAnahtarlari = Array.from(document.getElementById('hesap').options).map(o => o.value).filter(Boolean);
@@ -2318,6 +2318,25 @@ function escapeHTML(str) {
     .replace(/'/g, '&#39;');
 }
 
+// GÜVENLİK DÜZELTMESİ: Kategori/Hesap adları kullanıcı girdisi olduğu için, bunları
+// insertAdjacentHTML ile string birleştirerek eklemek stored XSS'e açık kapı bırakıyordu
+// (ör. kategori adı olarak "><img src=x onerror=...> yazılırsa kalıcı olarak çalışırdı).
+// Bu yardımcı fonksiyon <option> elemanını DOM API'siyle (createElement + textContent)
+// oluşturduğu için hiçbir girdi HTML olarak yorumlanmaz. Ayrıca var olup olmadığını
+// querySelector ile CSS-selector içine string gömerek değil, option listesini gezerek
+// kontrol eder (bu da kategori adında " gibi karakterler olduğunda oluşabilecek
+// selector injection/hata riskini de ortadan kaldırır).
+function optionEkleGuvenli(selectId, deger) {
+  const sel = document.getElementById(selectId);
+  if (!sel || deger === null || deger === undefined) return;
+  const zatenVarMi = Array.from(sel.options).some(o => o.value === deger);
+  if (zatenVarMi) return;
+  const opt = document.createElement('option');
+  opt.value = deger;
+  opt.textContent = deger;
+  sel.appendChild(opt);
+}
+
 // --- CUSTOM POPUP YARDIMCILARI ---
 // YENİ: bilgiGoster tüm ekranlarda ortak kullanıldığı için, uyarı/hata rengiyle (turuncu #f59e0b /
 // kırmızı #ef4444) açılan her popup'ta otomatik olarak uyari.mp3 çalınıyor — ör. ana ekranda
@@ -2917,7 +2936,7 @@ function tekrarlayanlariDinle() {
           </div>
         </div>
         <div style="display:flex; gap:4px; margin-top:5px;">
-          <button onclick="window.tkrDuzenle('${t.id}','${escapeHTML(t.aciklama).replace(/'/g,"\\\\'")}',${t.tutar},'${t.kategori}','${t.hesap}',${t.gun},${t.abonelik === true})" style="background:#3b82f6; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">✏️ Düzenle</button>
+          <button onclick="window.tkrDuzenle('${t.id}','${escapeHTML(t.aciklama).replace(/'/g,"\\\\'")}',${t.tutar},'${escapeHTML(t.kategori).replace(/'/g,"\\\\'")}','${escapeHTML(t.hesap).replace(/'/g,"\\\\'")}',${t.gun},${t.abonelik === true})" style="background:#3b82f6; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">✏️ Düzenle</button>
           <button onclick="window.tkrDurumDegistir('${t.id}', ${t.aktif === false})" style="background:${t.aktif !== false ? '#f59e0b' : '#10b981'}; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">${t.aktif !== false ? '⏸ Durdur' : '▶ Etkinleştir'}</button>
           <button onclick="window.tkrSil('${t.id}')" style="background:#ef4444; color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">🗑 Sil</button>
         </div>
@@ -4360,10 +4379,10 @@ function kartAyarListeGoster() {
     const isim = hesapIsimleri[hesap] || hesap;
     html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
       <div>
-        <div style="font-weight:bold; font-size:12px;">${isim}</div>
+        <div style="font-weight:bold; font-size:12px;">${escapeHTML(isim)}</div>
         <div style="font-size:10px; opacity:0.7;">Her ayın <b>${gun}</b>'inde kesilir</div>
       </div>
-      <button onclick="window.kartAyarSil('${hesap}')" style="background:#ef4444; color:white; border:none; border-radius:6px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">Sil</button>
+      <button onclick="window.kartAyarSil('${escapeHTML(hesap).replace(/'/g,"\\\\'")}')" style="background:#ef4444; color:white; border:none; border-radius:6px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">Sil</button>
     </div>`;
   });
   el.innerHTML = html;
@@ -4991,10 +5010,12 @@ window.duzenle = (id, aciklama, tutar, tur, kategori, hesap, tarih) => {
 document.getElementById('aciklama').value = aciklama;
 document.getElementById('tutar').value = formatla(tutar).replace(/\./g, ''); 
 
-if (!document.querySelector(`#kategori option[value="${kategori}"]`)) { document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${kategori}">${kategori}</option>`); }
+optionEkleGuvenli('kategori', kategori);
 document.getElementById('kategori').value = kategori;
 
-if (!document.querySelector(`#hesap option[value="${hesap}"]`)) { document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${hesap}">${hesap}</option>`); hesapEtiketGuncelle(); }
+const _hesapVarMiyd = Array.from(document.getElementById('hesap').options).some(o => o.value === hesap);
+optionEkleGuvenli('hesap', hesap);
+if (!_hesapVarMiyd) hesapEtiketGuncelle();
 document.getElementById('hesap').value = hesap;
 
 document.getElementById('tarih').valueAsDate = new Date(tarih);
@@ -5131,9 +5152,9 @@ function loadCustomData(user) {
 document.getElementById('btn-ekle-kategori').onclick = () => {
 girisGoster('🏷️', 'Yeni Kategori Adı:', 'Örn: Market, Ulaşım...', (yeni) => {
 if(yeni && yeni.trim() !== "") {
-document.getElementById('kategori').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
+optionEkleGuvenli('kategori', yeni);
 document.getElementById('kategori').value = yeni;
-if(!document.querySelector(`#filtre-kategori option[value="${yeni}"]`)) document.getElementById('filtre-kategori').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
+optionEkleGuvenli('filtre-kategori', yeni);
 if(auth.currentUser) {
 const cats = _kullaniciAyarlariCache.kategoriler || [];
 if (!cats.includes(yeni)) { cats.push(yeni); _kullaniciAyarlariCache.kategoriler = cats; kullaniciAyarlariKaydet(); }
@@ -5173,8 +5194,8 @@ document.querySelectorAll('.hesap-turu-pill').forEach(pill => {
 document.getElementById('btn-hesap-ekle-onayla').onclick = () => {
   const yeni = document.getElementById('hesap-ekle-adi').value.trim();
   if (!yeni) { document.getElementById('hesap-ekle-adi').focus(); return; }
-  if (document.querySelector(`#hesap option[value="${yeni}"]`)) { bilgiGoster('⚠️', 'Zaten Var', 'Bu isimde bir hesap zaten var.', '#f59e0b'); return; }
-  document.getElementById('hesap').insertAdjacentHTML('beforeend', `<option value="${yeni}">${yeni}</option>`);
+  if (Array.from(document.getElementById('hesap').options).some(o => o.value === yeni)) { bilgiGoster('⚠️', 'Zaten Var', 'Bu isimde bir hesap zaten var.', '#f59e0b'); return; }
+  optionEkleGuvenli('hesap', yeni);
   document.getElementById('hesap').value = yeni;
   if (auth.currentUser) {
     const accs = _kullaniciAyarlariCache.hesaplar || [];
