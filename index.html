@@ -1239,7 +1239,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.2.0";
+const APP_SURUM = "1.2.1";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
@@ -3014,10 +3014,27 @@ function satirOlustur(d) {
   }
   // DÜZELTME: TV modunda (salt okunur) düzenle/sil butonları hiç render edilmiyor,
   // böylece TV'den yanlışlıkla işlem silinmesi/değiştirilmesi mümkün olmuyor.
+  // GÜVENLİK DÜZELTMESİ: d.aciklama (kullanıcının serbest metin girdiği "Açıklama" alanı) hem
+  // <td> içine hem de onclick niteliğine HİÇ KAÇIRILMADAN (escape edilmeden) basılıyordu.
+  // 1) `${d.aciklama}` doğrudan HTML olarak render ediliyordu: açıklamaya "<img src=x onerror=..>"
+  //    gibi bir metin yazan bir kullanıcı, işlem listesi her göründüğünde kendi tarayıcısında
+  //    (ve TV/bağlı cihaz modunda ekranı paylaşan diğer cihazlarda) rastgele JS çalıştırabilirdi
+  //    (stored XSS). Şimdi escapeHTML() ile kaçırılıyor.
+  // 2) onclick niteliği içindeki `.replace(/'/g, "\'")` satırı gerçekte HİÇBİR ŞEY YAPMIYORDU:
+  //    JS kaynağında "\'" (tek ters eğik çizgi + tırnak) çift tırnaklı bir string içinde sadece
+  //    düz bir tırnak (') üretir — yani tek tırnak hiç değişmeden kalıyordu. Açıklamada bir tek
+  //    tırnak (') olması, onclick niteliğindeki JS string'ini erken kapatıp saldırganın kendi JS
+  //    kodunu enjekte etmesine izin verebiliyordu. Diğer benzer fonksiyonlarda (bkz. tkrDuzenle,
+  //    satır ~2864) kullanılan doğru desen olan escapeHTML(...).replace(/'/g,"\\\\'") burada da
+  //    uygulandı.
+  const aciklamaGuvenli = escapeHTML(d.aciklama);
+  const aciklamaOnclickIcin = aciklamaGuvenli.replace(/'/g, "\\'");
+  const kategoriGuvenli = escapeHTML(d.kategori);
+  const hesapGuvenli = escapeHTML(d.hesap);
   const islemButonlari = (typeof TV_MODU !== 'undefined' && TV_MODU)
     ? ''
-    : `<button onclick="window.duzenle('${d.id}', '${d.aciklama.replace(/'/g, "\'")}', ${d.tutar}, '${d.tur}', '${d.kategori}', '${d.hesap}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button>`;
-  return `<tr><td><strong>${d.aciklama}${syncIcon}</strong><br><small>${d.kategori}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}${ekstreEtiket}</small></td><td class="${d.tur==='gelir'?'tutar-gelir':'tutar-gider'}" style="font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;">${islemButonlari}</td></tr>`;
+    : `<button onclick="window.duzenle('${d.id}', '${aciklamaOnclickIcin}', ${d.tutar}, '${d.tur}', '${kategoriGuvenli}', '${hesapGuvenli}', ${d.tarih})" style="background:none; border:none; cursor:pointer;" title="Düzenle">✏️</button> <button onclick="window.sil('${d.id}')" style="background:none; border:none; cursor:pointer;" title="Sil">❌</button>`;
+  return `<tr><td><strong>${aciklamaGuvenli}${syncIcon}</strong><br><small>${kategoriGuvenli}${hesapMetni} • ${t.toLocaleDateString('tr-TR')}${ekstreEtiket}</small></td><td class="${d.tur==='gelir'?'tutar-gelir':'tutar-gider'}" style="font-weight:bold;">${formatla(d.tutar)} TL</td><td style="text-align:right;">${islemButonlari}</td></tr>`;
 }
 
 function tabloYenile() {
@@ -4558,11 +4575,23 @@ try {
 // hesaplanıyor; sohbet cevapları bu sayaca dahil değil, aksi halde admin'e cevap yazmak da
 // günlük hakkı tüketirdi.
 const BILDIRIM_GUNLUK_LIMIT = 3;
+// DÜZELTME: Bu sorgu önceden "uid == X" (eşitlik) VE "tarih >= Y" (aralık) filtrelerini AYNI ANDA
+// kullanıyordu. Firestore, farklı alanlarda eşitlik + aralık filtresi birlikte kullanıldığında bir
+// "composite index" (birleşik dizin) ister; bu proje için o dizin hiç oluşturulmamıştı, bu yüzden
+// "Sorun Bildir" her denendiğinde "The query requires an index" hatası alınıyordu. Çözüm: tarih
+// filtresini sorgudan çıkarıp sadece "uid == X" ile (index gerektirmeyen basit bir sorgu) tüm
+// kayıtları çekip, günün başlangıcı ve kanal kontrolünü istemci tarafında (JS içinde) yapıyoruz.
+// Not: Kullanıcı başına günlük 3 bildirim limiti zaten var, bu yüzden bir kullanıcının toplam
+// "bildirimler" kaydı zamanla bile makul kalır; bu yaklaşım burada performans sorunu yaratmaz.
 async function bildirimGununBasiSayisiniAl(uid) {
   const gununBasi = new Date(); gununBasi.setHours(0, 0, 0, 0);
-  const snap = await getDocs(query(collection(db, "bildirimler"), where("uid", "==", uid), where("tarih", ">=", gununBasi.getTime())));
+  const gununBasiMs = gununBasi.getTime();
+  const snap = await getDocs(query(collection(db, "bildirimler"), where("uid", "==", uid)));
   let sayi = 0;
-  snap.forEach(d => { if (d.data().kanal !== 'sohbet') sayi++; });
+  snap.forEach(d => {
+    const data = d.data();
+    if (data.kanal !== 'sohbet' && data.tarih >= gununBasiMs) sayi++;
+  });
   return sayi;
 }
 async function bildirimLimitGoster() {
