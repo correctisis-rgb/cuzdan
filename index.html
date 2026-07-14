@@ -684,14 +684,20 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <button class="close-btn" onclick="kapatPaneller()">Kapat X</button>
 <small id="user-email" style="display:block; margin-bottom:5px; color:black;"></small>
 <div id="profil-rutbe-etiket" style="display:none; font-size:10px; font-weight:bold; margin-bottom:6px; padding:3px 6px; border-radius:6px; background:#fef3c7; color:#92400e;"></div>
-<button id="btn-rapor-menu" style="background:#10b981; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Rapor / Grafik</button>
 <button id="btn-borclar-menu" style="background:#6366f1; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💳 Hesap Özetleri / Borçlar</button>
-<button id="btn-bakiyeler-menu" style="background:#0d9488; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💰 Bakiyelerim</button>
-<button id="btn-excel-aktar" style="background:#059669; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Excel'e Aktar</button>
-<button id="btn-pdf-aktar" style="background:#dc2626; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📄 PDF Rapor İndir (Bu Ay)</button>
-<button id="btn-ozel-rapor-menu" style="background:#b91c1c; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📅 Özel Dönem Raporu (PDF)</button>
+<!-- YENİ: Menüdeki buton sayısı çoğaldıkça mobilde uzun bir liste oluşuyordu. Sık kullanılmayan
+     rapor/dışa-aktarma işlemleri "Diğer İşlemler" altında toplanıp varsayılan olarak kapalı
+     tutuluyor; menü ilk açıldığında çok daha kısa görünüyor, isteyen tıklayıp genişletiyor. -->
+<button id="btn-diger-islemler-toggle" style="background:#374151; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white; display:flex; align-items:center; justify-content:center; gap:5px;">📂 Diğer İşlemler <span id="diger-islemler-ok" style="display:inline-block; transition:transform 0.2s; font-size:10px;">▾</span></button>
+<div id="profil-diger-islemler-grup" class="hidden" style="display:flex; flex-direction:column; gap:2px; background:rgba(0,0,0,0.08); border-radius:8px; padding:4px; margin-bottom:2px;">
+<button id="btn-rapor-menu" style="background:#10b981; width:100%; padding:5px; border-radius:5px;">📊 Rapor / Grafik</button>
+<button id="btn-bakiyeler-menu" style="background:#0d9488; width:100%; padding:5px; border-radius:5px;">💰 Bakiyelerim</button>
+<button id="btn-excel-aktar" style="background:#059669; width:100%; padding:5px; border-radius:5px;">📊 Excel'e Aktar</button>
+<button id="btn-pdf-aktar" style="background:#dc2626; width:100%; padding:5px; border-radius:5px;">📄 PDF Rapor İndir (Bu Ay)</button>
+<button id="btn-ozel-rapor-menu" style="background:#b91c1c; width:100%; padding:5px; border-radius:5px;">📅 Özel Dönem Raporu (PDF)</button>
+<button id="btn-kart-ayarlar" style="background:#0ea5e9; width:100%; padding:5px; border-radius:5px;">💳 Kart Ayarları</button>
+</div>
 <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
-<button id="btn-kart-ayarlar" style="background:#0ea5e9; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💳 Kart Ayarları</button>
 <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
 <button id="btn-kahve-menu" style="background:#6f4e37; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">☕ Kahve Ismarla</button>
 <button id="btn-qr-okut" style="background:#7c3aed; width:100%; padding:5px; border-radius:5px; margin-bottom:2px; color:white;">📷 QR Kod Okut</button>
@@ -1279,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.2.3";
+const APP_SURUM = "1.2.4";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -2230,7 +2236,13 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { onayGoster('🗑️', 'Bu duyuruyu silmek istediğine emin misin?', () => deleteDoc(doc(db, "duyurular", id))); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'ozel-rapor-panel', 'bakiyeler-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel', 'hakkinda-panel', 'ios-install-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'ozel-rapor-panel', 'bakiyeler-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel', 'hakkinda-panel', 'ios-install-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+// DÜZELTME: "Diğer İşlemler" alt grubu profil menüsü her kapandığında/yeniden açıldığında baştaki
+// kapalı (kısa) haline dönsün diye ayrıca sıfırlanıyor; yoksa bir kez açılınca hep açık kalıp
+// menüyü tekrar uzatırdı.
+const digerGrup = document.getElementById('profil-diger-islemler-grup');
+if (digerGrup) { digerGrup.classList.add('hidden'); const ok = document.getElementById('diger-islemler-ok'); if (ok) ok.style.transform = ''; }
+if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
 
 // YENİ: Sağ üstteki bildirim (🔔) ve profil menüleri artık boş bir yere tıklanınca da otomatik
 // kapanıyor. Aynı mantık, "Kapat X" butonu artık gösterilmeyen (bkz. CSS: body:not(.masaustu-modu)
@@ -3877,6 +3889,15 @@ kapatPaneller();
 if (!acikMi) menu.classList.remove('hidden');
 };
 document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPaneller(); document.getElementById('sifre-panel').classList.remove('hidden'); };
+// YENİ: "Diğer İşlemler" - profil menüsünü kapatmadan sadece kendi alt grubunu açıp kapatıyor.
+document.getElementById('btn-diger-islemler-toggle').onclick = (e) => {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const grup = document.getElementById('profil-diger-islemler-grup');
+  const ok = document.getElementById('diger-islemler-ok');
+  const acikMi = !grup.classList.contains('hidden');
+  grup.classList.toggle('hidden');
+  ok.style.transform = acikMi ? '' : 'rotate(180deg)';
+};
 document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); };
 document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
 document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); if (typeof grafikCiz === 'function') requestAnimationFrame(() => requestAnimationFrame(grafikCiz)); };
