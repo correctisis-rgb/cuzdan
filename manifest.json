@@ -33,19 +33,19 @@
     }
   ],
   "screenshots": [
-    {
-      "src": "screenshot-1.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "screenshot-wide-1.png",
-      "sizes": "1920x1080",
-      "type": "image/png",
-      "form_factor": "wide"
-    }
-  ],
+  {
+    "src": "screenshot-1.png",
+    "sizes": "828x1792",
+    "type": "image/png",
+    "form_factor": "narrow"
+  },
+  {
+    "src": "screenshot-wide-1.png",
+    "sizes": "1792x828",
+    "type": "image/png",
+    "form_factor": "wide"
+  }
+],
   "shortcuts": [
     {
       "name": "Bakiyeyi Gör",
