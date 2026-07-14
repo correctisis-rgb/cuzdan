@@ -183,6 +183,7 @@ overflow: hidden;
    Bu yüzden mobilde profil menüsü gibi ekranın üstünde kayan bir kutu haline getiriyoruz. Masaüstü modunda dokunmuyoruz. */
 body:not(.masaustu-modu) #grafik-panel,
 body:not(.masaustu-modu) #borclar-panel,
+body:not(.masaustu-modu) #ozel-rapor-panel,
 body:not(.masaustu-modu) #tekrarlayan-panel,
 body:not(.masaustu-modu) #kart-ayar-panel,
 body:not(.masaustu-modu) #sifre-panel,
@@ -675,7 +676,8 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <button id="btn-borclar-menu" style="background:#6366f1; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💳 Hesap Özetleri / Borçlar</button>
 <button id="btn-bakiyeler-menu" style="background:#0d9488; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💰 Bakiyelerim</button>
 <button id="btn-excel-aktar" style="background:#059669; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📊 Excel'e Aktar</button>
-<button id="btn-pdf-aktar" style="background:#dc2626; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📄 PDF Rapor İndir</button>
+<button id="btn-pdf-aktar" style="background:#dc2626; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📄 PDF Rapor İndir (Bu Ay)</button>
+<button id="btn-ozel-rapor-menu" style="background:#b91c1c; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">📅 Özel Dönem Raporu (PDF)</button>
 <button id="btn-sifre-guncelle-menu" style="background:#f59e0b; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Şifre Değiştir</button>
 <button id="btn-kart-ayarlar" style="background:#0ea5e9; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">💳 Kart Ayarları</button>
 <button id="btn-bildir-menu" style="background:#3b82f6; width:100%; padding:5px; border-radius:5px; margin-bottom:2px;">Sorun Bildir</button>
@@ -728,10 +730,30 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 </div>
 </div>
 
+<!-- YENİ: Özel dönem PDF raporu. Kullanıcı sadece "bu ay" ile sınırlı kalmadan, istediği
+     başlangıç/bitiş tarihi arasındaki tüm işlemleri kapsayan bir PDF rapor üretebiliyor.
+     Seçili aralık Firestore'dan tek seferlik (getDocs) çekiliyor, ekrandaki "seciliTarih" ay
+     penceresine bağlı değil. -->
+<div id="ozel-rapor-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:left;">
+<button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
+<div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">📅 ÖZEL DÖNEM RAPORU (PDF)</div>
+<div style="font-size:11px; opacity:0.8; margin-bottom:8px;">Sadece içinde bulunulan ay yerine, istediğiniz tarih aralığındaki tüm işlemleri içeren bir PDF rapor oluşturun.</div>
+<div style="font-size:11px; margin-bottom:2px; opacity:0.8;">Başlangıç Tarihi</div>
+<input type="date" id="ozel-rapor-baslangic" style="margin-bottom:8px;">
+<div style="font-size:11px; margin-bottom:2px; opacity:0.8;">Bitiş Tarihi</div>
+<input type="date" id="ozel-rapor-bitis" style="margin-bottom:10px;">
+<button id="btn-ozel-rapor-olustur" style="background:#dc2626; width:100%;">📄 PDF Oluştur</button>
+</div>
+
 <div id="borclar-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:left;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">💳 AYLIK HARCAMA & BORÇ ÖZETİ</div>
 <div id="borc-listesi"></div>
+<!-- YENİ: Devam eden taksitlerin gelecek ay ödenecek toplam tutarı özeti -->
+<div id="taksit-ozet-kutu" style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.2); padding-top:8px; display:none;">
+  <div style="font-weight:bold; margin-bottom:6px; font-size:12px;">📆 GELECEK AY TAKSİT ÖDEMELERİ</div>
+  <div id="taksit-ozet-icerik" style="font-size:12px; opacity:0.75;">Yükleniyor...</div>
+</div>
 </div>
 
 <div id="bakiyeler-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:left; max-height:420px; overflow-y:auto;">
@@ -827,6 +849,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <div id="bildirim-rutbe-kutu" style="background:rgba(255,255,255,0.12); border-radius:10px; padding:8px; margin-bottom:8px; text-align:center; display:none;"></div>
 <textarea id="bildirim-metni" placeholder="Sorununuzu veya önerinizi yazın..." style="height:60px;"></textarea>
+<div id="bildirim-limit-bilgi" style="font-size:10px; opacity:0.7; margin:4px 0 6px 0; text-align:center;"></div>
 <button id="btn-bildirim-gonder" style="background:#3b82f6;">Gönder</button>
 </div>
 
@@ -1216,7 +1239,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.0.4";
+const APP_SURUM = "1.0.5";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
@@ -2098,7 +2121,7 @@ isInitialLoad = false;
 }
 
 window.silDuyuru = (id) => { onayGoster('🗑️', 'Bu duyuruyu silmek istediğine emin misin?', () => deleteDoc(doc(db, "duyurular", id))); };
-window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'bakiyeler-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel', 'ios-install-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
+window.kapatPaneller = () => { ['sifre-panel', 'bildirim-panel', 'kahve-panel', 'profil-menu', 'duyuru-menu', 'mesajlar-panel', 'grafik-panel', 'borclar-panel', 'ozel-rapor-panel', 'bakiyeler-panel', 'kullanici-panel', 'tekrarlayan-panel', 'kart-ayar-panel', 'bagli-cihazlar-panel', 'ios-install-panel'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }); if (typeof qrOkutKapat === 'function' && _qrOkutAktif) qrOkutKapat(); };
 
 // YENİ: Sağ üstteki bildirim (🔔) ve profil menüleri artık boş bir yere tıklanınca da otomatik
 // kapanıyor. Aynı mantık, "Kapat X" butonu artık gösterilmeyen (bkz. CSS: body:not(.masaustu-modu)
@@ -2294,6 +2317,7 @@ function masaUstuSidebarKur() {
       <button class="mas-nav-item" id="mas-nav-kart">⚙ &nbsp;Kart Ayarları</button>
       <button class="mas-nav-item" id="mas-nav-excel">📊 &nbsp;Excel'e Aktar</button>
       <button class="mas-nav-item" id="mas-nav-pdf">📄 &nbsp;PDF Rapor İndir</button>
+      <button class="mas-nav-item" id="mas-nav-ozel-rapor">📅 &nbsp;Özel Dönem Raporu</button>
       <div class="mas-group-label">Hesap</div>
       <button class="mas-nav-item" id="mas-nav-bagli-cihazlar">🖥️ &nbsp;Bağlı Cihazlar</button>
       <button class="mas-nav-item" id="mas-nav-bildirim">🔔 &nbsp;Sorun Bildir</button>
@@ -2470,6 +2494,7 @@ function masaUstuSidebarKur() {
   // açıldığında grafiği güncel moda ve modal boyutuna göre yeniden çiziyoruz.
   document.getElementById('mas-nav-raporlar').addEventListener('click', () => { if (typeof grafikCiz === 'function') requestAnimationFrame(() => requestAnimationFrame(grafikCiz)); }, true);
   panelAc(document.getElementById('mas-nav-borclar'), 'borclar-panel', '💳 Hesap Özetleri');
+  document.getElementById('mas-nav-borclar').addEventListener('click', () => { if (typeof taksitOzetiYukle === 'function') taksitOzetiYukle(TV_MODU ? EFEKTIF_UID : auth.currentUser.uid); }, true);
   panelAc(document.getElementById('mas-nav-bakiyeler'), 'bakiyeler-panel', '💰 Bakiyelerim');
   document.getElementById('mas-nav-bakiyeler').addEventListener('click', () => { if (typeof bakiyeleriGoster === 'function') bakiyeleriGoster(); }, true);
   panelAc(document.getElementById('mas-nav-duyurular'), 'duyuru-menu', '📢 Duyurular');
@@ -2493,6 +2518,8 @@ function masaUstuSidebarKur() {
   // Excel/PDF aktarma birer panel değil, anlık indirme işlemi — mevcut butonların click'ini tetikliyoruz.
   document.getElementById('mas-nav-excel').onclick = () => { document.getElementById('btn-excel-aktar').click(); };
   document.getElementById('mas-nav-pdf').onclick = () => { document.getElementById('btn-pdf-aktar').click(); };
+  panelAc(document.getElementById('mas-nav-ozel-rapor'), 'ozel-rapor-panel', '📅 Özel Dönem Raporu');
+  document.getElementById('mas-nav-ozel-rapor').addEventListener('click', () => { document.getElementById('btn-ozel-rapor-menu').click(); document.getElementById('ozel-rapor-panel').classList.remove('hidden'); }, true);
 
   if (isAdmin) {
     const ku=document.getElementById('mas-nav-kullanici');
@@ -3703,7 +3730,19 @@ document.getElementById('btn-sifre-guncelle-menu').onclick = () => { kapatPanell
 document.getElementById('btn-bildir-menu').onclick = () => { kapatPaneller(); document.getElementById('bildirim-panel').classList.remove('hidden'); };
 document.getElementById('btn-kahve-menu').onclick = () => { kapatPaneller(); document.getElementById('kahve-panel').classList.remove('hidden'); };
 document.getElementById('btn-rapor-menu').onclick = () => { kapatPaneller(); document.getElementById('grafik-panel').classList.remove('hidden'); if (typeof grafikCiz === 'function') requestAnimationFrame(() => requestAnimationFrame(grafikCiz)); };
-document.getElementById('btn-borclar-menu').onclick = () => { kapatPaneller(); document.getElementById('borclar-panel').classList.remove('hidden'); };
+document.getElementById('btn-borclar-menu').onclick = () => { kapatPaneller(); document.getElementById('borclar-panel').classList.remove('hidden'); if (typeof taksitOzetiYukle === 'function') taksitOzetiYukle(TV_MODU ? EFEKTIF_UID : auth.currentUser.uid); };
+document.getElementById('btn-ozel-rapor-menu').onclick = () => {
+kapatPaneller();
+document.getElementById('ozel-rapor-panel').classList.remove('hidden');
+// Varsayılan olarak son 3 ayı öner
+const bugun = new Date();
+const ucAyOnce = new Date(bugun.getFullYear(), bugun.getMonth() - 2, 1);
+const gunFormat = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const bBaslangic = document.getElementById('ozel-rapor-baslangic');
+const bBitis = document.getElementById('ozel-rapor-bitis');
+if (bBaslangic && !bBaslangic.value) bBaslangic.value = gunFormat(ucAyOnce);
+if (bBitis && !bBitis.value) bBitis.value = gunFormat(bugun);
+};
 document.getElementById('btn-bakiyeler-menu').onclick = () => { kapatPaneller(); document.getElementById('bakiyeler-panel').classList.remove('hidden'); bakiyeleriGoster(); };
 
 // ============ BAKİYELERİM (Hesap/Kart bazlı toplam bakiye - kartlar halinde, banka renkleriyle) ============
@@ -3932,6 +3971,68 @@ async function bakiyeleriGoster() {
     listeEl.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px; color:#fca5a5;">Bakiyeler yüklenirken bir hata oluştu.</div>';
   } finally {
     yukleniyorEl.style.display = 'none';
+  }
+}
+
+// ============ TAKSİT ÖZETİ (Gelecek Ay Ödenecek Taksit Tutarı) ============
+// Taksitli işlemler (btn-taksit ile eklenenler) her ay için ayrı bir "islemler" kaydı olarak
+// saklanıyor; her kaydın açıklaması "... (i/N)" formatında bitiyor (ör. "Telefon (3/12)").
+// Burada, GELECEK ayın tarih aralığına düşen ve bu formata uyan kayıtlar taranarak: kaç farklı
+// taksit planının devam ettiği ve gelecek ay toplamda ne kadar ödeneceği hesaplanıyor.
+// Not: Diğer "tüm zamanlar" sorguları (Bakiyelerim vb.) gibi, panel her açıldığında tek seferlik
+// (getDocs) çekiliyor; canlı dinleyiciye gerek yok çünkü kullanıcı zaten paneli her açtığında
+// güncel veriyi görecek.
+const TAKSIT_DESEN = /\((\d+)\/(\d+)\)\s*$/;
+async function taksitOzetiYukle(uid) {
+  const kutu = document.getElementById('taksit-ozet-kutu');
+  const icerik = document.getElementById('taksit-ozet-icerik');
+  if (!kutu || !icerik || !uid) return;
+  kutu.style.display = 'block';
+  icerik.innerHTML = 'Yükleniyor...';
+  try {
+    const bugun = new Date();
+    const gelecekAyBaslangic = new Date(bugun.getFullYear(), bugun.getMonth() + 1, 1);
+    const gelecekAyBitis = new Date(bugun.getFullYear(), bugun.getMonth() + 2, 1);
+    const snap = await getDocs(query(
+      collection(db, "islemler"),
+      where("uid", "==", uid),
+      where("tarih", ">=", gelecekAyBaslangic.getTime()),
+      where("tarih", "<", gelecekAyBitis.getTime())
+    ));
+    const taksitKalemleri = [];
+    let toplamYuk = 0;
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.tur !== 'gider') return;
+      const eslesme = TAKSIT_DESEN.exec(data.aciklama || '');
+      if (!eslesme) return; // taksit deseniyle bitmeyen normal işlemler dahil edilmiyor
+      const suankiAy = parseInt(eslesme[1]), toplamAy = parseInt(eslesme[2]);
+      taksitKalemleri.push({
+        aciklama: (data.aciklama || '').replace(TAKSIT_DESEN, '').trim(),
+        tutar: data.tutar,
+        hesap: data.hesap || 'Nakit',
+        suankiAy, toplamAy
+      });
+      toplamYuk += data.tutar;
+    });
+    if (taksitKalemleri.length === 0) {
+      icerik.innerHTML = '<div style="opacity:0.7;">Gelecek ay için devam eden taksitli bir işlem bulunmuyor.</div>';
+      return;
+    }
+    taksitKalemleri.sort((a, b) => b.tutar - a.tutar);
+    let html = `<div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
+      <span>${taksitKalemleri.length} farklı taksit devam ediyor</span>
+      <span style="font-weight:bold; color:#f59e0b; font-size:15px;">${formatla(toplamYuk)} TL</span>
+    </div>`;
+    html += taksitKalemleri.map(k => `
+      <div class="borc-satir" style="font-size:11px; opacity:0.9;">
+        <span>${escapeHTML(k.aciklama)} <span style="opacity:0.6;">(${k.suankiAy}/${k.toplamAy} - ${escapeHTML(k.hesap)})</span></span>
+        <span style="font-weight:600;">${formatla(k.tutar)} TL</span>
+      </div>`).join('');
+    icerik.innerHTML = html;
+  } catch (e) {
+    console.error("Taksit özeti yüklenirken hata:", e);
+    icerik.innerHTML = '<div style="opacity:0.7;">Taksit özeti yüklenirken bir hata oluştu.</div>';
   }
 }
 
@@ -4172,16 +4273,52 @@ document.body.removeChild(link);
 kapatPaneller();
 };
 
-document.getElementById('btn-pdf-aktar').onclick = () => {
-if (mevcutAyVerileri.length === 0) { bilgiGoster('⚠️', 'Veri Yok', 'Bu aya ait aktarılacak işlem bulunamadı.', '#f59e0b'); return; }
+// YENİ: PDF üreten kod artık tek bir paylaşılan fonksiyonda (pdfRaporuOlustur). Hem "Bu Ay" hızlı
+// butonu hem de "Özel Dönem Raporu" (herhangi bir tarih aralığı) bu fonksiyonu çağırıyor; ikisi de
+// aynı görünümü (logo + marka rengi + özet kutucukları + kategori/işlem tabloları) üretiyor.
+//
+// YENİ: Marka rengi artık sabit mor değil, kullanıcının o an seçili olan uygulama temasına
+// (mor / okyanus mavisi / orman yeşili) göre otomatik seçiliyor; başlık, çizgi ve logo tonu
+// buna göre değişiyor.
+function pdfMarkaRengiAl() {
+  if (document.body.classList.contains('tema-okyanus')) return [44, 83, 100];
+  if (document.body.classList.contains('tema-yesil')) return [45, 122, 45];
+  return [118, 75, 162]; // tema-mor / varsayılan
+}
+
+// YENİ: Uygulama logosunu (icon-192.png) bir kez indirip base64 PNG'ye çeviriyor ve önbelleğe
+// alıyor; PDF'in sol üst köşesine eklenmesi için kullanılıyor. Herhangi bir sebeple
+// yüklenemezse (ör. dosya bulunamadı) PDF logo olmadan, sadece metin başlığıyla üretilmeye
+// devam ediyor — logo zorunlu bir bağımlılık değil.
+let _pdfLogoDataUrl = null, _pdfLogoDeneme = false;
+async function pdfLogoAl() {
+  if (_pdfLogoDataUrl || _pdfLogoDeneme) return _pdfLogoDataUrl;
+  _pdfLogoDeneme = true;
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = 'icon-192.png';
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width; canvas.height = img.height;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    _pdfLogoDataUrl = canvas.toDataURL('image/png');
+  } catch (e) { _pdfLogoDataUrl = null; }
+  return _pdfLogoDataUrl;
+}
+
+async function pdfRaporuOlustur(verilerListesi, baslikEtiketi, dosyaAdi) {
+if (!verilerListesi || verilerListesi.length === 0) { bilgiGoster('⚠️', 'Veri Yok', 'Seçilen döneme ait aktarılacak işlem bulunamadı.', '#f59e0b'); return; }
 if (typeof window.jspdf === 'undefined') { bilgiGoster('❌', 'Hata', 'PDF motoru yüklenemedi, internet bağlantınızı kontrol edip tekrar deneyin.', '#ef4444'); return; }
 
 // jsPDF'in standart fontları (Helvetica) Türkçe'ye özgü ı/İ/ş/Ş/ğ/Ğ harflerini ve ₺ işaretini
 // desteklemiyor (bu harfler PDF'in temel WinAnsi kodlamasında yok). Bunları en yakın okunabilir
 // karşılıklarına çeviriyoruz; ç/ö/ü/Ç/Ö/Ü zaten destekleniyor, onlara dokunmuyoruz.
-// DÜZELTME: Transfer açıklamalarında kullanılan "→" / "←" ok karakterleri de aynı sebeple
-// (WinAnsi kodlamasında yoklar) PDF'e aktarılırken bozuk/garip bir simgeye ("!" gibi) dönüşüyordu.
-// Bunları da okunabilir ASCII karşılıklarına ("->" / "<-") çeviriyoruz.
+// Transfer açıklamalarında kullanılan "→" / "←" ok karakterleri de aynı sebeple (WinAnsi
+// kodlamasında yoklar) PDF'e aktarılırken bozuk/garip bir simgeye dönüşüyordu; okunabilir ASCII
+// karşılıklarına ("->" / "<-") çeviriyoruz.
 const trPdf = (s) => String(s ?? '')
   .replace(/ı/g, 'i').replace(/İ/g, 'I')
   .replace(/ş/g, 's').replace(/Ş/g, 'S')
@@ -4189,18 +4326,18 @@ const trPdf = (s) => String(s ?? '')
   .replace(/→/g, '->').replace(/←/g, '<-');
 const paraPdf = (n) => `${formatla(n)} TL`;
 
-const ayIsimleriPdf = ['Ocak','Subat','Mart','Nisan','Mayis','Haziran','Temmuz','Agustos','Eylul','Ekim','Kasim','Aralik'];
-const ayEtiketi = `${ayIsimleriPdf[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
+const markaRengi = pdfMarkaRengiAl();
+const logoDataUrl = await pdfLogoAl();
 
-const toplamGelirPdf = mevcutAyVerileri.filter(d => d.tur === 'gelir').reduce((t, d) => t + d.tutar, 0);
-const toplamGiderPdf = mevcutAyVerileri.filter(d => d.tur !== 'gelir').reduce((t, d) => t + d.tutar, 0);
+const toplamGelirPdf = verilerListesi.filter(d => d.tur === 'gelir').reduce((t, d) => t + d.tutar, 0);
+const toplamGiderPdf = verilerListesi.filter(d => d.tur !== 'gelir').reduce((t, d) => t + d.tutar, 0);
 const netBakiyePdf = toplamGelirPdf - toplamGiderPdf;
 
 const kategoriToplamPdf = {};
-mevcutAyVerileri.filter(d => d.tur !== 'gelir').forEach(d => { kategoriToplamPdf[d.kategori] = (kategoriToplamPdf[d.kategori] || 0) + d.tutar; });
+verilerListesi.filter(d => d.tur !== 'gelir').forEach(d => { kategoriToplamPdf[d.kategori] = (kategoriToplamPdf[d.kategori] || 0) + d.tutar; });
 const kategoriSatirlari = Object.entries(kategoriToplamPdf).sort((a,b) => b[1]-a[1]).map(([kat, tutar]) => [trPdf(kat), paraPdf(tutar)]);
 
-const islemSatirlari = [...mevcutAyVerileri].sort((a,b) => b.tarih - a.tarih).map(islem => {
+const islemSatirlari = [...verilerListesi].sort((a,b) => b.tarih - a.tarih).map(islem => {
   const tarihStr = new Date(islem.tarih).toLocaleDateString('tr-TR');
   const turIsaret = islem.tur === 'gelir' ? '+' : '-';
   return [tarihStr, trPdf(islem.aciklama || '-'), trPdf(islem.kategori || '-'), trPdf(islem.hesap || 'Nakit'), `${turIsaret}${paraPdf(islem.tutar)}`];
@@ -4210,16 +4347,18 @@ const { jsPDF } = window.jspdf;
 const doc = new jsPDF('p', 'mm', 'a4');
 const sayfaGenislik = doc.internal.pageSize.getWidth();
 
-// Baslik
-doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(118, 75, 162);
-doc.text('Akilli Cuzdan', 14, 18);
+// Baslik (logo varsa metin sağa kayar)
+const baslikX = logoDataUrl ? 30 : 14;
+if (logoDataUrl) { try { doc.addImage(logoDataUrl, 'PNG', 14, 7, 13, 13); } catch (e) {} }
+doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...markaRengi);
+doc.text('Akilli Cuzdan', baslikX, 18);
 doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(107, 114, 128);
-doc.text('Aylik Finans Raporu', 14, 24);
+doc.text('Finans Raporu', baslikX, 24);
 doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(17, 24, 39);
-doc.text(ayEtiketi, sayfaGenislik - 14, 18, { align: 'right' });
+doc.text(baslikEtiketi, sayfaGenislik - 14, 18, { align: 'right' });
 doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(156, 163, 175);
 doc.text(`Olusturulma: ${new Date().toLocaleDateString('tr-TR')}`, sayfaGenislik - 14, 24, { align: 'right' });
-doc.setDrawColor(118, 75, 162); doc.setLineWidth(0.6); doc.line(14, 28, sayfaGenislik - 14, 28);
+doc.setDrawColor(...markaRengi); doc.setLineWidth(0.6); doc.line(14, 28, sayfaGenislik - 14, 28);
 
 // Ozet kutucuklari
 const kutuGenislik = (sayfaGenislik - 28 - 8) / 3, kutuY = 34, kutuYukseklik = 18;
@@ -4245,7 +4384,7 @@ doc.text('Kategori Bazli Gider Dagilimi', 14, sonrakiY);
 doc.autoTable({
   startY: sonrakiY + 3,
   head: [['Kategori', 'Tutar']],
-  body: kategoriSatirlari.length ? kategoriSatirlari : [['Bu ay gider kaydi yok', '']],
+  body: kategoriSatirlari.length ? kategoriSatirlari : [['Bu donemde gider kaydi yok', '']],
   theme: 'grid',
   styles: { font: 'helvetica', fontSize: 9, cellPadding: 2.5 },
   headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81] },
@@ -4257,7 +4396,7 @@ sonrakiY = doc.lastAutoTable.finalY + 10;
 
 // Islem detay tablosu
 doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(55, 65, 81);
-doc.text(`Islem Detaylari (${mevcutAyVerileri.length} islem)`, 14, sonrakiY);
+doc.text(`Islem Detaylari (${verilerListesi.length} islem)`, 14, sonrakiY);
 doc.autoTable({
   startY: sonrakiY + 3,
   head: [['Tarih', 'Aciklama', 'Kategori', 'Hesap', 'Tutar']],
@@ -4283,17 +4422,101 @@ for (let i = 1; i <= sayfaSayisi; i++) {
   doc.text('Akilli Cuzdan uygulamasi tarafindan otomatik olusturulmustur.', sayfaGenislik / 2, doc.internal.pageSize.getHeight() - 8, { align: 'center' });
 }
 
-doc.save(`Akilli_Cuzdan_Rapor_${ayIsimleriPdf[seciliTarih.getMonth()]}_${seciliTarih.getFullYear()}.pdf`);
+doc.save(`${dosyaAdi}.pdf`);
 kapatPaneller();
+}
+
+document.getElementById('btn-pdf-aktar').onclick = () => {
+const ayIsimleriPdf = ['Ocak','Subat','Mart','Nisan','Mayis','Haziran','Temmuz','Agustos','Eylul','Ekim','Kasim','Aralik'];
+const ayEtiketi = `${ayIsimleriPdf[seciliTarih.getMonth()]} ${seciliTarih.getFullYear()}`;
+pdfRaporuOlustur(mevcutAyVerileri, ayEtiketi, `Akilli_Cuzdan_Rapor_${ayIsimleriPdf[seciliTarih.getMonth()]}_${seciliTarih.getFullYear()}`);
+};
+
+// YENİ: Özel dönem (istenilen başlangıç/bitiş tarihi) PDF raporu. "mevcutAyVerileri" sadece
+// ekranda o an gösterilen ±1 ay penceresini kapsadığı için, burada Firestore'dan ilgili
+// tarih aralığı tek seferlik (getDocs) olarak ayrıca çekiliyor.
+document.getElementById('btn-ozel-rapor-olustur').onclick = async () => {
+const baslangicStr = document.getElementById('ozel-rapor-baslangic').value;
+const bitisStr = document.getElementById('ozel-rapor-bitis').value;
+if (!baslangicStr || !bitisStr) { return bilgiGoster('⚠️', 'Eksik Bilgi', 'Lütfen başlangıç ve bitiş tarihlerini seçin.', '#f59e0b'); }
+const baslangicTarih = new Date(baslangicStr); baslangicTarih.setHours(0,0,0,0);
+const bitisTarih = new Date(bitisStr); bitisTarih.setHours(23,59,59,999);
+if (baslangicTarih.getTime() > bitisTarih.getTime()) { return bilgiGoster('⚠️', 'Geçersiz Aralık', 'Başlangıç tarihi, bitiş tarihinden sonra olamaz.', '#f59e0b'); }
+
+const btn = document.getElementById('btn-ozel-rapor-olustur');
+const eskiMetin = btn.innerText;
+btn.innerText = 'Hazırlanıyor...'; btn.disabled = true;
+try {
+  const uid = TV_MODU ? EFEKTIF_UID : auth.currentUser.uid;
+  const snap = await getDocs(query(collection(db, "islemler"), where("uid", "==", uid), where("tarih", ">=", baslangicTarih.getTime()), where("tarih", "<=", bitisTarih.getTime())));
+  const veriler = [];
+  snap.forEach(d => veriler.push({ id: d.id, ...d.data() }));
+  const etiket = `${baslangicTarih.toLocaleDateString('tr-TR')} - ${bitisTarih.toLocaleDateString('tr-TR')}`;
+  const dosyaAdi = `Akilli_Cuzdan_Rapor_${baslangicStr}_${bitisStr}`;
+  await pdfRaporuOlustur(veriler, etiket, dosyaAdi);
+} catch (e) {
+  hataGoster(e);
+} finally {
+  btn.innerText = eskiMetin; btn.disabled = false;
+}
 };
 
 
 
+// YENİ: Spam/sistem yükünü önlemek için "Sorun Bildir" gönderimlerine günlük (takvim günü
+// bazında) üst sınır getirildi. Limit, kullanıcının o gün (bugün 00:00'dan itibaren) gönderdiği
+// ve kanal:'sohbet' OLMAYAN (yani gerçek sorun/öneri) "bildirimler" kayıtları sayılarak
+// hesaplanıyor; sohbet cevapları bu sayaca dahil değil, aksi halde admin'e cevap yazmak da
+// günlük hakkı tüketirdi.
+const BILDIRIM_GUNLUK_LIMIT = 3;
+async function bildirimGununBasiSayisiniAl(uid) {
+  const gununBasi = new Date(); gununBasi.setHours(0, 0, 0, 0);
+  const snap = await getDocs(query(collection(db, "bildirimler"), where("uid", "==", uid), where("tarih", ">=", gununBasi.getTime())));
+  let sayi = 0;
+  snap.forEach(d => { if (d.data().kanal !== 'sohbet') sayi++; });
+  return sayi;
+}
+async function bildirimLimitGoster() {
+  const bilgiEl = document.getElementById('bildirim-limit-bilgi');
+  const gonderBtn = document.getElementById('btn-bildirim-gonder');
+  if (!bilgiEl || !auth.currentUser) return;
+  try {
+    const gonderilen = await bildirimGununBasiSayisiniAl(auth.currentUser.uid);
+    const kalan = Math.max(0, BILDIRIM_GUNLUK_LIMIT - gonderilen);
+    if (kalan <= 0) {
+      bilgiEl.innerHTML = '⚠️ Bugünkü bildirim gönderme hakkınızı (3/3) kullandınız. Yarın tekrar deneyebilirsiniz.';
+      bilgiEl.style.color = '#fca5a5';
+      if (gonderBtn) gonderBtn.disabled = true;
+    } else {
+      bilgiEl.innerHTML = `Bugün ${kalan}/${BILDIRIM_GUNLUK_LIMIT} bildirim gönderme hakkınız kaldı.`;
+      bilgiEl.style.color = '';
+      if (gonderBtn) gonderBtn.disabled = false;
+    }
+  } catch (e) { console.log("Bildirim limiti kontrol edilemedi:", e); }
+}
+document.getElementById('btn-bildir-menu').addEventListener('click', bildirimLimitGoster);
+const masNavBildirim = document.getElementById('mas-nav-bildirim');
+if (masNavBildirim) masNavBildirim.addEventListener('click', bildirimLimitGoster, true);
+
 document.getElementById('btn-bildirim-gonder').onclick = async () => {
 const metin = document.getElementById('bildirim-metni').value;
 if (!metin) return;
-await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
-bilgiGoster('✅', 'Başarılı', 'Gönderildi!', '#10b981'); document.getElementById('bildirim-metni').value = ''; kapatPaneller();
+const gonderBtn = document.getElementById('btn-bildirim-gonder');
+gonderBtn.disabled = true;
+try {
+  const gonderilen = await bildirimGununBasiSayisiniAl(auth.currentUser.uid);
+  if (gonderilen >= BILDIRIM_GUNLUK_LIMIT) {
+    bilgiGoster('⚠️', 'Günlük Limit Doldu', `Günde en fazla ${BILDIRIM_GUNLUK_LIMIT} bildirim gönderebilirsiniz. Lütfen yarın tekrar deneyin.`, '#f59e0b');
+    bildirimLimitGoster();
+    return;
+  }
+  await addDoc(collection(db, "bildirimler"), { uid: auth.currentUser.uid, email: auth.currentUser.email, mesaj: metin, tarih: Date.now() });
+  bilgiGoster('✅', 'Başarılı', 'Gönderildi!', '#10b981'); document.getElementById('bildirim-metni').value = ''; kapatPaneller();
+} catch (e) {
+  hataGoster(e);
+} finally {
+  gonderBtn.disabled = false;
+}
 };
 
 // ============ KULLANICI RÜTBE / YILDIZ SİSTEMİ ============
