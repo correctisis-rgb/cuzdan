@@ -174,6 +174,18 @@ overflow: hidden;
 .icon-btn { background: #fff; color: #764ba2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: 600; line-height: 30px; font-size: 14px; position: relative; }
 .badge { position: absolute; top: -3px; right: -3px; background: red; color: white; border-radius: 50%; width: 14px; height: 14px; font-size: 8px; line-height: 14px; display: none; text-align:center; font-weight:bold; }
 #profil-menu, #duyuru-menu { position: absolute; top: calc(40px + env(safe-area-inset-top)); right: 10px; background: white; color: black; padding: 10px; border-radius: 10px; z-index: 30; text-align: left; }
+/* DÜZELTME: Profil menüsündeki buton sayısı arttıkça (özellikle küçük/kısa ekranlı telefonlarda
+   veya klavye açıkken küçülen viewport'ta) menü, ekranın altına taşıp son butonlara (Çıkış Yap vb.)
+   hiç dokunulamaz hale geliyordu. Artık menü kendi içinde, ekranın kalan yüksekliğine göre üst
+   sınırlanıyor ve gerektiğinde dikey kaydırılabiliyor; en üstteki ilk buton daima görünür kalıyor,
+   geri kalanı parmakla kaydırılarak görülebiliyor. */
+#profil-menu, #duyuru-menu {
+  max-height: calc(100dvh - 60px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#profil-menu::-webkit-scrollbar, #duyuru-menu::-webkit-scrollbar { width: 5px; }
+#profil-menu::-webkit-scrollbar-thumb, #duyuru-menu::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
 /* DÜZELTME: #profil-menu'nün sabit bir genişliği yoktu, içeriğe göre (shrink-to-fit) boyutlanıyordu.
    Bu hesaplama viewport meta içeriğine (masaüstü <-> mobil geçişinde değişiyor) bağlı olduğu için,
    geçiş anında tarayıcı henüz yeni viewport'a göre yeniden hesaplama yapmamışken menü açılırsa
@@ -1265,9 +1277,9 @@ localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 const auth = getAuth(app);
 
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
-// (örn. "1.0.0" -> "1.2.2"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
+// (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.2.2";
+const APP_SURUM = "1.2.3";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
