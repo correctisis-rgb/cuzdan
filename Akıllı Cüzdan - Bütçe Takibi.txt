@@ -1,0 +1,42 @@
+Akıllı Cüzdan - Bütçe Takibi
+
+Gelir-gider takibi, taksit, abonelik ve raporlarla akıllı bütçe yönetimi
+
+Akıllı Cüzdan, harcamalarını ve gelirlerini tek yerden yönetmeni sağlayan, sade ve hızlı bir kişisel bütçe uygulamasıdır. Bankalar arası hesap takibinden taksitli harcamalara, sesle işlem eklemekten detaylı raporlamaya kadar her şey elinin altında.
+
+💰 GELİR-GİDER TAKİBİ
+- Tek dokunuşla gelir/gider ekle, istersen sesli komutla söyle, uygulama otomatik algılasın
+- Kategorilere göre harcamalarını grupla (Market, Fatura, Ulaşım, Sağlık, Eğlence ve daha fazlası)
+- Kendi özel kategori ve hesaplarını oluştur
+
+🏦 ÇOKLU HESAP VE KART YÖNETİMİ
+- Banka hesapları, kredi kartları ve nakit için ayrı ayrı bakiye takibi
+- Kredi kartı borcu ve yüklenen bakiye ayrımı
+- Hesapları istediğin sıraya göre düzenle
+
+💳 TAKSİT VE TEKRARLAYAN İŞLEMLER
+- Büyük harcamaları otomatik taksitlere böl
+- Kira, fatura, abonelik gibi düzenli ödemeleri tek seferde kur, her ay otomatik işlensin
+- Uzun süredir aktif abonelikleri hatırlat, gereksiz harcamaları fark et
+
+📊 DETAYLI RAPORLAR
+- Grafiklerle harcama dağılımını görselleştir
+- Özel tarih aralığına göre rapor oluştur
+- PDF ve Excel formatında dışa aktar, paylaş veya arşivle
+
+🔔 AKILLI BİLDİRİMLER VE TEMALAR
+- Önemli hatırlatmalar ve bildirimlerle geride kalma
+- Mor, Okyanus Mavisi, Orman Yeşili gibi temalarla uygulamanı kişiselleştir
+- Karanlık dostu, göz yormayan tasarım
+
+📱 ÇOKLU CİHAZ DESTEĞİ
+- QR kod ile telefonundaki hesabını bilgisayar veya TV ekranına bağla
+- Offline çalışır, internet kesildiğinde bile işlem eklemeye devam et, bağlantı gelince otomatik senkronize olur
+
+🔒 GÜVENLİ VE HIZLI
+- Verilerin bulutta güvenle saklanır, cihaz değiştirdiğinde kaybolmaz
+- Sade arayüz, gereksiz karmaşadan uzak, günlük kullanım için optimize edilmiş
+
+Param nereye gidiyor diye sormaktan yoruldun mu? Akıllı Cüzdan ile bütçeni birkaç saniyede kontrol altına al.
+
+İndir, hesap oluştur ve paranın kontrolünü eline al!
