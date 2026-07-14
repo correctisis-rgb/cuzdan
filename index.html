@@ -1239,7 +1239,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.0.9";
+const APP_SURUM = "1.2.0";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 const rtdb = getDatabase(app);
 const bildirimSesi = new Audio('bildirim.mp3');
@@ -1298,8 +1298,19 @@ function presenceBaslat(user) {
       // Sayfa gizlenince presence'ı kaldır, geri gelince tekrar ekle
       dbSet(userPresenceRef, null).catch(() => {});
     } else if (document.visibilityState === 'visible' && auth.currentUser) {
-      onDisconnect(userPresenceRef).remove();
-      dbSet(userPresenceRef, { email: user.email, girisTarihi: Date.now() });
+      // DÜZELTME: Sekme uzun süre arka planda kalırsa (özellikle mobilde) Firebase ID token'ı
+      // süresi dolmuş olabilir (token ömrü ~1 saat). Sekme öne geldiğinde token henüz arka planda
+      // tazelenmemişken hemen dbSet() çağrılırsa RTDB kuralları "auth.uid === $uid" şartını
+      // geçersiz/eski bir token ile değerlendirip permission_denied ile reddedebiliyordu — bu da
+      // konsoldaki "FIREBASE WARNING ... permission_denied" hatasının kaynağıydı. Ayrıca bu satırda
+      // hiç .catch() yoktu, bu yüzden hata "uncaught (in promise)" olarak da işaretleniyordu.
+      // Şimdi getIdToken(true) ile token zorla tazelendikten SONRA yazılıyor, ve olası bir
+      // başarısızlık da artık sessizce yutuluyor (presence best-effort'tur, kritik değildir).
+      user.getIdToken(true).catch(() => {}).finally(() => {
+        onDisconnect(userPresenceRef).remove();
+        dbSet(userPresenceRef, { email: user.email, girisTarihi: Date.now() })
+          .catch(e => console.warn('visibilitychange: presence yazılamadı:', e.message));
+      });
       userKaydet(user); // DÜZELTME: burada da sonGiris tazelensin, bkz. yukarıdaki not
     }
   });
