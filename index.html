@@ -1269,7 +1269,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <script type="module">
 // YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, getDoc, setDoc, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, getDoc, setDoc, limit, increment, writeBatch, FieldPath } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification, signInAnonymously, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref as dbRef, set as dbSet, update as dbUpdate, runTransaction, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.3.1";
+const APP_SURUM = "1.3.2";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -2997,6 +2997,10 @@ window.tkrSil = (id) => {
 
 async function tekrarlayanOtomatikEkle(uid) {
   try {
+    // Fonksiyon hangi noktadan çağrılırsa çağrılsın (girişte otomatik ya da sabit gider
+    // eklenirken manuel), hesap özeti hazırlığının tamamlanmış olduğundan emin oluyoruz.
+    if (!_hesapOzetiHazirPromise) _hesapOzetiHazirPromise = hesapOzetiHazirOlduguBaslat(uid);
+    await _hesapOzetiHazirPromise;
     const simdi = new Date();
     const buAyAnahtari = `${simdi.getFullYear()}-${simdi.getMonth()}`;
     const snap = await getDocs(query(collection(db, "tekrarlayanlar"), where("uid", "==", uid), where("aktif", "==", true)));
@@ -3009,11 +3013,16 @@ async function tekrarlayanOtomatikEkle(uid) {
 
       let islemTarihi = new Date(simdi.getFullYear(), simdi.getMonth(), t.gun, 12, 0, 0);
 
-      await addDoc(collection(db, "islemler"), {
+      // PERFORMANS: Otomatik eklenen işlem, "sonEklenenAy" güncellemesi ve hesap özeti
+      // (bakiye aggregate) tek batch'te, tek ağ isteğinde gönderiliyor.
+      const otomatikBatch = writeBatch(db);
+      otomatikBatch.set(doc(collection(db, "islemler")), {
         uid, aciklama: t.aciklama + ' (Otomatik)', tutar: t.tutar, tur: 'gider',
         kategori: t.kategori, hesap: t.hesap, tarih: islemTarihi.getTime()
       });
-      await updateDoc(doc(db, "tekrarlayanlar", d.id), { sonEklenenAy: buAyAnahtari });
+      otomatikBatch.update(doc(db, "tekrarlayanlar", d.id), { sonEklenenAy: buAyAnahtari });
+      hesapOzetiBatchGuncelle(otomatikBatch, uid, [{ hesap: t.hesap, delta: -t.tutar }]);
+      await otomatikBatch.commit();
       otomatikEklenenSayisi++;
     }
     // YENİ: Bu ay ilk kez otomatik olarak eklenen sabit gider/abonelik varsa kullanıcıyı sesli uyar.
@@ -3624,7 +3633,7 @@ loadCustomData(user); // boş, uyumluluk için
 oturumTimerSifirla();
 ekranGoster('app-screen');
 if (navigator.onLine) {
-  tekrarlayanOtomatikEkle(user.uid);
+  tekrarlayanOtomatikEkle(user.uid); // içeride hesap özeti hazırlığını da garanti eder
   kartAyarlariYukle();
   kullaniciAyarlariYukle(user.uid);
 } else {
@@ -4124,17 +4133,20 @@ async function bakiyeleriGoster() {
   listeEl.innerHTML = '';
   try {
     const uid = TV_MODU ? EFEKTIF_UID : auth.currentUser.uid;
-    const snapshot = await getDocs(query(collection(db, "islemler"), where("uid", "==", uid)));
-    const hesapBakiyeleri = {};
+    let hesapBakiyeleri = {};
     // Varsayılan hesaplar her zaman gösterilsin (işlem olmasa bile 0 TL olarak görünsün)
     Object.keys(_hesapIsimleriMapBakiye).forEach(h => hesapBakiyeleri[h] = 0);
     (_kullaniciAyarlariCache.hesaplar || []).forEach(h => { if (!(h in hesapBakiyeleri)) hesapBakiyeleri[h] = 0; });
-    snapshot.forEach(d => {
-      const data = d.data();
-      const hsp = data.hesap || 'Nakit';
-      if (!(hsp in hesapBakiyeleri)) hesapBakiyeleri[hsp] = 0;
-      if (data.tur === 'gelir') hesapBakiyeleri[hsp] += data.tutar; else hesapBakiyeleri[hsp] -= data.tutar;
-    });
+    // PERFORMANS: Artık tüm işlem geçmişini tek tek taramıyoruz — tek bir küçük özet
+    // döküman okunuyor (bkz. "HESAP BAKİYE ÖZETİ" bölümü). Döküman henüz yoksa (bu
+    // güncellemeden önce kayıt olmuş kullanıcı) tek seferlik migrasyon otomatik çalışır.
+    const ozetSnap = await getDoc(hesapOzetiRef(uid));
+    if (ozetSnap.exists()) {
+      const kayitliBakiyeler = ozetSnap.data().bakiyeler || {};
+      Object.keys(kayitliBakiyeler).forEach(h => { hesapBakiyeleri[h] = kayitliBakiyeler[h]; });
+    } else {
+      hesapBakiyeleri = await hesapOzetiMigrasyonYap(uid, hesapBakiyeleri);
+    }
     _sonHesapBakiyeleri = hesapBakiyeleri; // transfer formunun bakiye kontrolü için ham (kırpılmamış) değerler saklanıyor
     const siraliAnahtarlar = hesapSiralamasiUygula(Object.keys(hesapBakiyeleri));
     transferHesapSecenekleriDoldur(siraliAnahtarlar);
@@ -4236,7 +4248,96 @@ async function bakiyeleriGoster() {
   }
 }
 
-// ============ TAKSİT ÖZETİ (Gelecek Ay Ödenecek Taksit Tutarı) ============
+// ============ HESAP BAKİYE ÖZETİ (PERFORMANS: kalıcı toplam sistemi) ============
+// ESKİ SİSTEM: "Bakiyelerim" ekranı her açıldığında kullanıcının TÜM ZAMANLAR boyunca
+// eklediği her işlemi (islemler koleksiyonundan) tek tek indirip topluyordu. Kullanıcının
+// geçmişi büyüdükçe (aylar/yıllar boyunca eklenen binlerce kayıt) bu, her açılışta daha
+// yavaş hale geliyordu.
+// YENİ SİSTEM: Her hesabın bakiyesi, "hesap_ozetleri/{uid}" adında TEK KÜÇÜK bir dökümanda
+// canlı olarak tutuluyor. İşlem eklenirken/düzenlenirken/silinirken bu döküman, Firestore'un
+// atomik increment() özelliğiyle GÜNCELLENİYOR (önce okuyup sonra yazmaya gerek yok) — ve bu
+// güncelleme, işlem kaydıyla AYNI writeBatch (tek ağ isteği) içinde gönderiliyor. Yani işlem
+// ekleme hızı ESKİSİYLE AYNI kalıyor (round-trip sayısı artmıyor), ama "Bakiyelerim" ekranı
+// artık binlerce kaydı değil, tek bir küçük dökümanı okuyor — veri geçmişi ne kadar büyürse
+// büyüsün açılış hızı sabit kalıyor.
+const HESAP_OZET_KOLEKSIYONU = "hesap_ozetleri";
+function hesapOzetiRef(uid) { return doc(db, HESAP_OZET_KOLEKSIYONU, uid); }
+// FieldPath kullanıyoruz (düz "bakiyeler.HesapAdı" string'i değil) çünkü kullanıcı hesap
+// adı içine nokta (".") gibi bir karakter koyarsa, düz string yol notasyonu yanlış iç içe
+// alan oluşturabilirdi. FieldPath, her segmenti harfiyen (nokta önemsiz) ele alır.
+function hesapOzetAlanYolu(hesap) { return new FieldPath('bakiyeler', hesap); }
+
+// Tüm yazma noktalarının (ekle, taksit, transfer, sil, bakiye düzelt, otomatik tekrarlayan)
+// hesap özeti dökümanının HAZIR (var olduğundan emin) olmasını beklemesi gerekiyor — aksi
+// halde kullanıcı hiç "Bakiyelerim" açmadan ilk işlemini eklerse, özet döküman EKSİK geçmişle
+// (sadece o anki delta ile) oluşabilir ve migrasyon bir daha hiç tetiklenmeyebilir (çünkü artık
+// "var" görünür). Bu yüzden giriş anında BİR KEZ bu kontrol/migrasyon başlatılıyor ve sonucu bu
+// promise'ta saklanıyor; sonraki tüm "await" çağrıları (promise zaten çözülmüş olacağından)
+// EK AĞ İSTEĞİ YARATMADAN anında devam eder.
+let _hesapOzetiHazirPromise = null;
+function hesapOzetiHazirOlduguBaslat(uid) {
+  _hesapOzetiHazirPromise = (async () => {
+    try {
+      const snap = await getDoc(hesapOzetiRef(uid));
+      if (!snap.exists()) await hesapOzetiMigrasyonYap(uid, {});
+    } catch (e) {
+      console.error('Hesap özeti hazırlık kontrolü başarısız:', e);
+    }
+  })();
+  return _hesapOzetiHazirPromise;
+}
+
+// Kullanıcının hiç "hesap_ozetleri" dökümanı yoksa (ör. bu güncellemeden önce kayıt olmuş
+// eski kullanıcı ya da hiç işlem eklememiş yeni kullanıcı), TEK SEFERLİK olarak eski usul
+// tam tarama yapılıp özet döküman oluşturuluyor. Bundan sonra bu tarama BİR DAHA hiç
+// çalışmıyor; sistem sürekli increment ile güncel kalıyor.
+async function hesapOzetiMigrasyonYap(uid, baslangicMap) {
+  const hesapBakiyeleri = { ...baslangicMap };
+  const snapshot = await getDocs(query(collection(db, "islemler"), where("uid", "==", uid)));
+  snapshot.forEach(d => {
+    const data = d.data();
+    const hsp = data.hesap || 'Nakit';
+    if (!(hsp in hesapBakiyeleri)) hesapBakiyeleri[hsp] = 0;
+    if (data.tur === 'gelir') hesapBakiyeleri[hsp] += data.tutar; else hesapBakiyeleri[hsp] -= data.tutar;
+  });
+  try {
+    await setDoc(hesapOzetiRef(uid), { bakiyeler: hesapBakiyeleri, uid, guncellenme: Date.now() });
+  } catch (e) {
+    console.error('Hesap özeti migrasyon kaydı yapılamadı:', e);
+  }
+  return hesapBakiyeleri;
+}
+
+// Bir writeBatch'e, hesap özetindeki bir veya iki hesabın bakiyesini atomik şekilde
+// artırıp/azaltacak update işlemini ekler. delta pozitifse bakiye artar, negatifse azalır.
+// ikinciHesap verilirse (transferlerde olduğu gibi) tek bir update çağrısında iki farklı
+// hesabın alanı birlikte güncellenir (aynı dökümana aynı batch içinde iki ayrı update()
+// çağrısı yapmak yerine, TEK bir update() objesinde birleştirmek gerekiyor).
+function hesapOzetiBatchGuncelle(batch, uid, guncellemeler) {
+  // guncellemeler: [{ hesap, delta }, ...] — aynı hesap birden fazla kez geçerse deltalar
+  // burada TOPLANARAK tek bir alan güncellemesine indirgeniyor (aynı update() objesinde
+  // aynı alanı iki kez belirtmek güvenilir değildir).
+  const toplananlar = {};
+  guncellemeler.forEach(({ hesap, delta }) => {
+    if (!hesap || !delta) return;
+    toplananlar[hesap] = (toplananlar[hesap] || 0) + delta;
+  });
+  const updateObj = {};
+  let herhangiVar = false;
+  Object.keys(toplananlar).forEach(hesap => {
+    if (toplananlar[hesap] === 0) return;
+    updateObj[hesapOzetAlanYolu(hesap)] = increment(toplananlar[hesap]);
+    herhangiVar = true;
+  });
+  // ÖNEMLİ: batch.update() yerine batch.set(..., {merge:true}) kullanıyoruz. update()
+  // döküman yoksa hata fırlatır ve bu, batch'teki DİĞER işlemi (asıl gelir/gider kaydını)
+  // da başarısız kılardı. set+merge ise döküman yoksa otomatik oluşturur, varsa sadece
+  // belirtilen alanları günceller — increment() her iki durumda da doğru çalışır.
+  if (herhangiVar) batch.set(hesapOzetiRef(uid), updateObj, { merge: true });
+  return herhangiVar;
+}
+
+
 // Taksitli işlemler (btn-taksit ile eklenenler) her ay için ayrı bir "islemler" kaydı olarak
 // saklanıyor; her kaydın açıklaması "... (i/N)" formatında bitiyor (ör. "Telefon (3/12)").
 // Burada, GELECEK ayın tarih aralığına düşen ve bu formata uyan kayıtlar taranarak: kaç farklı
@@ -4332,8 +4433,13 @@ async function transferiUygula(kaynak, hedef, tutar) {
   const btnTransfer = document.getElementById('btn-transfer-yap');
   btnTransfer.disabled = true;
   try {
-    await addDoc(collection(db, "islemler"), { uid, aciklama: `Transfer → ${hedefIsim}`, tutar, tur: 'gider', kategori: 'Transfer', hesap: kaynak, tarih: simdi });
-    await addDoc(collection(db, "islemler"), { uid, aciklama: `Transfer ← ${kaynakIsim}`, tutar, tur: 'gelir', kategori: 'Transfer', hesap: hedef, tarih: simdi + 1 });
+    if (_hesapOzetiHazirPromise) await _hesapOzetiHazirPromise;
+    // PERFORMANS: İki işlem kaydı + hesap özeti güncellemesi TEK batch'te (tek ağ isteği).
+    const batch = writeBatch(db);
+    batch.set(doc(collection(db, "islemler")), { uid, aciklama: `Transfer → ${hedefIsim}`, tutar, tur: 'gider', kategori: 'Transfer', hesap: kaynak, tarih: simdi });
+    batch.set(doc(collection(db, "islemler")), { uid, aciklama: `Transfer ← ${kaynakIsim}`, tutar, tur: 'gelir', kategori: 'Transfer', hesap: hedef, tarih: simdi + 1 });
+    hesapOzetiBatchGuncelle(batch, uid, [{ hesap: kaynak, delta: -tutar }, { hesap: hedef, delta: tutar }]);
+    await batch.commit();
     document.getElementById('transfer-tutar').value = '';
     document.getElementById('transfer-form').classList.add('hidden');
     bakiyeleriGoster();
@@ -5104,6 +5210,9 @@ document.getElementById('hesap').value = hesap;
 
 document.getElementById('tarih').valueAsDate = new Date(tarih);
 window.duzenlenecekId = id;
+// PERFORMANS: Hesap özeti (bakiye aggregate) güncellenirken eski etkiyi geri almak için
+// düzenlemeye başlarken işlemin ESKİ tutar/tür/hesap bilgisi saklanıyor.
+window._duzenlenecekEskiVeri = { tutar, tur, hesap };
 
 document.getElementById('btn-gider').innerText = "GÜNCELLE (-)";
 document.getElementById('btn-gelir').innerText = "GÜNCELLE (+)";
@@ -5147,17 +5256,35 @@ const veriObj = { uid: auth.currentUser.uid, aciklama, tutar, tur, kategori, hes
 if (ekstreAy) veriObj.ekstreAy = ekstreAy;
 
 try {
+const uid = auth.currentUser.uid;
+if (_hesapOzetiHazirPromise) await _hesapOzetiHazirPromise;
+const batch = writeBatch(db);
 if (window.duzenlenecekId) {
 const guncObj = { aciklama, tutar, tur, kategori, hesap, tarih: tarihObj.getTime() };
 if (ekstreAy) guncObj.ekstreAy = ekstreAy; else guncObj.ekstreAy = null;
-await updateDoc(doc(db, "islemler", window.duzenlenecekId), guncObj);
+batch.update(doc(db, "islemler", window.duzenlenecekId), guncObj);
+// PERFORMANS: Hesap özeti tek ağ isteğinde (aynı batch) güncelleniyor. Eski etki
+// geri alınıp yeni etki uygulanıyor; hesap değişmişse iki farklı hesap, değişmemişse
+// tek hesap için net fark tek seferde yazılıyor (hesapOzetiBatchGuncelle bunu birleştirir).
+const eski = window._duzenlenecekEskiVeri || { tutar, tur, hesap };
+const eskiEtki = eski.tur === 'gelir' ? eski.tutar : -eski.tutar;
+const yeniEtki = tur === 'gelir' ? tutar : -tutar;
+hesapOzetiBatchGuncelle(batch, uid, [
+  { hesap: eski.hesap, delta: -eskiEtki },
+  { hesap, delta: yeniEtki }
+]);
 window.duzenlenecekId = null;
+window._duzenlenecekEskiVeri = null;
 document.getElementById('btn-gider').innerText = "GİDER (-)";
 document.getElementById('btn-gelir').innerText = "GELİR (+)";
 document.getElementById('btn-taksit').innerText = "TAKSİT (💸)";
 } else {
-await addDoc(collection(db, "islemler"), veriObj);
+const yeniRef = doc(collection(db, "islemler"));
+batch.set(yeniRef, veriObj);
+const etki = tur === 'gelir' ? tutar : -tutar;
+hesapOzetiBatchGuncelle(batch, uid, [{ hesap, delta: etki }]);
 }
+await batch.commit();
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
 } catch (e) { console.error("Ekleme hatası:", e); }
 }
@@ -5214,8 +5341,16 @@ window.sil = (id) => {
 
   // 5 saniye sonra gerçekten sil
   clearTimeout(silinecekTimer);
-  silinecekTimer = setTimeout(() => {
-    deleteDoc(doc(db, "islemler", id));
+  silinecekTimer = setTimeout(async () => {
+    // PERFORMANS: Silme işlemi ve hesap özetindeki geri alma (reverse) tek batch'te,
+    // tek ağ isteğinde gönderiliyor.
+    const uid = auth.currentUser.uid;
+    if (_hesapOzetiHazirPromise) await _hesapOzetiHazirPromise;
+    const batch = writeBatch(db);
+    batch.delete(doc(db, "islemler", id));
+    const etki = islem.tur === 'gelir' ? islem.tutar : -islem.tutar;
+    hesapOzetiBatchGuncelle(batch, uid, [{ hesap: islem.hesap || 'Nakit', delta: -etki }]);
+    batch.commit().catch(e => console.error('Silme/özet güncelleme hatası:', e));
     toast.style.display = 'none';
     silinecekVeri = null;
   }, 5000);
@@ -5329,8 +5464,11 @@ document.getElementById('btn-bakiye-duzelt-onayla').onclick = async () => {
   const btn = document.getElementById('btn-bakiye-duzelt-onayla');
   btn.disabled = true;
   try {
-    await addDoc(collection(db, "islemler"), {
-      uid: auth.currentUser.uid,
+    const uid = auth.currentUser.uid;
+    if (_hesapOzetiHazirPromise) await _hesapOzetiHazirPromise;
+    const batch = writeBatch(db);
+    batch.set(doc(collection(db, "islemler")), {
+      uid,
       aciklama: 'Bakiye Düzeltme',
       tutar: Math.abs(fark),
       tur: fark > 0 ? 'gelir' : 'gider',
@@ -5338,6 +5476,8 @@ document.getElementById('btn-bakiye-duzelt-onayla').onclick = async () => {
       hesap: _duzeltilecekHesap,
       tarih: Date.now()
     });
+    hesapOzetiBatchGuncelle(batch, uid, [{ hesap: _duzeltilecekHesap, delta: fark }]);
+    await batch.commit();
     bakiyeDuzeltModaliniKapat();
     bakiyeleriGoster();
   } catch (e) {
@@ -5396,6 +5536,7 @@ kullaniciAyarlariKaydet();
 document.getElementById('btn-taksit').onclick = async () => {
 if (window.duzenlenecekId) {
 window.duzenlenecekId = null;
+window._duzenlenecekEskiVeri = null;
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
 document.getElementById('btn-gider').innerText = "GİDER (-)";
 document.getElementById('btn-gelir').innerText = "GELİR (+)";
@@ -5431,21 +5572,33 @@ let baslangicTarihi = new Date(tarihVal);
 baslangicTarihi.setHours(12, 0, 0, 0);
 
 onayGoster('📆', `${formatla(toplamTutar)} TL tutarındaki işlem, ${taksitSayisi} aya ${formatla(aylikTutar)} TL olarak bölünecektir. Onaylıyor musunuz?`, async () => {
+// PERFORMANS: Önceden her taksit ayrı ayrı await addDoc(...) ile sırayla ekleniyordu
+// (12 taksit = 12 ayrı ağ isteği, biri bitmeden diğeri başlamıyordu). Artık hepsi TEK
+// bir writeBatch içinde, hesap özeti güncellemesiyle birlikte TEK ağ isteğinde gidiyor —
+// hem daha hızlı hem de "Bakiyelerim" ekranının anında doğru göstermesi garanti.
+const uid = auth.currentUser.uid;
+if (_hesapOzetiHazirPromise) await _hesapOzetiHazirPromise;
+const batch = writeBatch(db);
+let toplamEklenenGider = 0;
 for(let i = 0; i < taksitSayisi; i++) {
 let islemTarihi = new Date(baslangicTarihi);
 islemTarihi.setMonth(islemTarihi.getMonth() + i);
 
 let taksitAciklama = `${aciklama} (${i+1}/${taksitSayisi})`;
-await addDoc(collection(db, "islemler"), { 
-uid: auth.currentUser.uid, 
-aciklama: taksitAciklama, 
-tutar: aylikTutar, 
-tur: 'gider', 
-kategori, 
-hesap, 
-tarih: islemTarihi.getTime() 
+const yeniRef = doc(collection(db, "islemler"));
+batch.set(yeniRef, {
+uid,
+aciklama: taksitAciklama,
+tutar: aylikTutar,
+tur: 'gider',
+kategori,
+hesap,
+tarih: islemTarihi.getTime()
 });
+toplamEklenenGider += aylikTutar;
 }
+hesapOzetiBatchGuncelle(batch, uid, [{ hesap, delta: -toplamEklenenGider }]);
+await batch.commit();
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
 sesCal(onaySesi);
 bilgiGoster('✅', 'Başarılı', 'Taksitler başarıyla eklendi!', '#10b981');
