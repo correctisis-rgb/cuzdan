@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.3.2";
+const APP_SURUM = "1.3.3";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -5286,6 +5286,13 @@ hesapOzetiBatchGuncelle(batch, uid, [{ hesap, delta: etki }]);
 }
 await batch.commit();
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
+// DÜZELTME: Gider/gelir eklendiğinde Firestore'daki hesap bakiyesi doğru güncelleniyordu,
+// ama "Bakiyelerim" paneli açık kalsa bile yeniden çizilmiyordu (sadece panel yeniden
+// açıldığında / transferde / bakiye düzeltmede tetikleniyordu). Bu yüzden ödeme yapılan
+// hesabın ekrandaki bakiyesi, panel kapatılıp açılana kadar eski değeri gösteriyordu.
+// Panel şu an açıksa anında tazelenir.
+const _bakiyelerPanelEl = document.getElementById('bakiyeler-panel');
+if (_bakiyelerPanelEl && !_bakiyelerPanelEl.classList.contains('hidden')) { bakiyeleriGoster(); }
 } catch (e) { console.error("Ekleme hatası:", e); }
 }
 
@@ -5602,6 +5609,9 @@ await batch.commit();
 document.getElementById('aciklama').value = ''; document.getElementById('tutar').value = '';
 sesCal(onaySesi);
 bilgiGoster('✅', 'Başarılı', 'Taksitler başarıyla eklendi!', '#10b981');
+// DÜZELTME: ekle() fonksiyonundaki ile aynı sebep — Bakiyelerim paneli açıksa anında tazelenir.
+const _bakiyelerPanelElTaksit = document.getElementById('bakiyeler-panel');
+if (_bakiyelerPanelElTaksit && !_bakiyelerPanelElTaksit.classList.contains('hidden')) { bakiyeleriGoster(); }
 }, '#6366f1', 'Onayla, Ekle');
 }, {tur:'number', inputMode:'numeric'});
 };
