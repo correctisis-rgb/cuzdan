@@ -1269,7 +1269,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <script type="module">
 // YENİ: updateDoc eklendi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, getDoc, setDoc, limit, increment, writeBatch, FieldPath } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, query, where, onSnapshot, deleteDoc, doc, orderBy, getDocs, updateDoc, getDoc, setDoc, limit, increment, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, updatePassword, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification, signInAnonymously, deleteUser } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref as dbRef, set as dbSet, update as dbUpdate, runTransaction, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.3.3";
+const APP_SURUM = "1.3.4";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -4262,10 +4262,14 @@ async function bakiyeleriGoster() {
 // büyüsün açılış hızı sabit kalıyor.
 const HESAP_OZET_KOLEKSIYONU = "hesap_ozetleri";
 function hesapOzetiRef(uid) { return doc(db, HESAP_OZET_KOLEKSIYONU, uid); }
-// FieldPath kullanıyoruz (düz "bakiyeler.HesapAdı" string'i değil) çünkü kullanıcı hesap
-// adı içine nokta (".") gibi bir karakter koyarsa, düz string yol notasyonu yanlış iç içe
-// alan oluşturabilirdi. FieldPath, her segmenti harfiyen (nokta önemsiz) ele alır.
-function hesapOzetAlanYolu(hesap) { return new FieldPath('bakiyeler', hesap); }
+// NOT: Daha önce burada hesap adını FieldPath('bakiyeler', hesap) ile bir "yol nesnesi"ne
+// çevirip bunu updateObj'nin hesaplanan anahtarı olarak kullanıyorduk. Bu YANLIŞTI: bir JS
+// nesne anahtarı her zaman string'e zorlanır, yani FieldPath nesnesi sessizce
+// "bakiyeler.HesapAdı" (içinde gerçek bir nokta olan) düz bir string'e dönüşüyordu. Bu string
+// set(...,{merge:true}) ile yazılınca, Firestore onu "bakiyeler" map'inin içine değil,
+// dökümanın en üst seviyesinde ayrı/hayalet bir alan olarak yazıyordu — bu yüzden asıl
+// gösterilen bakiye hiç güncellenmiyordu. Artık aşağıda gerçek iç içe (nested) bir JS nesnesi
+// kuruyoruz; bu, hesap adında nokta olsa bile doğru şekilde "bakiyeler" map'inin içine yazılır.
 
 // Tüm yazma noktalarının (ekle, taksit, transfer, sil, bakiye düzelt, otomatik tekrarlayan)
 // hesap özeti dökümanının HAZIR (var olduğundan emin) olmasını beklemesi gerekiyor — aksi
@@ -4322,11 +4326,18 @@ function hesapOzetiBatchGuncelle(batch, uid, guncellemeler) {
     if (!hesap || !delta) return;
     toplananlar[hesap] = (toplananlar[hesap] || 0) + delta;
   });
-  const updateObj = {};
+  const updateObj = { bakiyeler: {} };
   let herhangiVar = false;
   Object.keys(toplananlar).forEach(hesap => {
     if (toplananlar[hesap] === 0) return;
-    updateObj[hesapOzetAlanYolu(hesap)] = increment(toplananlar[hesap]);
+    // NOT: set(...,{merge:true}) anahtarlardaki noktaları yol olarak PARSE ETMEZ, harfiyen
+    // alan adı sayar. Bu yüzden FieldPath'i hesaplanan bir nesne anahtarı olarak kullanmak
+    // (updateObj[fieldPathNesnesi] = ...) onu sessizce string'e çevirir ve "bakiyeler.Hesap"
+    // adında ayrı/hayalet bir üst seviye alan yaratırdı — asıl "bakiyeler" map'i hiç
+    // güncellenmezdi. Bunun yerine gerçek iç içe (nested) bir JS nesnesi kuruyoruz; merge:true
+    // bunu "bakiyeler" map'inin İÇİNE doğru şekilde yazar (hesap adında nokta olsa bile, çünkü
+    // burada anahtar bir path string'i değil, gerçek bir nesne seviyesi).
+    updateObj.bakiyeler[hesap] = increment(toplananlar[hesap]);
     herhangiVar = true;
   });
   // ÖNEMLİ: batch.update() yerine batch.set(..., {merge:true}) kullanıyoruz. update()
