@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.3.6";
+const APP_SURUM = "1.3.7";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -5085,10 +5085,10 @@ veriler.push({ id: d.id, ...data, isPending: d.metadata.hasPendingWrites });
 // kayıtları da aynı sebeple (gerçek gelir/gider değil, sadece görünen bakiyeyi gerçek duruma
 // eşitleyen manuel bir ayar) aynı şekilde hariç tutuluyor.
 const hesapDisiKategoriMi = data.kategori === 'Transfer' || data.kategori === 'Düzeltme';
-if(data.tur === 'gelir') { bakiye += data.tutar; if (!hesapDisiKategoriMi) kategoriToplamlar['Gelir'] += data.tutar; } 
+if(data.tur === 'gelir') { if (!hesapDisiKategoriMi) { bakiye += data.tutar; kategoriToplamlar['Gelir'] += data.tutar; } } 
 else { 
-bakiye -= data.tutar; 
 if (!hesapDisiKategoriMi) {
+bakiye -= data.tutar;
 const kat = data.kategori || 'Genel'; 
 kategoriToplamlar[kat] = (kategoriToplamlar[kat] || 0) + data.tutar;
 const hsp = data.hesap || 'Nakit';
