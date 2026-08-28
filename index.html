@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.3.4";
+const APP_SURUM = "1.3.5";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -4151,7 +4151,22 @@ async function bakiyeleriGoster() {
     const siraliAnahtarlar = hesapSiralamasiUygula(Object.keys(hesapBakiyeleri));
     transferHesapSecenekleriDoldur(siraliAnahtarlar);
     hesapDropdownSiralaGoster(siraliAnahtarlar);
-    let html = '';
+    // Toplam bakiye hesapla (tüm hesapların gösterilen bakiyeleri)
+    let toplamBakiye = 0;
+    siraliAnahtarlar.forEach(hsp => {
+      const turu = hesapTuruGetir(hsp);
+      const hamBakiye = hesapBakiyeleri[hsp];
+      const gosterilecek = turu === 'kredi' ? Math.max(0, hamBakiye) : hamBakiye;
+      toplamBakiye += gosterilecek;
+    });
+    const toplamEksiMi = toplamBakiye < 0;
+    const toplamHtml = `<div style="background:linear-gradient(135deg,#1e3a5f,#1e5f4e); border-radius:14px; padding:12px 16px; margin-bottom:12px; box-shadow:0 4px 10px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.15);">
+      <div style="font-size:11px; opacity:0.8; margin-bottom:4px;">💼 Toplam Net Varlık</div>
+      <div style="font-size:22px; font-weight:bold; color:${toplamEksiMi ? '#fca5a5' : '#6ee7b7'};">${toplamEksiMi ? '-' : ''}${formatla(Math.abs(toplamBakiye))} TL</div>
+      <div style="font-size:10px; opacity:0.6; margin-top:3px;">${siraliAnahtarlar.length} hesap toplamı</div>
+    </div>`;
+
+    let html = toplamHtml;
     siraliAnahtarlar.forEach((hsp, index) => {
       const turu = hesapTuruGetir(hsp);
       const hamBakiye = hesapBakiyeleri[hsp];
