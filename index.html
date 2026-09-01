@@ -1285,7 +1285,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.3.7";
+const APP_SURUM = "1.3.8";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -5130,14 +5130,19 @@ tabloYenile();
 
 let borcHtml = "";
 let toplamBorcHarcama = 0;
+// YENİ: Sadece "kredi kartı" olarak işaretlenmiş hesapların (Bakiyelerim panelindeki
+// 🏦/💳 türü ayarına göre) toplam borcunu ayrı gösterebilmek için topluyoruz.
+let toplamKrediBorcu = 0;
 Object.keys(hesapBorclari).forEach(key => {
 if(hesapBorclari[key] > 0 || hesapIsimleriMap[key]){
 const tutar = hesapBorclari[key] || 0;
 toplamBorcHarcama += tutar;
+if (hesapTuruGetir(key) === 'kredi') { toplamKrediBorcu += tutar; }
 borcHtml += `<div class="borc-satir"><span>${hesapIsimleriMap[key] || key}:</span><span style="font-weight:bold; color:#ff7e5f;">${formatla(tutar)} TL</span></div>`;
 }
 });
-borcHtml += `<div class="borc-satir" style="border-top:1px solid #fff; margin-top:5px; padding-top:5px; font-weight:bold;"><span>Toplam Aylık Harcama:</span><span style="color:#ef4444;">${formatla(toplamBorcHarcama)} TL</span></div>`;
+borcHtml += `<div class="borc-satir" style="border-top:1px solid #fff; margin-top:5px; padding-top:5px; font-weight:bold;"><span>💳 Toplam Kredi Kartı Borcu:</span><span style="color:#f59e0b;">${formatla(toplamKrediBorcu)} TL</span></div>`;
+borcHtml += `<div class="borc-satir" style="margin-top:5px; padding-top:5px; font-weight:bold;"><span>Toplam Aylık Harcama:</span><span style="color:#ef4444;">${formatla(toplamBorcHarcama)} TL</span></div>`;
 document.getElementById('borc-listesi').innerHTML = borcHtml;
 
 sonRaporVerisi = { kategoriToplamlar, toplamGelir, toplamGider, bakiye };
