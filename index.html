@@ -1297,7 +1297,7 @@ const auth = getAuth(app);
 // YENİ: Uygulama versiyon numarası. Her güncellemeden sonra SADECE buradaki değeri bir artırın
 // (örn. "1.0.0" -> "1.0.1"). Giriş ekranındaki etiket buradan otomatik güncellenir; böylece
 // kullanıcıların telefonunda güncel sürümün yüklenip yüklenmediği tek bakışta anlaşılabilir.
-const APP_SURUM = "1.4.0";
+const APP_SURUM = "1.3.9";
 document.getElementById('app-versiyon-etiketi').innerText = 'v' + APP_SURUM;
 document.getElementById('hakkinda-versiyon').innerText = APP_SURUM;
 const rtdb = getDatabase(app);
@@ -3080,7 +3080,7 @@ document.addEventListener('keydown', (e) => {
   kapatPaneller();
 });
 
-let myChart, seciliTarih = new Date(), mevcutAyVerileri = [], mevcutHamVeriler = [], mevcutSorguPenceresi = null;
+let myChart, seciliTarih = new Date(), mevcutAyVerileri = [];
 let unsubIslemler = null;
 
 // --- OTURUM ZAMAN AŞIMI (15 dakika) ---
@@ -3167,16 +3167,7 @@ function tabloYenile() {
   const basTarih = filtreBas ? new Date(filtreBas).setHours(0,0,0,0) : null;
   const bitTarih = filtreBit ? new Date(filtreBit).setHours(23,59,59,999) : null;
 
-  // DÜZELTME: "mevcutAyVerileri" işlemleri gerçek tarihine göre değil, atanmış "ekstreAy"
-  // (ekstre ayı) etiketine göre süzüyor — bu da taksit/erteleme gibi farklı bir ekstre ayına
-  // atanmış işlemlerin, gerçek tarihi seçilen aralıkta olsa bile listede hiç görünmemesine yol
-  // açıyordu (kullanıcı bildirimi: "filtreleme yapınca tarihe göre getirmiyor"). Bir tarih
-  // aralığı seçildiğinde, ekstre-ay kısıtlı listesi yerine ±1 aylık sorgu penceresindeki TÜM
-  // kayıtları (mevcutHamVeriler) kaynak alıp doğrudan gerçek "tarih" alanına göre filtreliyoruz.
-  const tarihFiltresiAktif = !!(basTarih || bitTarih);
-  const kaynakVeri = tarihFiltresiAktif ? mevcutHamVeriler : mevcutAyVerileri;
-
-  filtrelenmisVeriler = kaynakVeri.filter(d => {
+  filtrelenmisVeriler = mevcutAyVerileri.filter(d => {
     if (aramaMetin && !d.aciklama.toLowerCase().includes(aramaMetin)) return false;
     if (filtreKat && d.kategori !== filtreKat) return false;
     if (filtreTur && d.tur !== filtreTur) return false;
@@ -3191,13 +3182,7 @@ function tabloYenile() {
   gosterilenSayi = SAYFA_BOYUTU;
   const filtreAktif = aramaMetin || filtreKat || filtreTur || filtreHesap || filtreBas || filtreBit;
   const bilgiEl = document.getElementById('filtre-sonuc-bilgi');
-  if (bilgiEl) {
-    // Tarih aralığı, ekranda gösterilen ayın bir öncesi/sonrasını kapsayan ±1 aylık sorgu
-    // penceresinin dışına taşıyorsa, o kısım hiç çekilmediği için sonuçlarda eksik görünebilir.
-    // Kullanıcıyı bilgilendirip ilgili ayı seçmesini öneriyoruz.
-    const pencereDisindaMi = mevcutSorguPenceresi && ((basTarih && basTarih < mevcutSorguPenceresi.bas) || (bitTarih && bitTarih >= mevcutSorguPenceresi.bit));
-    bilgiEl.innerText = filtreAktif ? `${filtrelenmisVeriler.length} / ${kaynakVeri.length} işlem${pencereDisindaMi ? ' ⚠️ aralık dışı ay var, o ayı seçip tekrar bakın' : ''}` : '';
-  }
+  if (bilgiEl) bilgiEl.innerText = filtreAktif ? `${filtrelenmisVeriler.length} / ${mevcutAyVerileri.length} işlem` : '';
   tabloRender();
 }
 
@@ -5093,9 +5078,8 @@ if (unsubIslemler) { unsubIslemler(); unsubIslemler = null; }
 // veri çekiliyor, artık kullanıcının geçmişiyle birlikte yavaşlamıyor.
 const ayBaslangicTarih = new Date(seciliTarih.getFullYear(), seciliTarih.getMonth() - 1, 1);
 const ayBitisTarih = new Date(seciliTarih.getFullYear(), seciliTarih.getMonth() + 2, 1);
-mevcutSorguPenceresi = { bas: ayBaslangicTarih.getTime(), bit: ayBitisTarih.getTime() };
 unsubIslemler = onSnapshot(query(collection(db, "islemler"), where("uid", "==", uid), where("tarih", ">=", ayBaslangicTarih.getTime()), where("tarih", "<", ayBitisTarih.getTime())), { includeMetadataChanges: true }, (snapshot) => {
-let bakiye = 0, veriler = [], hamVeriler = [];
+let bakiye = 0, veriler = [];
 const kategoriToplamlar = { 'Gelir': 0, 'Genel': 0, 'Maaş': 0, 'Market': 0, 'Fatura': 0, 'Ulaşım': 0, 'Eğlence': 0, 'Diğer': 0 };
 const hesapBorclari = { 'Nakit': 0, 'Garanti': 0, 'Ziraat': 0, 'Qnb': 0, 'Diğer Kredi Kartı': 0 };
 const hesapIsimleriMap = { 'Nakit': 'Nakit', 'Garanti': 'Garanti BBVA', 'Ziraat': 'Ziraat Bankası', 'Qnb': 'QNB Finansbank', 'Diğer Kredi Kartı': 'Diğer Kredi Kartı' };
@@ -5106,12 +5090,6 @@ const data = d.data();
 // ekstreAy varsa onu, yoksa tarih alanının ayını kullan
 const t = new Date(data.tarih);
 const islemAyKey = data.ekstreAy || `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`;
-// YENİ: ±1 aylık sorgu penceresindeki TÜM kayıtları (ekstre-ay eşleşmesinden bağımsız)
-// ayrıca hamVeriler'e topluyoruz. Filtre panelindeki tarih aralığı seçimi, işlemin ekstre
-// ayına değil gerçek "tarih" alanına göre arama yapmalı; aksi halde farklı bir ekstre ayına
-// atanmış (ör. taksit/erteleme) bir işlem, gerçek tarihi seçilen aralıkta olsa bile hiç
-// görünmüyordu (bkz. kullanıcı bildirimi: "filtreleme yapınca tarihe göre getirmiyor").
-hamVeriler.push({ id: d.id, ...data, isPending: d.metadata.hasPendingWrites });
 if (islemAyKey === seciliAyKey) {
 veriler.push({ id: d.id, ...data, isPending: d.metadata.hasPendingWrites });
 // DÜZELTME: Hesaplar arası transfer (Bakiyelerim > Transfer Et) kaynak hesaba gider, hedef
@@ -5138,9 +5116,7 @@ if (hesapBorclari[hsp] !== undefined) { hesapBorclari[hsp] += data.tutar; } else
 });
 
 veriler.sort((a, b) => b.tarih - a.tarih);
-mevcutAyVerileri = veriler;
-hamVeriler.sort((a, b) => b.tarih - a.tarih);
-mevcutHamVeriler = hamVeriler;
+mevcutAyVerileri = veriler; 
 
 const bakiyeEl = document.getElementById('bakiye');
 const eskiBakiye = parseFloat(bakiyeEl.innerText.replace(/\./g,'').replace(',','.')) || 0;
