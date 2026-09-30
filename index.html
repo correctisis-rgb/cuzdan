@@ -4647,12 +4647,12 @@ document.getElementById('hesap').addEventListener('change', () => {
   const toastMesaj = document.getElementById('toast-mesaj');
   if (toastEl && toastMesaj) {
     if (islemGun < kesimGun) {
-      // Kesim henüz olmadı, önceki aya ait ekstre
-      const oncekiAyIdx = baz.getMonth() === 0 ? 11 : baz.getMonth() - 1;
-      toastMesaj.innerText = `💳 Kesim tarihi (${kesimGun}) henüz gelmedi → ${ayIsimleri[oncekiAyIdx]} ekstresine yazılacak`;
+      // Kesim henüz gelmedi → bu ayın kesiminde kesilecek ekstre (bu ayın ekstresi)
+      toastMesaj.innerText = `💳 Kesim tarihi (${kesimGun}) henüz gelmedi → ${ayIsimleri[baz.getMonth()]} ekstresine yazılacak`;
     } else {
-      // Kesim geçti, bu aya ait
-      toastMesaj.innerText = `💳 Kesim tarihi (${kesimGun}) geçti → ${ayIsimleri[baz.getMonth()]} ekstresine yazılacak`;
+      // Kesim geçti → gelecek ayın kesiminde kesilecek ekstre
+      const sonrakiAyIdx = (baz.getMonth() + 1) % 12;
+      toastMesaj.innerText = `💳 Kesim tarihi (${kesimGun}) geçti → ${ayIsimleri[sonrakiAyIdx]} ekstresine yazılacak`;
     }
     toastEl.style.display = 'flex';
     setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
@@ -5291,12 +5291,12 @@ if (tur === 'gider') {
     const islemAy = tarihObj.getMonth(); // 0-11
     const islemYil = tarihObj.getFullYear();
     if (islemGun < kesimGun) {
-      // Kesim henüz gelmedi → önceki aya ait ekstre
-      const oncekiAyTarih = new Date(islemYil, islemAy - 1, 1);
-      ekstreAy = `${oncekiAyTarih.getFullYear()}-${String(oncekiAyTarih.getMonth() + 1).padStart(2, '0')}`;
-    } else {
-      // Kesim geçti → bu aya ait ekstre
+      // Kesim henüz gelmedi → bu ayın kesiminde kesilecek ekstre
       ekstreAy = `${islemYil}-${String(islemAy + 1).padStart(2, '0')}`;
+    } else {
+      // Kesim geçti → gelecek ayın kesiminde kesilecek ekstre
+      const sonrakiAyTarih = new Date(islemYil, islemAy + 1, 1);
+      ekstreAy = `${sonrakiAyTarih.getFullYear()}-${String(sonrakiAyTarih.getMonth() + 1).padStart(2, '0')}`;
     }
   }
 }
