@@ -4566,6 +4566,17 @@ async function kartKesimTarihleriniKaydet(data) {
   } catch(e) { console.log("Kart ayarları kaydetme hatası:", e); }
 }
 
+// Ekstre dönemi: işlemin ait olduğu kesim tarihini bulur; ekstre, dönemin çoğunluğunun
+// düştüğü ayın adını alır (kesim günü >= 16 ise kesim ayı, değilse bir önceki ay).
+// Kesim günü dahil o döneme yazılır (27'si geçmediyse hâlâ aynı ekstre).
+function ekstreDonemiHesapla(tarihObj, kesimGun) {
+  const y = tarihObj.getFullYear(), m = tarihObj.getMonth(), g = tarihObj.getDate();
+  const bitis = g <= kesimGun ? new Date(y, m, kesimGun, 12) : new Date(y, m + 1, kesimGun, 12);
+  const baslangic = new Date(bitis.getFullYear(), bitis.getMonth() - 1, kesimGun + 1, 12);
+  const adAy = kesimGun >= 16 ? new Date(bitis.getFullYear(), bitis.getMonth(), 1) : new Date(bitis.getFullYear(), bitis.getMonth() - 1, 1);
+  return { baslangic, bitis, yil: adAy.getFullYear(), ay: adAy.getMonth() };
+}
+
 // Kesim tarihine göre işlemin hangi aya ait olduğunu hesapla
 function kartEkstreAyiHesapla(hesapAdi, gercekTarih) {
   const tarihler = kartKesimTarihleriniGetir();
@@ -4646,14 +4657,9 @@ document.getElementById('hesap').addEventListener('change', () => {
   const toastEl = document.getElementById('toast');
   const toastMesaj = document.getElementById('toast-mesaj');
   if (toastEl && toastMesaj) {
-    if (islemGun < kesimGun) {
-      // Yeni dönem henüz başlamadı → önceki ayın ekstresi (harcama ayı mantığı)
-      const oncekiAyIdx = baz.getMonth() === 0 ? 11 : baz.getMonth() - 1;
-      toastMesaj.innerText = `💳 Kesim günü (${kesimGun}) henüz gelmedi, önceki dönem sürüyor → ${ayIsimleri[oncekiAyIdx]} ekstresine yazılacak`;
-    } else {
-      // Kesim günü geçti → bu ayın ekstresi
-      toastMesaj.innerText = `💳 Kesim günü (${kesimGun}) geçti, ${ayIsimleri[baz.getMonth()]} dönemi başladı → ${ayIsimleri[baz.getMonth()]} ekstresine yazılacak`;
-    }
+    const d = ekstreDonemiHesapla(baz, kesimGun);
+    const fmt = (x) => `${x.getDate()} ${ayIsimleri[x.getMonth()]}`;
+    toastMesaj.innerText = `💳 Dönem: ${fmt(d.baslangic)} – ${fmt(d.bitis)} → ${ayIsimleri[d.ay]} ekstresine yazılacak`;
     toastEl.style.display = 'flex';
     setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
   }
@@ -5290,14 +5296,8 @@ if (tur === 'gider') {
     const islemGun = tarihObj.getDate();
     const islemAy = tarihObj.getMonth(); // 0-11
     const islemYil = tarihObj.getFullYear();
-    if (islemGun < kesimGun) {
-      // Kesim günü henüz gelmedi → önceki ayın ekstresi
-      const oncekiAyTarih = new Date(islemYil, islemAy - 1, 1);
-      ekstreAy = `${oncekiAyTarih.getFullYear()}-${String(oncekiAyTarih.getMonth() + 1).padStart(2, '0')}`;
-    } else {
-      // Kesim günü geçti → bu ayın ekstresi
-      ekstreAy = `${islemYil}-${String(islemAy + 1).padStart(2, '0')}`;
-    }
+    const donem = ekstreDonemiHesapla(tarihObj, kesimGun);
+    ekstreAy = `${donem.yil}-${String(donem.ay + 1).padStart(2, '0')}`;
   }
 }
 
