@@ -4658,8 +4658,7 @@ document.getElementById('hesap').addEventListener('change', () => {
   const toastMesaj = document.getElementById('toast-mesaj');
   if (toastEl && toastMesaj) {
     const d = ekstreDonemiHesapla(baz, kesimGun);
-    const fmt = (x) => `${x.getDate()} ${ayIsimleri[x.getMonth()]}`;
-    toastMesaj.innerText = `💳 Dönem: ${fmt(d.baslangic)} – ${fmt(d.bitis)} → ${ayIsimleri[d.ay]} ekstresine yazılacak`;
+    toastMesaj.innerText = `💳 ${ayIsimleri[d.ay]} ekstresine yazılacak`;
     toastEl.style.display = 'flex';
     setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
   }
