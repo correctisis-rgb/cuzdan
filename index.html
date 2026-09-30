@@ -862,7 +862,7 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 <div id="kart-ayar-panel" class="hidden" style="margin-top:5px; padding:8px; background:rgba(0,0,0,0.25); border-radius:10px; text-align:left;">
 <button class="close-btn" onclick="kapatPaneller()">KAPAT X</button>
 <div style="font-weight:bold; margin-bottom:8px; font-size:13px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">💳 KART KESİM TARİHİ AYARLARI</div>
-<div style="font-size:11px; opacity:0.75; margin-bottom:10px; line-height:1.5;">Her kartın kesim gününü girin. İşlem eklerken hesap seçilince, kesim tarihine göre işlemin hangi aya ait olduğu otomatik hesaplanacak.</div>
+<div style="font-size:11px; opacity:0.75; margin-bottom:10px; line-height:1.5;">Her kartın kesim gününü girin. İşlem eklerken hesap seçilince, kesim tarihine göre işlemin hangi ekstreye yazılacağı otomatik hesaplanır. Her kart için ekstrenin hangi ayın adıyla anılacağını da seçebilirsin.</div>
 <div id="kart-ayar-liste"></div>
 <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.15); padding-top:8px;">
   <div style="font-size:11px; font-weight:bold; margin-bottom:5px;">➕ Kesim Tarihi Ekle / Güncelle</div>
@@ -879,6 +879,12 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
     </select>
     <span style="font-size:12px; white-space:nowrap;">'inde kesilir</span>
   </div>
+  <div style="font-size:11px; margin-bottom:3px;">Ekstre hangi ayın adıyla anılsın?</div>
+  <select id="kart-ayar-mod" style="margin-bottom:6px; font-size:12px;">
+    <option value="">Otomatik (kesim gününe göre)</option>
+    <option value="kesim">Kesim ayı (örn. 27 Ekim'de kesilen → Ekim)</option>
+    <option value="onceki">Önceki ay (örn. 7 Ekim'de kesilen → Eylül)</option>
+  </select>
   <button id="btn-kart-ayar-kaydet" style="background:#0ea5e9; width:100%; font-size:12px;">💾 Kaydet</button>
 </div>
 </div>
@@ -4532,6 +4538,7 @@ document.getElementById('btn-transfer-yap').onclick = () => {
 // Kesim tarihlerini localStorage'dan oku
 // --- KART KESİM TARİHİ SİSTEMİ (Firestore tabanlı) ---
 let _kartAyarlariCache = {}; // Yerel cache - Firestore'dan yüklenir
+let _kartModCache = {}; // Kart başına ekstre adlandırma modu ('kesim' | 'onceki')
 
 async function kartAyarlariYukle(uidOverride) {
   if (!auth.currentUser && !uidOverride) return;
@@ -4541,6 +4548,7 @@ async function kartAyarlariYukle(uidOverride) {
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       _kartAyarlariCache = docSnap.data().tarihler || {};
+      _kartModCache = docSnap.data().modlar || {};
     } else if (!uidOverride) {
       // localStorage'da eski veri varsa Firestore'a taşı (sadece gerçek kullanıcı oturumunda; TV modunda yazma yapılmaz)
       const uid = auth.currentUser.uid;
@@ -4562,18 +4570,19 @@ async function kartKesimTarihleriniKaydet(data) {
   _kartAyarlariCache = data;
   if (!auth.currentUser) return;
   try {
-    await setDoc(doc(db, "kart_ayarlari", auth.currentUser.uid), { tarihler: data, uid: auth.currentUser.uid });
+    await setDoc(doc(db, "kart_ayarlari", auth.currentUser.uid), { tarihler: data, modlar: _kartModCache, uid: auth.currentUser.uid });
   } catch(e) { console.log("Kart ayarları kaydetme hatası:", e); }
 }
 
 // Ekstre dönemi: işlemin ait olduğu kesim tarihini bulur; ekstre, dönemin çoğunluğunun
 // düştüğü ayın adını alır (kesim günü >= 16 ise kesim ayı, değilse bir önceki ay).
 // Kesim günü dahil o döneme yazılır (27'si geçmediyse hâlâ aynı ekstre).
-function ekstreDonemiHesapla(tarihObj, kesimGun) {
+function ekstreDonemiHesapla(tarihObj, kesimGun, mod) {
   const y = tarihObj.getFullYear(), m = tarihObj.getMonth(), g = tarihObj.getDate();
   const bitis = g <= kesimGun ? new Date(y, m, kesimGun, 12) : new Date(y, m + 1, kesimGun, 12);
   const baslangic = new Date(bitis.getFullYear(), bitis.getMonth() - 1, kesimGun + 1, 12);
-  const adAy = kesimGun >= 16 ? new Date(bitis.getFullYear(), bitis.getMonth(), 1) : new Date(bitis.getFullYear(), bitis.getMonth() - 1, 1);
+  const kesimAdi = mod ? mod === 'kesim' : kesimGun >= 16; // mod yoksa otomatik
+  const adAy = kesimAdi ? new Date(bitis.getFullYear(), bitis.getMonth(), 1) : new Date(bitis.getFullYear(), bitis.getMonth() - 1, 1);
   return { baslangic, bitis, yil: adAy.getFullYear(), ay: adAy.getMonth() };
 }
 
@@ -4612,7 +4621,7 @@ function kartAyarListeGoster() {
     html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
       <div>
         <div style="font-weight:bold; font-size:12px;">${escapeHTML(isim)}</div>
-        <div style="font-size:10px; opacity:0.7;">Her ayın <b>${gun}</b>'inde kesilir</div>
+        <div style="font-size:10px; opacity:0.7;">Her ayın <b>${gun}</b>'inde kesilir${_kartModCache[hesap] === 'kesim' ? ' • Kesim ayı adıyla' : _kartModCache[hesap] === 'onceki' ? ' • Önceki ay adıyla' : ''}</div>
       </div>
       <button onclick="window.kartAyarSil('${escapeHTML(hesap).replace(/'/g,"\\\\'")}')" style="background:#ef4444; color:white; border:none; border-radius:6px; font-size:10px; padding:3px 8px; cursor:pointer; width:auto;">Sil</button>
     </div>`;
@@ -4620,21 +4629,34 @@ function kartAyarListeGoster() {
   el.innerHTML = html;
 }
 
+document.getElementById('kart-ayar-hesap').addEventListener('change', (e) => {
+  const h = e.target.value;
+  const t = kartKesimTarihleriniGetir();
+  if (h && t[h]) document.getElementById('kart-ayar-gun').value = t[h];
+  document.getElementById('kart-ayar-mod').value = (h && _kartModCache[h]) || '';
+});
+
 document.getElementById('btn-kart-ayar-kaydet').onclick = async () => {
   const hesap = document.getElementById('kart-ayar-hesap').value;
   const gun = parseInt(document.getElementById('kart-ayar-gun').value);
   if (!hesap) { bilgiGoster('⚠️', 'Hesap Seçin', 'Lütfen bir hesap seçin.', '#f59e0b'); return; }
   const tarihler = { ...kartKesimTarihleriniGetir() };
   tarihler[hesap] = gun;
+  const modSecim = document.getElementById('kart-ayar-mod').value;
+  _kartModCache = { ..._kartModCache };
+  if (modSecim) _kartModCache[hesap] = modSecim; else delete _kartModCache[hesap];
   await kartKesimTarihleriniKaydet(tarihler);
   kartAyarListeGoster();
   document.getElementById('kart-ayar-hesap').value = '';
+  document.getElementById('kart-ayar-mod').value = '';
   bilgiGoster('✅', 'Kaydedildi!', `Kesim tarihi buluta kaydedildi. Artık hangi cihazdan girersen gir bu ayar geçerli olacak.`, '#0ea5e9');
 };
 
 window.kartAyarSil = async (hesap) => {
   const tarihler = { ...kartKesimTarihleriniGetir() };
   delete tarihler[hesap];
+  _kartModCache = { ..._kartModCache };
+  delete _kartModCache[hesap];
   await kartKesimTarihleriniKaydet(tarihler);
   kartAyarListeGoster();
 };
@@ -4657,7 +4679,7 @@ document.getElementById('hesap').addEventListener('change', () => {
   const toastEl = document.getElementById('toast');
   const toastMesaj = document.getElementById('toast-mesaj');
   if (toastEl && toastMesaj) {
-    const d = ekstreDonemiHesapla(baz, kesimGun);
+    const d = ekstreDonemiHesapla(baz, kesimGun, _kartModCache[hesap]);
     toastMesaj.innerText = `💳 ${ayIsimleri[d.ay]} ekstresine yazılacak`;
     toastEl.style.display = 'flex';
     setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
@@ -5295,7 +5317,7 @@ if (tur === 'gider') {
     const islemGun = tarihObj.getDate();
     const islemAy = tarihObj.getMonth(); // 0-11
     const islemYil = tarihObj.getFullYear();
-    const donem = ekstreDonemiHesapla(tarihObj, kesimGun);
+    const donem = ekstreDonemiHesapla(tarihObj, kesimGun, _kartModCache[hesap]);
     ekstreAy = `${donem.yil}-${String(donem.ay + 1).padStart(2, '0')}`;
   }
 }
