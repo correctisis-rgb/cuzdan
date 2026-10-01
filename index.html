@@ -4404,19 +4404,26 @@ async function taksitOzetiYukle(uid) {
   icerik.innerHTML = 'Yükleniyor...';
   try {
     const bugun = new Date();
-    const gelecekAyBaslangic = new Date(bugun.getFullYear(), bugun.getMonth() + 1, 1);
-    const gelecekAyBitis = new Date(bugun.getFullYear(), bugun.getMonth() + 2, 1);
+    // Kart taksitleri ekstreAy ile bir ay kayabildiği için tarih penceresi geniş tutulur,
+    // asıl eleme aşağıda (ekstreAy varsa o, yoksa tarih ayı) yapılır.
+    const gelecekAyObj = new Date(bugun.getFullYear(), bugun.getMonth() + 1, 1);
+    const gelecekAyKey = `${gelecekAyObj.getFullYear()}-${String(gelecekAyObj.getMonth() + 1).padStart(2, '0')}`;
+    const pencereBas = new Date(bugun.getFullYear(), bugun.getMonth(), 1);
+    const pencereBit = new Date(bugun.getFullYear(), bugun.getMonth() + 3, 1);
     const snap = await getDocs(query(
       collection(db, "islemler"),
       where("uid", "==", uid),
-      where("tarih", ">=", gelecekAyBaslangic.getTime()),
-      where("tarih", "<", gelecekAyBitis.getTime())
+      where("tarih", ">=", pencereBas.getTime()),
+      where("tarih", "<", pencereBit.getTime())
     ));
     const taksitKalemleri = [];
     let toplamYuk = 0;
     snap.forEach(d => {
       const data = d.data();
       if (data.tur !== 'gider') return;
+      const tk = new Date(data.tarih);
+      const kayitAyKey = data.ekstreAy || `${tk.getFullYear()}-${String(tk.getMonth() + 1).padStart(2, '0')}`;
+      if (kayitAyKey !== gelecekAyKey) return;
       const eslesme = TAKSIT_DESEN.exec(data.aciklama || '');
       if (!eslesme) return; // taksit deseniyle bitmeyen normal işlemler dahil edilmiyor
       const suankiAy = parseInt(eslesme[1]), toplamAy = parseInt(eslesme[2]);
@@ -5652,9 +5659,21 @@ const taksitSayisi = parseInt(taksitSayisiStr);
 if (isNaN(taksitSayisi) || taksitSayisi <= 1) { return bilgiGoster('⚠️', 'Geçersiz Taksit Sayısı', 'Geçerli bir taksit sayısı girin.', '#f59e0b'); }
 if (taksitSayisi > TAKSIT_USTSINIR) { return bilgiGoster('⚠️', 'Sınır Aşıldı', `En fazla ${TAKSIT_USTSINIR} taksit yapabilirsiniz.`, '#f59e0b'); }
 
-const aylikTutar = parseFloat((toplamTutar / taksitSayisi).toFixed(2));
+// Kuruş yuvarlama farkı kaybolmasın: toplam kuruş taksitlere bölünür, artan kuruşlar ilk taksitlere eklenir
+const toplamKurus = Math.round(toplamTutar * 100);
+const taksitTabanKurus = Math.floor(toplamKurus / taksitSayisi);
+const taksitArtanKurus = toplamKurus - taksitTabanKurus * taksitSayisi;
+const aylikTutar = taksitTabanKurus / 100; // gösterim için (ilk taksitler 1 kuruş fazla olabilir)
 let baslangicTarihi = new Date(tarihVal);
 baslangicTarihi.setHours(12, 0, 0, 0);
+
+// Kredi kartı ise: ilk taksitin ekstresi kesim tarihine göre bulunur, sonraki taksitler her ay bir sonraki ekstreye yazılır
+const taksitKesimGun = kartKesimTarihleriniGetir()[hesap];
+let ilkEkstre = null;
+if (taksitKesimGun) {
+  const dn = ekstreDonemiHesapla(baslangicTarihi, taksitKesimGun, _kartModCache[hesap]);
+  ilkEkstre = { yil: dn.yil, ay: dn.ay };
+}
 
 onayGoster('📆', `${formatla(toplamTutar)} TL tutarındaki işlem, ${taksitSayisi} aya ${formatla(aylikTutar)} TL olarak bölünecektir. Onaylıyor musunuz?`, async () => {
 // PERFORMANS: Önceden her taksit ayrı ayrı await addDoc(...) ile sırayla ekleniyordu
@@ -5666,21 +5685,29 @@ if (_hesapOzetiHazirPromise) await _hesapOzetiHazirPromise;
 const batch = writeBatch(db);
 let toplamEklenenGider = 0;
 for(let i = 0; i < taksitSayisi; i++) {
-let islemTarihi = new Date(baslangicTarihi);
-islemTarihi.setMonth(islemTarihi.getMonth() + i);
+// Ay sonu taşmasını önle: 31 Ocak + 1 ay → 3 Mart yerine 28 Şubat olsun
+const hedefAyBas = new Date(baslangicTarihi.getFullYear(), baslangicTarihi.getMonth() + i, 1, 12, 0, 0, 0);
+const ayinSonGunu = new Date(hedefAyBas.getFullYear(), hedefAyBas.getMonth() + 1, 0).getDate();
+const islemTarihi = new Date(hedefAyBas.getFullYear(), hedefAyBas.getMonth(), Math.min(baslangicTarihi.getDate(), ayinSonGunu), 12, 0, 0, 0);
 
+const buTaksitTutar = (taksitTabanKurus + (i < taksitArtanKurus ? 1 : 0)) / 100;
 let taksitAciklama = `${aciklama} (${i+1}/${taksitSayisi})`;
 const yeniRef = doc(collection(db, "islemler"));
-batch.set(yeniRef, {
+const taksitVeri = {
 uid,
 aciklama: taksitAciklama,
-tutar: aylikTutar,
+tutar: buTaksitTutar,
 tur: 'gider',
 kategori,
 hesap,
 tarih: islemTarihi.getTime()
-});
-toplamEklenenGider += aylikTutar;
+};
+if (ilkEkstre) {
+  const ed = new Date(ilkEkstre.yil, ilkEkstre.ay + i, 1);
+  taksitVeri.ekstreAy = `${ed.getFullYear()}-${String(ed.getMonth() + 1).padStart(2, '0')}`;
+}
+batch.set(yeniRef, taksitVeri);
+toplamEklenenGider += buTaksitTutar;
 }
 hesapOzetiBatchGuncelle(batch, uid, [{ hesap, delta: -toplamEklenenGider }]);
 await batch.commit();
