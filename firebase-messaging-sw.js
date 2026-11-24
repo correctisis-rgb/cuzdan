@@ -28,9 +28,9 @@ messaging.onBackgroundMessage((payload) => {
 
   const notificationOptions = {
     body: notificationBody,
-    icon: '/icon-192.png', // DÜZELTME: boş string yerine gerçek bir ikon yolu; projenizdeki
-                            // gerçek ikon dosyasının yoluyla değiştirin.
-    badge: '/icon-192.png',
+    // GitHub Pages depoyu /cuzdan/ altında yayınlar; kök-relative yollar yanlıştır.
+    icon: new URL('icon-192.png', self.registration.scope).href,
+    badge: new URL('icon-192.png', self.registration.scope).href,
     // DÜZELTME: "tag" verilmediğinde art arda gelen her bildirim ayrı ayrı yığılıyordu.
     // Aynı konudaki bildirimleri (ör. aynı sohbet/ticket) tek bildirimde güncellemek için
     // sunucu tarafında payload.data.tag gönderiliyorsa onu kullan, yoksa zaman damgasıyla
@@ -38,7 +38,7 @@ messaging.onBackgroundMessage((payload) => {
     tag: veri.tag || undefined,
     // DÜZELTME: notificationclick işleyicisinde hangi URL'nin açılacağını belirlemek için
     // veriyi bildirim nesnesine taşıyoruz.
-    data: { url: veri.url || '/' }
+    data: { url: veri.url || new URL('./', self.registration.scope).href }
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
@@ -48,7 +48,8 @@ messaging.onBackgroundMessage((payload) => {
 // ne de var olan sekmeye odaklanıyordu). Artık: uygulama zaten açık bir sekmede ise ona
 // odaklanıyor, değilse yeni bir sekmede açıyor.
 self.addEventListener('notificationclick', (event) => {
-  const hedefUrl = (event.notification.data && event.notification.data.url) || '/';
+  const varsayilanUrl = new URL('./', self.registration.scope).href;
+  const hedefUrl = (event.notification.data && event.notification.data.url) || varsayilanUrl;
   event.notification.close();
 
   event.waitUntil(

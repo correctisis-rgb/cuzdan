@@ -26,7 +26,7 @@ window.addEventListener('appinstalled', () => {
 <link class="apple-touch-icon" href="icon-192.png">
 
 <meta charset="UTF-8">
-<meta name="viewport" id="viewport-meta" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" id="viewport-meta" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Akıllı Cüzdan | Cloud</title>
 <meta name="description" content="Gelir ve giderlerini, hesaplarını, taksitlerini ve bütçe raporlarını tek yerde yönet.">
 <meta name="theme-color" content="#1c2137">
@@ -2847,7 +2847,7 @@ function gorunumUygula(mod) {
     document.body.classList.remove('masaustu-modu');
     document.documentElement.classList.remove('masaustu-modu');
     document.getElementById('btn-gorunum-degistir').innerText = '🖥️ Masaüstü Sitesi İste';
-    if (viewportMeta) viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+    if (viewportMeta) viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
     // Sidebar/main gizle, app-screen göster
     const sb = document.getElementById('mas-sidebar');
     const mn = document.getElementById('mas-main');

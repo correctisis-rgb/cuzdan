@@ -1,4 +1,4 @@
-const CACHE_NAME = 'akilli-cuzdan-v4'; // DÜZELTME: sürüm numarası artırıldı (v3 -> v4, 206 partial response düzeltmesi için), yeni deploy'larda da artırılmalı
+const CACHE_NAME = 'akilli-cuzdan-v5';
 const ASSETS = [
     './',
     './index.html',
@@ -8,7 +8,17 @@ const ASSETS = [
 
 self.addEventListener('install', (event) => {
     self.skipWaiting(); // Yeni versiyon yüklendiğinde hemen devreye gir
-    event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+    // Yerel uygulama dosyaları zorunludur; CDN hatası service worker kurulumunu iptal etmemeli.
+    const yerelVarliklar = ASSETS.filter((url) => url.startsWith('./'));
+    const uzakVarliklar = ASSETS.filter((url) => !url.startsWith('./'));
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(async (cache) => {
+            await cache.addAll(yerelVarliklar);
+            await Promise.all(uzakVarliklar.map((url) =>
+                cache.add(url).catch((e) => console.warn('SW: CDN varlığı önbelleğe alınamadı:', url, e.message))
+            ));
+        })
+    );
 });
 
 // DÜZELTME: Bu 'activate' bloğu daha önce hiç yoktu. Bunun iki sonucu vardı:
