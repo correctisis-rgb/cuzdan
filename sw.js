@@ -1,4 +1,5 @@
-const CACHE_NAME = 'akilli-cuzdan-v5';
+const CACHE_PREFIX = 'akilli-cuzdan-';
+const CACHE_NAME = `${CACHE_PREFIX}v6`;
 const ASSETS = [
     './',
     './index.html',
@@ -27,13 +28,13 @@ self.addEventListener('install', (event) => {
 //    'controllerchange' dinleyicisi (sayfayı otomatik yenileyen kod) bu yüzden hiç tetiklenmiyor,
 //    kullanıcı sekmeyi tamamen kapatıp yeniden açana kadar (bazı tarayıcılarda hiç) yeni sürümü
 //    görmüyordu. Şimdi clients.claim() ile yeni worker hemen açık sekmelerin kontrolünü alıyor.
-// 2) CACHE_NAME değiştirildiğinde eski önbellek (ör. 'akilli-cuzdan-v1') silinmeden kalıyordu.
-//    Şimdi eski isimli tüm önbellekler activate sırasında temizleniyor.
+// 2) Sadece bu uygulamanın eski önbelleklerini temizle. CacheStorage alan adının tamamında
+//    ortaktır; başka bir GitHub Pages uygulamasının önbelleğine dokunmamalıyız.
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         Promise.all([
             caches.keys().then((keys) =>
-                Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+                Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME).map((k) => caches.delete(k)))
             ),
             self.clients.claim()
         ])
