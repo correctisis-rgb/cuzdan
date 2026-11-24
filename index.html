@@ -674,6 +674,16 @@ body.masaustu-modu .mas-panel-modal { border-radius: 18px !important; }
   body:not(.masaustu-modu) #masaustu-ana-alan { display: contents; }
   body:not(.masaustu-modu) #masaustu-form-sutun,
   body:not(.masaustu-modu) #masaustu-liste-sutun { display: contents; }
+  body:not(.masaustu-modu) #app-screen.arama-modu #islem-hizli-ekle,
+  body:not(.masaustu-modu) #app-screen.arama-modu #aciklama,
+  body:not(.masaustu-modu) #app-screen.arama-modu #tutar-giris-kapsayici,
+  body:not(.masaustu-modu) #app-screen.arama-modu #tarih,
+  body:not(.masaustu-modu) #app-screen.arama-modu #kategori-secim-satiri,
+  body:not(.masaustu-modu) #app-screen.arama-modu #hesap-secim-satiri,
+  body:not(.masaustu-modu) #app-screen.arama-modu #islem-ekleme-butonlari { display: none !important; }
+  body:not(.masaustu-modu) #app-screen.arama-modu #arama-kontrol-satiri { margin: 0 0 6px; }
+  body:not(.masaustu-modu) #app-screen.arama-modu #btn-arama-ac { flex: 1; }
+  body:not(.masaustu-modu) #app-screen.arama-modu #btn-tekrarlayan-ac { display: none !important; }
   body:not(.masaustu-modu) .liste-alani { display: block; flex: none; height: clamp(300px, 52dvh, 500px); min-height: 300px; margin-top: 10px; overflow: auto; }
   body:not(.masaustu-modu) .liste-alani td { font-size: 13px; }
 }
@@ -1079,19 +1089,19 @@ body.masaustu-modu .mas-panel-modal { border-radius: 18px !important; }
 
 <div id="masaustu-ana-alan-wrapper"><div id="masaustu-ana-alan">
 <div id="masaustu-form-sutun">
-<div class="butor-group-row">
+<div class="butor-group-row" id="islem-hizli-ekle">
 <button id="btn-fis-oku" class="belirgin-btn" style="background:#575fcf;">📷 FİŞİ OKUT</button>
 <button id="btn-sesli-komut" class="belirgin-btn" style="background:#00d2d3;">🎤 SESLİ EKLE</button>
 </div>
 
 <input type="text" id="aciklama" placeholder="Açıklama" maxlength="60">
-<div style="position:relative;">
+<div id="tutar-giris-kapsayici" style="position:relative;">
 <input type="text" id="tutar" placeholder="Tutar (Örn: 123.456,78)" inputmode="decimal" style="padding-right:38px;">
 <button type="button" id="btn-hesap-makinesi" title="Hesap Makinesi" style="position:absolute; right:4px; top:50%; transform:translateY(-50%); width:27px; height:27px; padding:0; margin:0; border-radius:7px; background:rgba(255,255,255,0.18); color:white; font-size:14px; line-height:1; cursor:pointer;">🧮</button>
 </div>
 <input type="date" id="tarih" style="padding: 4px; color: #555;">
 
-<div style="display:flex; gap:5px; margin-top:2px;">
+<div id="kategori-secim-satiri" style="display:flex; gap:5px; margin-top:2px;">
     <select id="kategori" style="flex:1;">
     <option value="Genel">Genel</option>
     <option value="Maaş">Maaş</option>
@@ -1106,7 +1116,7 @@ body.masaustu-modu .mas-panel-modal { border-radius: 18px !important; }
     <button id="btn-sil-kategori" style="background:#ef4444; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Seçili Kategoriyi Sil">−</button>
 </div>
 
-<div style="display:flex; gap:5px; margin-top:2px;">
+<div id="hesap-secim-satiri" style="display:flex; gap:5px; margin-top:2px;">
     <select id="hesap" style="flex:1;">
     <option value="Nakit">Nakit</option>
     <option value="Garanti">Garanti BBVA</option>
@@ -1118,13 +1128,13 @@ body.masaustu-modu .mas-panel-modal { border-radius: 18px !important; }
     <button id="btn-sil-hesap" style="background:#ef4444; width:40px; font-weight:bold; padding:0; border-radius:10px;" title="Seçili Hesabı Sil">−</button>
 </div>
 
-<div style="display:flex; gap:5px; margin-top:2px;">
+<div id="islem-ekleme-butonlari" style="display:flex; gap:5px; margin-top:2px;">
 <button id="btn-gelir" style="background:#10b981; flex:1;">GELİR (+)</button>
 <button id="btn-gider" style="background:#ef4444; flex:1;">GİDER (-)</button>
 <button id="btn-taksit" style="background:#8b5cf6; flex:1;">TAKSİT (💸)</button>
 </div>
 
-<div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+<div id="arama-kontrol-satiri" style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
   <button id="btn-arama-ac" style="background:rgba(255,255,255,0.2); border:none; border-radius:8px; color:white; padding:4px 10px; font-size:12px; cursor:pointer; width:auto;">🔍 Ara / Filtrele</button>
   <button id="btn-tekrarlayan-ac" style="background:rgba(99,102,241,0.25); border:none; border-radius:8px; color:white; padding:4px 10px; font-size:12px; cursor:pointer; width:auto;">🔁 Sabit Giderler / Tekrarlayan İşlemler</button>
   <span id="filtre-sonuc-bilgi" style="font-size:10px; opacity:0.7;"></span>
@@ -3169,6 +3179,8 @@ document.addEventListener('keydown', (e) => {
   const aramaPanel = document.getElementById('arama-panel');
   if (aramaPanel && !aramaPanel.classList.contains('hidden')) {
     aramaPanel.classList.add('hidden');
+    document.getElementById('app-screen').classList.remove('arama-modu');
+    document.getElementById('btn-arama-ac').innerText = '🔍 Ara / Filtrele';
   }
   kapatPaneller();
 });
@@ -5468,6 +5480,7 @@ document.getElementById('btn-arama-ac').onclick = () => {
   const btn = document.getElementById('btn-arama-ac');
   const acik = !panel.classList.contains('hidden');
   panel.classList.toggle('hidden');
+  document.getElementById('app-screen').classList.toggle('arama-modu', !acik);
   btn.innerText = acik ? '🔍 Ara / Filtrele' : '🔍 Aramayı Kapat';
   if (acik) {
     // Kapanınca filtreyi temizle
