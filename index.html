@@ -28,6 +28,8 @@ window.addEventListener('appinstalled', () => {
 <meta charset="UTF-8">
 <meta name="viewport" id="viewport-meta" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Akıllı Cüzdan | Cloud</title>
+<meta name="description" content="Gelir ve giderlerini, hesaplarını, taksitlerini ve bütçe raporlarını tek yerde yönet.">
+<meta name="theme-color" content="#1c2137">
 <!-- DÜZELTME (PERFORMANS): Bu 5 script daha önce defer/async olmadan senkron şekilde yükleniyordu;
      tarayıcı bunları indirip çalıştırana kadar sayfanın geri kalanını ayrıştırmayı (parse) durduruyordu
      — yani kullanıcı ilk açılışta boş/beyaz ekranda bekliyordu. "defer" ile indirme artık HTML
@@ -591,6 +593,74 @@ body.masaustu-modu #mas-sidebar::-webkit-scrollbar-thumb:hover { background: rgb
 }
 
 #btn-gorunum-degistir { background: #dc2626; border: none; color: white; border-radius: 8px; font-size: 11px; padding: 6px 10px; width: 100%; margin-top: 2px; cursor: pointer; text-transform: none; }
+
+/* Arayüz yenilemesi: daha sakin yüzeyler, tutarlı boşluklar ve belirgin odak durumları. */
+:root { color-scheme: light; --ui-ink: #172033; --ui-muted: #718096; --ui-line: #e7ebf2; --ui-primary: #635bdb; }
+*, *::before, *::after { box-sizing: border-box; }
+button, input, select, textarea { font: inherit; }
+button { transition: transform .16s ease, box-shadow .16s ease, filter .16s ease; }
+button:hover { filter: brightness(1.04); }
+button:active { transform: translateY(1px) scale(.99); }
+:focus-visible { outline: 3px solid rgba(99,91,219,.45); outline-offset: 2px; }
+body { background: radial-gradient(ellipse at 15% 10%, #414a72 0%, transparent 42%), linear-gradient(145deg,#141b2d 0%,#343151 55%,#5b477d 100%); }
+.container { background: rgba(255,255,255,.96); color: var(--ui-ink); border: 1px solid rgba(255,255,255,.6); border-radius: 24px; padding: 26px; gap: 12px; box-shadow: 0 24px 70px rgba(9,15,35,.28); backdrop-filter: blur(20px); }
+#auth-screen, #signup-screen, #reset-screen, #tv-qr-screen { max-width: 390px; }
+.container:not(.app-container) h2 { margin: 4px 0 8px; letter-spacing: -.04em; font-size: 23px; }
+.container:not(.app-container) input { padding: 13px 14px; margin: 0; border: 1px solid #e1e5ee; background: #f8f9fc; border-radius: 12px; color: #172033; }
+.container:not(.app-container) input:focus { background: #fff; border-color: #8179e9; box-shadow: 0 0 0 4px rgba(99,91,219,.12); outline: none; }
+.container:not(.app-container) button { min-height: 44px; border-radius: 12px; box-shadow: 0 5px 14px rgba(35,44,75,.12); }
+.container:not(.app-container) .link-text { color: #5552ad; text-decoration: none; font-size: 13px; }
+.container:not(.app-container) .footer-apps { border-color: #e8eaf0; color: #526078; }
+.container:not(.app-container) .app-box { color: #526078; }
+.container.app-container { background: linear-gradient(145deg,rgba(27,34,59,.98),rgba(61,46,87,.97)); color: #fff; backdrop-filter: blur(20px); border-radius: 24px; border: 1px solid rgba(255,255,255,.15); box-shadow: 0 24px 70px rgba(6,11,29,.36); }
+#bakiye-h3 { font-size: 16px; letter-spacing: .03em; margin: 5px 0 2px; }
+#gelir-gider-ozet { padding: 8px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.07); }
+.nav-container { margin-top: 4px; gap: 14px; }
+.nav-btn { display: inline-flex; justify-content: center; align-items: center; min-width: 32px; min-height: 32px; border: 1px solid rgba(255,255,255,.16); }
+.container.app-container input, .container.app-container select, .container.app-container textarea { border: 1px solid rgba(255,255,255,.12); background-color: rgba(14,20,39,.52); color: #f5f6ff; border-radius: 11px; }
+.container.app-container input::placeholder, .container.app-container textarea::placeholder { color: rgba(235,238,255,.56); }
+.container.app-container input:focus, .container.app-container select:focus, .container.app-container textarea:focus { outline: none; border-color: #a89fff; box-shadow: 0 0 0 3px rgba(168,159,255,.17); }
+.container.app-container button { border-radius: 10px; }
+.butor-group-row { gap: 8px; }
+.butor-group-row button { min-height: 39px; }
+.liste-alani { border: 1px solid rgba(255,255,255,.12); border-radius: 13px; padding: 4px 8px; background: rgba(14,20,39,.2); }
+.liste-alani td { padding: 8px 6px; border-bottom-color: rgba(255,255,255,.08); }
+#profil-menu, #duyuru-menu { border: 1px solid #e8eaf0; border-radius: 14px; box-shadow: 0 18px 50px rgba(6,11,29,.28); }
+body.masaustu-modu { background: #f5f7fb !important; color: var(--ui-ink); }
+body.masaustu-modu #mas-sidebar { width: 238px; min-width: 238px; background: linear-gradient(180deg,#171f35 0%,#202b46 100%); box-shadow: 8px 0 28px rgba(20,31,55,.08); }
+body.masaustu-modu #mas-sidebar-logo { padding: 24px 20px 20px; }
+body.masaustu-modu #mas-sidebar-logo .logo-title { font-size: 16px; }
+body.masaustu-modu .mas-group-label { padding: 18px 20px 6px; color: #8995b1; }
+body.masaustu-modu .mas-nav-item { padding: 11px 20px; border-radius: 0; }
+body.masaustu-modu .mas-nav-item.aktif { background: rgba(129,119,255,.2); box-shadow: inset 3px 0 #948cff; }
+body.masaustu-modu #mas-topbar { height: 68px; padding: 0 34px; border-color: #edf0f5; }
+body.masaustu-modu #mas-topbar-title { font-size: 20px; letter-spacing: -.03em; }
+body.masaustu-modu #mas-content { padding: 28px 34px 40px; max-width: 1600px; width: 100%; margin: 0 auto; }
+body.masaustu-modu #masaustu-ozet-kartlari { gap: 18px; margin-bottom: 22px; }
+body.masaustu-modu .ozet-kart { border: 1px solid #e9edf4; border-top: 0; border-radius: 16px; padding: 20px 22px; box-shadow: 0 4px 16px rgba(25,38,67,.035); }
+body.masaustu-modu .ozet-kart-deger { font-size: clamp(22px,2vw,29px); letter-spacing: -.04em; }
+body.masaustu-modu #masaustu-ana-alan { gap: 20px; }
+body.masaustu-modu #masaustu-form-sutun { flex-basis: 330px; gap: 10px; padding: 20px; border-color: #e9edf4; border-radius: 16px; box-shadow: 0 4px 16px rgba(25,38,67,.035); }
+body.masaustu-modu #masaustu-form-sutun input, body.masaustu-modu #masaustu-form-sutun select { min-height: 40px; background: #f8f9fc; border-color: #e7ebf2; border-radius: 10px; }
+body.masaustu-modu #masaustu-form-sutun button { min-height: 38px; border-radius: 10px; }
+body.masaustu-modu .liste-alani { max-height: 68dvh; padding: 8px 18px; border-color: #e9edf4; border-radius: 16px; box-shadow: 0 4px 16px rgba(25,38,67,.035); }
+body.masaustu-modu .liste-alani td { padding: 13px 10px; }
+body.masaustu-modu .liste-alani tr:hover td { background: #f7f8fd; }
+body.masaustu-modu .mas-panel-modal { border-radius: 18px !important; }
+@media (max-width: 900px) {
+  body.masaustu-modu #mas-sidebar { width: 205px; min-width: 205px; }
+  body.masaustu-modu #mas-content { padding: 22px 20px; }
+  body.masaustu-modu #masaustu-ana-alan { flex-direction: column; }
+  body.masaustu-modu #masaustu-form-sutun { flex: 1 1 auto; width: 100%; }
+  body.masaustu-modu #masaustu-liste-sutun { width: 100%; }
+}
+@media (max-width: 560px) {
+  .container:not(.app-container) { padding: 24px 20px; border-radius: 22px; }
+  .container.app-container { width: 100%; max-width: none; height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
+  body:not(.masaustu-modu) #masaustu-ana-alan { gap: 8px; }
+  body:not(.masaustu-modu) .liste-alani td { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 </style>
 </head>
 <body>
